@@ -1,0 +1,467 @@
+<div class="container-fluid py-4">
+  <div class="row">
+    <div class="col-md-12">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1 class="mb-0"><i class="fas fa-tachometer-alt text-primary me-2"></i>User Dashboard
+          <span id="premium-badge" style="display: none;" class="badge bg-warning ms-2" title="Premium Member"><i class="fas fa-crown"></i></span>
+        </h1>
+        <div class="container mt-3">
+          <div class="row g-2">
+            <div class="col-12 col-md-4">
+              <a href="/user/book" class="btn btn-primary w-100">
+                <i class="fas fa-plus me-2"></i> New Booking
+              </a>
+            </div>
+            <div class="col-12 col-md-4">
+              <a href="/user/maintenance" class="btn btn-dark w-100">
+                Request Maintenance
+              </a>
+            </div>
+            <div class="col-12 col-md-4">
+              <a href="/user/emergency" class="btn btn-dark w-100">
+                Request Emergency
+              </a>
+            </div>
+          </div>
+        </div>
+       
+        
+      </div>
+    </div>
+  </div>
+
+   <!-- Basic User Booking Limit Alert -->
+   <div id="basic-alert" class="row mb-4" style="display: none;">
+      <div class="col-12">
+        <div class="alert alert-info border-0 shadow-sm">
+          <div class="d-flex align-items-center">
+            <i class="fas fa-info-circle text-info me-3 fa-2x"></i>
+            <div>
+              <h5 class="mb-1">Basic User Booking Limit</h5>
+              <p class="mb-0">You have <span id="remaining-bookings">0</span>/2 active bookings. <a href="/user/premium" class="fw-bold">Upgrade to Premium</a> for unlimited bookings and priority service!</p>
+            </div>
+            
+          </div>
+        </div>
+      </div>
+    </div>
+
+  <div class="row mb-4">
+    <div class="col-md-3">
+      <div class="card stats-card bg-primary-gradient text-white">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <h3 class="mb-0" id="stats-total">0</h3>
+              <p class="mb-0 text-white">Total Bookings</p>
+            </div>
+            <div class="stats-icon">
+              <i class="fas fa-calendar-check"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card stats-card bg-warning-gradient text-white">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <h3 class="mb-0" id="stats-pending">0</h3>
+              <p class="mb-0 text-white">Pending</p>
+            </div>
+            <div class="stats-icon">
+              <i class="fas fa-clock"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card stats-card bg-info-gradient text-white">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <h3 class="mb-0" id="stats-inProgress">0</h3>
+              <p class="mb-0 text-white">In Progress</p>
+            </div>
+            <div class="stats-icon">
+              <i class="fas fa-tools"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card stats-card bg-success-gradient text-white">
+        <div class="card-body">
+          <div class="d-flex justify-content-between align-items-center">
+            <div>
+              <h3 class="mb-0" id="stats-completed">0</h3>
+              <p class="mb-0 text-white">Completed</p>
+            </div>
+            <div class="stats-icon">
+              <i class="fas fa-check-circle"></i>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row">
+    <div class="col-md-8">
+      <div class="card mb-4">
+        <div
+          class="card-header d-flex justify-content-between align-items-center bg-white"
+        >
+          <h5 class="mb-0">
+            <i class="fas fa-list text-primary me-2"></i>Recent Bookings
+          </h5>
+          <a href="/user/history" class="btn btn-sm btn-outline-primary">
+            View All
+          </a>
+        </div>
+        <div class="card-body">
+          <div id="bookings-content">
+            <div class="text-center py-5">
+              <p class="text-muted">Loading bookings...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header bg-white">
+          <h5 class="mb-0">
+            <i class="fas fa-map-marker-alt text-primary me-2"></i>Your Location
+          </h5>
+        </div>
+        <div class="card-body p-0">
+          <div id="user-map" style="height: 300px"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-md-4">
+      <div class="card mb-4">
+        <div class="card-header bg-white">
+          <h5 class="mb-0">
+            <i class="fas fa-chart-pie text-primary me-2"></i>Category Breakdown
+          </h5>
+        </div>
+        <div class="card-body">
+          <div id="category-chart-container">
+            <div class="text-center py-4">
+              <p class="text-muted">Loading chart...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card mb-4">
+        <div class="card-header bg-white">
+          <h5 class="mb-0">
+            <i class="fas fa-user text-primary me-2"></i>Profile Summary
+          </h5>
+        </div>
+        <div class="card-body">
+          <div class="text-center mb-4">
+            <div class="avatar-circle-large bg-primary text-white mx-auto mb-3" id="user-avatar">U</div>
+            <h5 id="user-name">Loading...</h5>
+            <p class="text-muted mb-0" id="user-email">Loading...</p>
+          </div>
+
+          <div class="mb-3">
+            <div class="d-flex justify-content-between mb-2">
+              <span class="text-muted">Phone</span>
+              <span id="user-phone">Loading...</span>
+            </div>
+            <div class="d-flex justify-content-between">
+              <span class="text-muted">Address</span>
+              <span class="text-end" style="max-width: 200px" id="user-address">Loading...</span>
+            </div>
+          </div>
+
+          <div class="d-grid">
+            <a href="/user/profile" class="btn btn-outline-primary">
+              <i class="fas fa-edit me-2"></i> Edit Profile
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header bg-white">
+          <h5 class="mb-0">
+            <i class="fas fa-bolt text-primary me-2"></i>Quick Actions
+          </h5>
+        </div>
+        <div class="card-body">
+          <div class="d-grid gap-2">
+            <a href="/user/book" class="btn btn-primary">
+              <i class="fas fa-plus me-2"></i> Book a Mechanic
+            </a>
+            <a href="/user/history" class="btn btn-outline-secondary">
+              <i class="fas fa-history me-2"></i> View Booking History
+            </a>
+            <a href="/auth/logout" class="btn btn-outline-danger">
+              <i class="fas fa-sign-out-alt me-2"></i> Logout
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .bg-primary-gradient {
+    background: linear-gradient(135deg, #4361ee 0%, #3a56d4 100%);
+  }
+
+  .bg-warning-gradient {
+    background: linear-gradient(135deg, #f8961e 0%, #f3722c 100%);
+  }
+
+  .bg-info-gradient {
+    background: linear-gradient(135deg, #4cc9f0 0%, #4895ef 100%);
+  }
+
+  .bg-success-gradient {
+    background: linear-gradient(135deg #4cc9f0 0%, #4895ef 100%);
+  }
+
+  .bg-success-gradient {
+    background: linear-gradient(135deg, #38b000 0%, #008000 100%);
+  }
+
+  .stats-card {
+    border-radius: 15px;
+    border: none;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+    overflow: hidden;
+    transition: all 0.3s ease;
+  }
+
+  .stats-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
+  }
+
+  .stats-icon {
+    font-size: 2.5rem;
+    opacity: 0.8;
+  }
+
+  .avatar-circle {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+  }
+
+  .avatar-circle-large {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    font-weight: bold;
+  }
+</style>
+
+<link
+  rel="stylesheet"
+  href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/leaflet.css"
+/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+
+
+  // Main data fetch and populate
+  document.addEventListener("DOMContentLoaded", async function () {
+    try {
+      const response = await fetch('/user/api/dashboard');
+      const data = await response.json();
+
+      if (data.error) {
+        console.error('Error loading dashboard data:', data.error);
+        return;
+      }
+
+      const { user, bookings, stats, categories, subscription, isPremium, remainingBookings } = data;
+      console.log(data);
+
+      // Premium badge
+      if (isPremium) {
+        document.getElementById('premium-badge').style.display = 'inline-block';
+      }
+
+      // Basic alert
+      if (!isPremium) {
+        document.getElementById('basic-alert').style.display = 'block';
+        document.getElementById('remaining-bookings').textContent = remainingBookings;
+      }
+
+      // Stats
+      document.getElementById('stats-total').textContent = stats.total;
+      document.getElementById('stats-pending').textContent = stats.pending;
+      document.getElementById('stats-inProgress').textContent = stats.inProgress;
+      document.getElementById('stats-completed').textContent = stats.completed;
+
+      // Bookings
+      const bookingsContent = document.getElementById('bookings-content');
+      if (bookings.length === 0) {
+        bookingsContent.innerHTML = `
+          <div class="text-center py-5">
+            <img src="/images/empty-bookings.png" alt="No Bookings" class="img-fluid mb-3" style="max-width: 200px;">
+            <h5>No bookings found</h5>
+            <p class="text-muted">You haven't made any bookings yet.</p>
+            <a href="/user/book" class="btn btn-primary">
+              <i class="fas fa-plus me-2"></i> Create Your First Booking
+            </a>
+          </div>
+        `;
+      } else {
+        const recentBookings = bookings.slice(0, 5);
+        let tableHtml = `
+          <div class="table-responsive">
+            <table class="table table-hover align-middle">
+              <thead class="table-light">
+                <tr>
+                  <th>Date</th>
+                  <th>Problem</th>
+                  <th>Mechanic</th>
+                  <th>Status</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+        `;
+        recentBookings.forEach(booking => {
+          tableHtml += `
+            <tr>
+              <td>${new Date(booking.createdAt).toLocaleDateString()}</td>
+              <td>
+                <span class="d-inline-block text-truncate" style="max-width: 150px" title="${booking.problemCategory}">
+                  ${booking.problemCategory}
+                </span>
+              </td>
+              <td>
+                ${booking.mechanic ? `
+                  <div class="d-flex align-items-center">
+                    <div class="avatar-circle bg-primary text-white me-2">
+                      ${booking.mechanic.name.charAt(0).toUpperCase()}
+                    </div>
+                    <span>${booking.mechanic.name}</span>
+                  </div>
+                ` : '<span class="text-muted">Not assigned</span>'}
+              </td>
+              <td>
+                <span class="booking-status status-${booking.status}">
+                  ${booking.status}
+                </span>
+              </td>
+              <td>
+                <a href="/user/booking/${booking._id}" class="btn btn-sm btn-primary">
+                  <i class="fas fa-eye"></i> View
+                </a>
+              </td>
+            </tr>
+          `;
+        });
+        tableHtml += `
+              </tbody>
+            </table>
+          </div>
+        `;
+        if (bookings.length > 5) {
+          tableHtml += `
+            <div class="text-center mt-3">
+              <a href="/user/history" class="btn btn-outline-primary">
+                <i class="fas fa-history me-2"></i> View All Bookings
+              </a>
+            </div>
+          `;
+        }
+        bookingsContent.innerHTML = tableHtml;
+      }
+
+      // Profile summary
+      document.getElementById('user-avatar').textContent = user.name.charAt(0).toUpperCase();
+      document.getElementById('user-name').textContent = user.name;
+      document.getElementById('user-email').textContent = user.email;
+      document.getElementById('user-phone').textContent = user.phone;
+      document.getElementById('user-address').textContent = user.address;
+// 
+      // Map
+      const map = L.map("user-map");
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+      }).addTo(map);
+
+      const lat = user.location?.coordinates?.[1] || 0;
+      const lng = user.location?.coordinates?.[0] || 0;
+
+      if (lat !== 0 && lng !== 0) {
+        map.setView([lat, lng], 15);
+        const marker = L.marker([lat, lng]).addTo(map);
+        marker.bindPopup("Your location").openPopup();
+      } else {
+        map.setView([20.5937, 78.9629], 5); // Default to India
+      }
+      
+      console.log(categories);
+      // Category chart
+      const chartContainer = document.getElementById('category-chart-container');
+      if (Object.keys(categories).length === 0) {
+        chartContainer.innerHTML = `
+          <div class="text-center py-4">
+            <p class="text-muted">No data available</p>
+          </div>
+        `;
+      } else {
+        chartContainer.innerHTML = '<canvas id="categoryChart"></canvas>';
+        const ctx = document.getElementById('categoryChart').getContext('2d');
+        new Chart(ctx, {
+          type: 'doughnut',
+          data: {
+            labels: Object.keys(categories),
+            datasets: [{
+              data: Object.values(categories),
+              backgroundColor: [
+                '#4361ee', '#3a0ca3', '#7209b7', '#f72585', '#4cc9f0',
+                '#4895ef', '#560bad', '#f3722c', '#f8961e', '#90be6d'
+              ],
+              borderWidth: 0
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: {
+                position: 'bottom',
+                labels: {
+                  boxWidth: 12,
+                  padding: 15
+                }
+              }
+            },
+            cutout: '70%'
+          }
+        });
+      }
+
+    } catch (error) {
+      console.error('Error fetching dashboard data:', error);
+    }
+  });
+</script>
