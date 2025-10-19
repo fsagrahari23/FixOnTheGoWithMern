@@ -3,20 +3,21 @@
 import { useEffect, useState } from "react"
 import gsap from "gsap"
 import ScrollTrigger from "gsap/ScrollTrigger"
-import Navbar from "../../components/common/Navbar"
-import Hero from "../../components/common/Hero"
-import Features from "../../components/common/features"
-import HowItWorks from "../../components/common/how-it-works"
-import Testimonials from "../../components/common/testimonial"
-import CTA from "../../components/common/cta"
-import Footer from "../../components/common/Footer"
-import Loader from "../../components/common/loader"
-import Journey from "../../components/common/jounery"
+
+import Navbar from "../../components/HomeComponents/navbar"
+import Hero from "../../components/HomeComponents/hero"
+import Features from "../../components/HomeComponents/features"
+import HowItWorks from "../../components/HomeComponents/how-it-works"
+import Journey from "../../components/HomeComponents/journey"
+import Testimonials from "../../components/HomeComponents/testimonials"
+import CTA from "../../components/HomeComponents/cta"
+import Footer from "../../components/HomeComponents/footer"
+import Loader from "../../components/HomeComponents/loader"
 
 
 gsap.registerPlugin(ScrollTrigger)
 
-export default function Home() {
+export default function HomePage() {
     const [isDark, setIsDark] = useState(false)
     const [isLoading, setIsLoading] = useState(true)
 
