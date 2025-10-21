@@ -43,7 +43,7 @@ const features = [
 
 export default function Features() {
   const containerRef = useRef(null)
-  const cardsRef = useRef<HTMLDivElement[]>([])
+  const cardsRef = useRef([])
 
   useEffect(() => {
     const ctx = gsap.context(() => {
