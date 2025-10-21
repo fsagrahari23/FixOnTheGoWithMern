@@ -37,7 +37,7 @@ const testimonials = [
 
 export default function Testimonials() {
   const containerRef = useRef(null)
-  const cardsRef = useRef<HTMLDivElement[]>([])
+  const cardsRef = useRef([])
 
   useEffect(() => {
     const ctx = gsap.context(() => {

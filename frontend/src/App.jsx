@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react"
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 
-import Loader from "./components/HomeComponents/loader"
 import Dashboard from "./pages/users/Dashboard";
 import HomePage from "./pages/common/HomePage";
 import Booking_details from "./pages/users/Booking_details";
@@ -14,6 +13,7 @@ import Maintainance from "./pages/users/Maintainance";
 import Premium from "./pages/users/Premium";
 import Profile from "./pages/users/Profile";
 import UserLayout from "./pages/users/UserLayOut";
+import Loader from "./components/HomeComponents/loader";
 
 export const userRoutes = {
   dashboard: Dashboard,

@@ -30,7 +30,7 @@ const steps = [
 
 export default function HowItWorks() {
   const containerRef = useRef(null)
-  const stepsRef = useRef<HTMLDivElement[]>([])
+  const stepsRef = useRef([])
 
   useEffect(() => {
     const ctx = gsap.context(() => {
