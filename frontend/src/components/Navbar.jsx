@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Moon, Sun, LogOut, Settings, User } from "lucide-react"
+import { Moon, Sun, LogOut, Settings, User, MapPin } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
     DropdownMenu,
@@ -12,10 +12,17 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { useDispatch, useSelector } from 'react-redux';
+import { toggleTheme } from '../store/slices/themeSlice';
+import { setCoordinates, setAddress } from '../store/slices/locationSlice';
 
 
-export function Navbar({ onThemeToggle, isDark = false }) {
+export function Navbar() {
     const [isOpen, setIsOpen] = useState(false)
+    const dispatch = useDispatch();
+    const theme = useSelector((state) => state.theme.mode);
+    const location = useSelector((state) => state.location); // { coordinates, address }
+
 
     const handleLogout = () => {
         console.log("User logged out")
@@ -32,19 +39,79 @@ export function Navbar({ onThemeToggle, isDark = false }) {
         setIsOpen(false)
     }
 
+    const handleLocationClick = () => {
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                async (position) => {
+                    const { latitude, longitude } = position.coords;
+                    dispatch(setCoordinates({ lat: latitude, lng: longitude }));
+
+                    try {
+                        // Fetch address from OpenStreetMap Nominatim API
+                        const response = await fetch(
+                            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`
+                        );
+                        const data = await response.json();
+
+                        // Construct address
+                        const address = data.display_name || "Address not available";
+                        dispatch(setAddress(address));
+                    } catch (error) {
+                        console.error('Error fetching address:', error);
+                        dispatch(setAddress('Address not available'));
+                    }
+                },
+                (error) => {
+                    console.error('Error getting location:', error);
+                    dispatch(setAddress('Unable to get location'));
+                }
+            );
+        } else {
+            dispatch(setAddress('Geolocation not supported'));
+        }
+    };
+
+
     return (
         <nav className="h-16 bg-background border-b border-border flex items-center justify-between px-6 sticky top-0 z-40">
-            {/* Left side - could add logo or title here */}
+            {/* Left side - Logo */}
             <div className="flex items-center gap-2">
                 <h2 className="text-2xl font-semibold text-foreground">FixOnTheGo</h2>
             </div>
 
-            {/* Right side - Theme toggle and User profile */}
+            {/* Right side - Location display, Theme toggle, User profile */}
             <div className="flex items-center gap-4">
-                <Button variant="ghost" size="icon" onClick={onThemeToggle} className="rounded-full" aria-label="Toggle theme">
-                    {isDark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+
+                {/* Location button + display */}
+                <div className="flex items-center gap-2">
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={handleLocationClick}
+                        className="rounded-full"
+                        aria-label="Set location"
+                    >
+                        <MapPin className="w-5 h-5" />
+                    </Button>
+
+                    {/* Styled location badge */}
+                    <span className="hidden sm:inline px-3 py-1 rounded-full bg-muted text-sm text-foreground/90 max-w-xs truncate">
+                        {location.address || "Set location"}
+                    </span>
+                </div>
+
+                {/* Theme toggle */}
+                <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => dispatch(toggleTheme())}
+                    className="rounded-full"
+                    aria-label="Toggle theme"
+                >
+                    {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
                 </Button>
 
+                {/* User dropdown */}
                 <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
                     <DropdownMenuTrigger asChild>
                         <Button variant="ghost" className="relative h-10 w-10 rounded-full p-0">

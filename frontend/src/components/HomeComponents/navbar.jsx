@@ -4,12 +4,8 @@ import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import { Menu, X, Moon, Sun } from "lucide-react"
 
-interface NavbarProps {
-  isDark: boolean
-  setIsDark: (value: boolean) => void
-}
 
-export default function Navbar({ isDark, setIsDark }: NavbarProps) {
+export default function Navbar({ isDark, setIsDark }) {
   const [isOpen, setIsOpen] = useState(false)
   const [isScrolled, setIsScrolled] = useState(false)
 

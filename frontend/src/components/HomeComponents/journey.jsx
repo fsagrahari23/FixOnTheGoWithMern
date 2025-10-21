@@ -5,31 +5,31 @@ import { gsap } from "gsap"
 
 export default function Journey() {
     // Refs
-    const carRef = useRef<SVGSVGElement | null>(null)
-    const hoodRef = useRef<SVGRectElement | null>(null)
-    const wheel1Ref = useRef<SVGCircleElement | null>(null)
-    const wheel2Ref = useRef<SVGCircleElement | null>(null)
-    const roadRef = useRef<HTMLDivElement | null>(null)
-    const manRef = useRef<SVGSVGElement | null>(null)
-    const helperRef = useRef<SVGSVGElement | null>(null)
-    const mechanicRef = useRef<SVGSVGElement | null>(null)
-    const speechBubbleRef = useRef<HTMLDivElement | null>(null)
-    const helperBubbleRef = useRef<HTMLDivElement | null>(null)
-    const phoneRef = useRef<HTMLDivElement | null>(null)
-    const mechanicBubbleRef = useRef<HTMLDivElement | null>(null)
-    const smokeRef = useRef<HTMLDivElement | null>(null)
-    const toolsRef = useRef<HTMLDivElement | null>(null)
-    const miniMapRef = useRef<HTMLDivElement | null>(null)
-    const mechanicDotRef = useRef<HTMLDivElement | null>(null)
-    const chatRef = useRef<HTMLDivElement | null>(null)
-    const paymentRef = useRef<HTMLDivElement | null>(null)
-    const successRef = useRef<HTMLDivElement | null>(null)
+    const carRef = useRef(null)
+    const hoodRef = useRef(null)
+    const wheel1Ref = useRef(null)
+    const wheel2Ref = useRef(null)
+    const roadRef = useRef(null)
+    const manRef = useRef(null)
+    const helperRef = useRef(null)
+    const mechanicRef = useRef(null)
+    const speechBubbleRef = useRef(null)
+    const helperBubbleRef = useRef(null)
+    const phoneRef = useRef(null)
+    const mechanicBubbleRef = useRef(null)
+    const smokeRef = useRef(null)
+    const toolsRef = useRef(null)
+    const miniMapRef = useRef(null)
+    const mechanicDotRef = useRef(null)
+    const chatRef = useRef(null)
+    const paymentRef = useRef(null)
+    const successRef = useRef(null)
 
     // Timeline refs
-    const mainTlRef = useRef<gsap.core.Timeline | null>(null)
-    const wheelTlRef = useRef<gsap.core.Timeline | null>(null)
-    const bounceTlRef = useRef<gsap.core.Timeline | null>(null)
-    const roadTlRef = useRef<gsap.core.Timeline | null>(null)
+    const mainTlRef = useRef(null)
+    const wheelTlRef = useRef(null)
+    const bounceTlRef = useRef(null)
+    const roadTlRef = useRef(null)
 
     // State
     const [isPlaying, setIsPlaying] = useState(true)
@@ -299,9 +299,9 @@ export default function Journey() {
     }, [speed])
 
     const togglePlayPause = useCallback(() => setIsPlaying((p) => !p), [])
-    const handleSpeedChange = useCallback((value: number) => setSpeed(value), [])
+    const handleSpeedChange = useCallback((value) => setSpeed(value), [])
 
-    const formatTime = (seconds: number) => {
+    const formatTime = (seconds) => {
         const mins = Math.floor(seconds / 60)
         const secs = seconds % 60
         return mins > 0 ? `${mins}m ${secs}s` : `${secs}s`

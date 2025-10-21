@@ -20,7 +20,8 @@
         <div class="card-header bg-white">
           <h3 class="mb-0">
             <i class="fas fa-wrench text-primary me-2"></i>Book a Mechanic
-            <span class="badge bg-warning ms-2 d-none" id="premium-badge" title="Premium Member"><i class="fas fa-crown"></i></span>
+            <span class="badge bg-warning ms-2 d-none" id="premium-badge" title="Premium Member"><i
+                class="fas fa-crown"></i></span>
           </h3>
         </div>
         <div class="card-body">
@@ -30,7 +31,8 @@
               <i class="fas fa-crown text-warning me-3 fa-2x"></i>
               <div>
                 <h5 class="mb-1">Premium Benefits Active</h5>
-                <p class="mb-0" id="premium-benefits">You'll receive priority service, discount, and real-time mechanic tracking!</p>
+                <p class="mb-0" id="premium-benefits">You'll receive priority service, discount, and real-time mechanic
+                  tracking!</p>
               </div>
             </div>
           </div>
@@ -39,24 +41,16 @@
               <i class="fas fa-info-circle text-info me-3 fa-2x"></i>
               <div>
                 <h5 class="mb-1">Basic User Booking Limit</h5>
-                <p class="mb-0">Basic users are limited to 2 active bookings at a time. <a href="/user/premium" class="fw-bold">Upgrade to Premium</a> for unlimited bookings.</p>
+                <p class="mb-0">Basic users are limited to 2 active bookings at a time. <a href="/user/premium"
+                    class="fw-bold">Upgrade to Premium</a> for unlimited bookings.</p>
               </div>
             </div>
           </div>
-          <form
-            action="/user/book"
-            method="POST"
-            enctype="multipart/form-data"
-            id="booking-form"
-          >
+          <form action="/user/book" method="POST" enctype="multipart/form-data" id="booking-form">
             <div class="mb-4">
-              <label for="problemCategory" class="form-label">Problem Category <span class="text-danger">*</span></label>
-              <select
-                class="form-select"
-                id="problemCategory"
-                name="problemCategory"
-                required
-              >
+              <label for="problemCategory" class="form-label">Problem Category <span
+                  class="text-danger">*</span></label>
+              <select class="form-select" id="problemCategory" name="problemCategory" required>
                 <option value="" selected disabled>Select a category</option>
                 <option value="Flat Tire">Flat Tire</option>
                 <option value="Battery Issues">Battery Issues</option>
@@ -70,24 +64,16 @@
 
             <div class="mb-4">
               <label for="description" class="form-label">Problem Description <span class="text-danger">*</span></label>
-              <textarea class="form-control" id="description" name="description" rows="5" placeholder="Please describe the problem in detail..." required></textarea>
+              <textarea class="form-control" id="description" name="description" rows="5"
+                placeholder="Please describe the problem in detail..." required></textarea>
               <div class="form-text">Be as specific as possible to help the mechanic prepare.</div>
             </div>
 
             <div class="mb-4">
               <label class="form-label">Upload Images (Optional)</label>
               <div class="input-group mb-3">
-                <input
-                  type="file"
-                  class="form-control"
-                  id="images"
-                  name="images"
-                  multiple
-                  accept="image/*"
-                />
-                <label class="input-group-text" for="images"
-                  ><i class="fas fa-upload"></i
-                ></label>
+                <input type="file" class="form-control" id="images" name="images" multiple accept="image/*" />
+                <label class="input-group-text" for="images"><i class="fas fa-upload"></i></label>
               </div>
               <div class="form-text">
                 You can upload multiple images to help the mechanic understand
@@ -99,20 +85,9 @@
             <div class="mb-4">
               <label for="address" class="form-label">Your Location</label>
               <div class="input-group">
-                <input
-                  type="text"
-                  class="form-control"
-                  id="address"
-                  name="address"
-                  placeholder="Enter your address"
-                  value=""
-                  required
-                />
-                <button
-                  class="btn btn-outline-secondary"
-                  type="button"
-                  id="get-location-btn"
-                >
+                <input type="text" class="form-control" id="address" name="address" placeholder="Enter your address"
+                  value="" required />
+                <button class="btn btn-outline-secondary" type="button" id="get-location-btn">
                   <i class="fas fa-map-marker-alt"></i> Get Current Location
                 </button>
               </div>
@@ -126,35 +101,15 @@
             </div>
 
             <div class="mb-4">
-              <div
-                id="location-map"
-                style="height: 300px; border-radius: 10px"
-              ></div>
-              <input
-                type="hidden"
-                id="latitude"
-                name="latitude"
-                value=""
-              />
-              <input
-                type="hidden"
-                id="longitude"
-                name="longitude"
-                value=""
-              />
+              <div id="location-map" style="height: 300px; border-radius: 10px"></div>
+              <input type="hidden" id="latitude" name="latitude" value="" />
+              <input type="hidden" id="longitude" name="longitude" value="" />
             </div>
 
             <div class="mb-4">
               <div class="form-check form-switch">
-                <input
-                  class="form-check-input"
-                  type="checkbox"
-                  id="requiresTowing"
-                  name="requiresTowing"
-                />
-                <label class="form-check-label" for="requiresTowing"
-                  >I need towing service</label
-                >
+                <input class="form-check-input" type="checkbox" id="requiresTowing" name="requiresTowing" />
+                <label class="form-check-label" for="requiresTowing">I need towing service</label>
               </div>
               <div class="form-text">
                 Check this if your bike needs to be towed to a repair shop.
@@ -167,32 +122,18 @@
                   <h6 class="mb-3">Towing Details</h6>
 
                   <div class="mb-3">
-                    <label for="pickupAddress" class="form-label"
-                      >Pickup Location</label
-                    >
-                    <input
-                      type="text"
-                      class="form-control"
-                      id="pickupAddress"
-                      name="pickupAddress"
-                      placeholder="Enter pickup address"
-                    />
+                    <label for="pickupAddress" class="form-label">Pickup Location</label>
+                    <input type="text" class="form-control" id="pickupAddress" name="pickupAddress"
+                      placeholder="Enter pickup address" />
                     <div class="form-text">
                       Default is your current location.
                     </div>
                   </div>
 
                   <div class="mb-3">
-                    <label for="dropoffAddress" class="form-label"
-                      >Dropoff Location</label
-                    >
-                    <input
-                      type="text"
-                      class="form-control"
-                      id="dropoffAddress"
-                      name="dropoffAddress"
-                      placeholder="Enter dropoff address"
-                    />
+                    <label for="dropoffAddress" class="form-label">Dropoff Location</label>
+                    <input type="text" class="form-control" id="dropoffAddress" name="dropoffAddress"
+                      placeholder="Enter dropoff address" />
                     <div class="form-text">
                       Where should your bike be towed to?
                     </div>
@@ -202,34 +143,11 @@
                   </div>
 
                   <div class="mb-3">
-                    <div
-                      id="towing-map"
-                      style="height: 200px; border-radius: 10px"
-                    ></div>
-                    <input
-                      type="hidden"
-                      id="pickupLatitude"
-                      name="pickupLatitude"
-                      value=""
-                    />
-                    <input
-                      type="hidden"
-                      id="pickupLongitude"
-                      name="pickupLongitude"
-                      value=""
-                    />
-                    <input
-                      type="hidden"
-                      id="dropoffLatitude"
-                      name="dropoffLatitude"
-                      value=""
-                    />
-                    <input
-                      type="hidden"
-                      id="dropoffLongitude"
-                      name="dropoffLongitude"
-                      value=""
-                    />
+                    <div id="towing-map" style="height: 200px; border-radius: 10px"></div>
+                    <input type="hidden" id="pickupLatitude" name="pickupLatitude" value="" />
+                    <input type="hidden" id="pickupLongitude" name="pickupLongitude" value="" />
+                    <input type="hidden" id="dropoffLatitude" name="dropoffLatitude" value="" />
+                    <input type="hidden" id="dropoffLongitude" name="dropoffLongitude" value="" />
                   </div>
                 </div>
               </div>
@@ -249,10 +167,7 @@
     </div>
   </div>
 </div>
-<link
-  rel="stylesheet"
-  href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/leaflet.css"
-/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/leaflet.css" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/leaflet.js"></script>
 
 <script>

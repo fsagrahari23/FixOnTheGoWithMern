@@ -6,7 +6,7 @@ import gsap from "gsap"
 
 export default function Loader() {
   const containerRef = useRef(null)
-  const circlesRef = useRef<SVGCircleElement[]>([])
+  const circlesRef = useRef([])
 
   useEffect(() => {
     const ctx = gsap.context(() => {
