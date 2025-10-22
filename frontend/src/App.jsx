@@ -1,7 +1,12 @@
+
 "use client"
 
 import { useEffect, useState } from "react"
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { Provider } from 'react-redux';
+import store from './store/store';
+import { LocationProvider } from './contexts/LocationContext';
+
 
 import Dashboard from "./pages/users/Dashboard";
 import HomePage from "./pages/common/HomePage";
@@ -38,16 +43,22 @@ export default function App() {
   if (isLoading) return <Loader />
 
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<HomePage />} />
+    <Provider store={store}>
+  <BrowserRouter>
+    <Routes>
+      <Route path="/" element={<HomePage />} />
+      <Route path="/user" element={
+        <LocationProvider>
+          <UserLayout />
+        </LocationProvider>
+      }>
+        {Object.entries(userRoutes).map(([key, Component]) => (
+          <Route key={key} path={key} element={<Component />} />
+        ))}
+      </Route>
+    </Routes>
+  </BrowserRouter>
+</Provider>
 
-        <Route path="/user" element={<UserLayout />}>
-          {Object.entries(userRoutes).map(([key, Component]) => (
-            <Route key={key} path={key} element={<Component />} />
-          ))}
-        </Route>
-      </Routes>
-    </BrowserRouter>
   )
 }
