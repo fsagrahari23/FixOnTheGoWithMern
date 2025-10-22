@@ -44,8 +44,15 @@ export const LocationProvider = ({ children }) => {
       watchIdRef.current = navigator.geolocation.watchPosition(
         async (pos) => {
           const { latitude, longitude } = pos.coords;
+          const coordinates = [longitude, latitude]; // GeoJSON format [lng, lat]
           dispatch(setCoordinates({ lat: latitude, lng: longitude }));
           await fetchAddress(latitude, longitude);
+
+          // Emit location update to server
+          if (socket.connected) {
+            socket.emit("update-location", { coordinates });
+            console.log("Frontend: Emitted location update:", coordinates);
+          }
         },
         (err) => console.error("Geolocation error:", err),
         { enableHighAccuracy: true }

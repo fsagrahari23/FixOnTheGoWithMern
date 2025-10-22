@@ -222,41 +222,45 @@ module.exports = (io) => {
       }
     });
 
-    // Mechanic location updates (for tracking)
-    socket.on("update-location", async (data) => {
-      try {
-        const { coordinates } = data;
-        if (socket.userId) {
-          const user = await User.findById(socket.userId);
-          if (user && user.role === "mechanic") {
-            user.location.coordinates = coordinates;
-            await user.save();
+    // User location updates (for all users)
+    // socket.on("update-location", async (data) => {
+    //   try {
+    //     const { coordinates } = data;
+    //     if (socket.userId) {
+    //       const user = await User.findById(socket.userId);
+    //       if (user) {
+    //         user.location.coordinates = coordinates;
+    //         await user.save();
+    //         console.log(`User ${socket.userId} location updated:`, coordinates);
 
-            // Find all active bookings for this mechanic
-            const bookings = await Booking.find({
-              mechanic: socket.userId,
-              status: "in-progress",
-            });
+    //         // If mechanic, notify users about mechanic location update
+    //         if (user.role === "mechanic") {
+    //           // Find all active bookings for this mechanic
+    //           const bookings = await Booking.find({
+    //             mechanic: socket.userId,
+    //             status: "in-progress",
+    //           });
 
-            // Notify users about mechanic location update
-            bookings.forEach((booking) => {
-              if (onlineUsers[booking.user.toString()]) {
-                io.to(onlineUsers[booking.user.toString()]).emit(
-                  "mechanic-location",
-                  {
-                    bookingId: booking._id,
-                    mechanicId: socket.userId,
-                    coordinates,
-                  }
-                );
-              }
-            });
-          }
-        }
-      } catch (error) {
-        console.error("Location update error:", error);
-      }
-    });
+    //           // Notify users about mechanic location update
+    //           bookings.forEach((booking) => {
+    //             if (onlineUsers[booking.user.toString()]) {
+    //               io.to(onlineUsers[booking.user.toString()]).emit(
+    //                 "mechanic-location",
+    //                 {
+    //                   bookingId: booking._id,
+    //                   mechanicId: socket.userId,
+    //                   coordinates,
+    //                 }
+    //               );
+    //             }
+    //           });
+    //         }
+    //       }
+    //     }
+    //   } catch (error) {
+    //     console.error("Location update error:", error);
+    //   }
+    // });
 
     // Disconnect
     socket.on("disconnect", () => {
