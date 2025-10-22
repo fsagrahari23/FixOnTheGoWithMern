@@ -13,10 +13,12 @@ const locationSlice = createSlice({
     initialState,
     reducers: {
         setCoordinates: (state, action) => {
+            console.log('Setting coordinates in locationSlice:', action.payload);
             state.coordinates = action.payload;
             localStorage.setItem('location', JSON.stringify(state));
         },
         setAddress: (state, action) => {
+            console.log('Setting address in locationSlice:', action.payload);
             state.address = action.payload;
             localStorage.setItem('location', JSON.stringify(state));
         },

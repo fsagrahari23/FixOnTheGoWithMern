@@ -7,7 +7,7 @@ module.exports = (io) => {
   const onlineUsers = {};
 
   io.on("connection", (socket) => {
-  console.log("New client connected");
+  console.log("Backend: New client connected");
 
   socket.on("authenticate", async (userId) => {
       try {
