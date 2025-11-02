@@ -11,6 +11,7 @@ const passport = require("passport");
 const fileUpload = require("express-fileupload");
 const expressLayouts = require("express-ejs-layouts");
 require("dotenv").config();
+const cors = require("cors")
 
 // Import routes
 const authRoutes = require("./routes/auth");
@@ -52,16 +53,13 @@ app.use(
   })
 );
 
-// Middleware
+// MOVE THIS ABOVE express.json
+
+
+// THEN parse normal JSON (for non-file routes)
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(methodOverride("_method"));
-app.use(
-  fileUpload({
-    useTempFiles: true,
-    tempFileDir: "/tmp/",
-  })
-);
+
 app.use(express.static(path.join(__dirname, "public")));
 
 app.use(express.static(path.join(__dirname, "uploads")));
@@ -75,6 +73,13 @@ app.use((req, res, next) => {
 });
 
 app.set("layout", "layout");
+
+app.use(cors(
+  {
+    origin: true,
+    credentials: true
+  }
+))
 
 // Passport middleware
 app.use(passport.initialize());
@@ -112,7 +117,7 @@ require("./socket")(io);
 
 
 // Start server
-const PORT =  process.env.PORT || 3001;
+const PORT = process.env.PORT || 3001;
 server.listen(PORT, () => {
 
   console.log(`Server running on http://localhost:${PORT}`);
