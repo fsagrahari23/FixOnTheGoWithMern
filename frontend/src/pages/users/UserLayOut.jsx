@@ -2,7 +2,7 @@
 
 import { Outlet } from "react-router-dom"
 import { Navbar } from "../../components/Navbar"
-import { SidebarNav } from "../../components/users/UserSideBae"
+import { SidebarNav } from "../../components/users/UserSideBar"
 import {
     Settings,
     Users,
