@@ -1,38 +1,32 @@
 module.exports = {
   isAuthenticated: (req, res, next) => {
-    if (req.isAuthenticated()) {
-      return next()
+    if (req.session.user) {
+      return next();
     }
-    req.flash("error_msg", "Please log in to access this resource")
-    res.redirect("/auth/login")
+    return res.status(401).json({ message: "Please log in to access this resource" });
   },
 
   isUser: (req, res, next) => {
-    if (req.user && req.user.role === "user") {
-      return next()
+    if (req.session.user && req.session.user.role === "user") {
+      return next();
     }
-    req.flash("error_msg", "Not authorized as a user")
-    res.redirect("/")
+    return res.status(403).json({ message: "Not authorized as a user" });
   },
 
   isMechanic: (req, res, next) => {
-    if (req.user && req.user.role === "mechanic") {
-      if (!req.user.isApproved) {
-        req.flash("error_msg", "Your account is pending approval by admin")
-        return res.redirect("/auth/pending-approval")
+    if (req.session.user && req.session.user.role === "mechanic") {
+      if (!req.session.user.isApproved) {
+        return res.status(403).json({ message: "Your account is pending approval by admin" });
       }
-      return next()
+      return next();
     }
-    req.flash("error_msg", "Not authorized as a mechanic")
-    res.redirect("/")
+    return res.status(403).json({ message: "Not authorized as a mechanic" });
   },
 
   isAdmin: (req, res, next) => {
-    if (req.user && req.user.role === "admin") {
-      return next()
+    if (req.session.user && req.session.user.role === "admin") {
+      return next();
     }
-    req.flash("error_msg", "Not authorized as an admin")
-    res.redirect("/")
+    return res.status(403).json({ message: "Not authorized as an admin" });
   },
-}
-
+};

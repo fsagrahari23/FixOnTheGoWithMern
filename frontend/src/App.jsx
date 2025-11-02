@@ -1,12 +1,12 @@
 
-"use client"
-
-import { useEffect, useState } from "react"
+import { useEffect, useState } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { Provider } from 'react-redux';
-import store from './store/store';
-import { LocationProvider } from './contexts/LocationContext';
-
+import { Provider } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
+import { getMe } from "../src/store/slices/authThunks";
+import store from "./store/store";
+import { LocationProvider } from "./contexts/LocationContext";
+import ProtectedRoute from "../src/components/ProtectedRoute";
 
 import Dashboard from "./pages/users/Dashboard";
 import HomePage from "./pages/common/HomePage";
@@ -19,6 +19,10 @@ import Premium from "./pages/users/Premium";
 import Profile from "./pages/users/Profile";
 import UserLayout from "./pages/users/UserLayOut";
 import Loader from "./components/HomeComponents/loader";
+import UserRegister from "./pages/auth/UserRegister";
+import MechanicRegister from "./pages/auth/MechaicRegisterPage";
+import Login from "./pages/auth/Login";
+import PendingApproval from "./components/auth/PendingApproval";
 
 export const userRoutes = {
   dashboard: Dashboard,
@@ -29,36 +33,54 @@ export const userRoutes = {
   maintenance: Maintainance,
   premium: Premium,
   profile: Profile,
-}
+};
 
-
-export default function App() {
-  const [isLoading, setIsLoading] = useState(true)
+function AppContent() {
+  const [isLoading, setIsLoading] = useState(true);
+  const dispatch = useDispatch();
+  const { status } = useSelector((state) => state.auth);
 
   useEffect(() => {
-    const timer = setTimeout(() => setIsLoading(false), 2000)
-    return () => clearTimeout(timer)
-  }, [])
+    dispatch(getMe()).finally(() => {
+      const timer = setTimeout(() => setIsLoading(false), 2000);
+      return () => clearTimeout(timer);
+    });
+  }, [dispatch]);
 
-  if (isLoading) return <Loader />
+  if (isLoading || status === "loading") return <Loader />;
 
   return (
-    <Provider store={store}>
-  <BrowserRouter>
-    <Routes>
-      <Route path="/" element={<HomePage />} />
-      <Route path="/user" element={
-        <LocationProvider>
-          <UserLayout />
-        </LocationProvider>
-      }>
-        {Object.entries(userRoutes).map(([key, Component]) => (
-          <Route key={key} path={key} element={<Component />} />
-        ))}
-      </Route>
-    </Routes>
-  </BrowserRouter>
-</Provider>
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<HomePage />} />
+        <Route path="/auth/login" element={<Login />} />
+        <Route path="/auth/register" element={<UserRegister />} />
+        <Route path="/auth/register-mechanic" element={<MechanicRegister />} />
+        <Route
+          path="/user/*"
+          element={
+            <ProtectedRoute allowedRoles={["user"]}>
+              <LocationProvider>
+                <UserLayout />
+              </LocationProvider>
+            </ProtectedRoute>
+          }
+        >
+          {Object.entries(userRoutes).map(([key, Component]) => (
+            <Route key={key} path={key} element={<Component />} />
+          ))}
+        </Route>
+        <Route path="/auth/pending-approval" element={<PendingApproval />} />
+      </Routes>
+    </BrowserRouter>
+  );
+}
 
-  )
+// Outer component that wraps AppContent with Provider
+export default function App() {
+  return (
+    <Provider store={store}>
+      <AppContent />
+    </Provider>
+  );
 }
