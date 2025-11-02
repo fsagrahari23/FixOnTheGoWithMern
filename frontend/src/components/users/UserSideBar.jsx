@@ -3,16 +3,12 @@
 import React, { useEffect, useState } from "react"
 import { Link, useLocation } from "react-router-dom"
 import { Button } from "../ui/button"
-import { Menu, X } from "lucide-react"
+import { Menu, X, LogOut } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { cn } from "@/lib/utils"
+import { useDispatch } from "react-redux"
+import { logout } from "../../store/slices/authThunks"
 
-/**
- * Props:
- *  - tabs: [{ id, label, url, icon }]
- *  - defaultActiveId
- *  - onTabChange
- */
 export function SidebarNav({
     tabs = [],
     defaultActiveId,
@@ -21,17 +17,15 @@ export function SidebarNav({
 }) {
     const { pathname } = useLocation()
     const [activeId, setActiveId] = useState(defaultActiveId || tabs[0]?.id)
-    const [isCollapsed, setIsCollapsed] = useState(false) // desktop collapse
-    const [mobileOpen, setMobileOpen] = useState(false) // mobile drawer
+    const [isCollapsed, setIsCollapsed] = useState(false)
+    const [mobileOpen, setMobileOpen] = useState(false)
 
     useEffect(() => {
-        // set activeId from path if possible
         const matched = tabs.find((t) => t.url && pathname.startsWith(t.url))
         if (matched) setActiveId(matched.id)
     }, [pathname, tabs])
 
     useEffect(() => {
-        // prevent background scroll when mobile drawer open
         document.body.style.overflow = mobileOpen ? "hidden" : ""
         return () => { document.body.style.overflow = "" }
     }, [mobileOpen])
@@ -40,17 +34,21 @@ export function SidebarNav({
         setActiveId(tab.id)
         onTabChange?.(tab.id)
         tab.onClick?.()
-        // If mobile, close drawer after navigation
         if (mobileOpen) setMobileOpen(false)
     }
+    const dispatch = useDispatch()
 
-    // UI sizes
+    const onLogout = () => {
+        console.log("Logout clicked")
+        dispatch(logout())
+    }
+
     const collapsedWidth = "w-16"
     const expandedWidth = "w-64"
 
     return (
         <>
-            {/* Desktop / Tablet Sidebar (collapsible) */}
+            {/* ─── Desktop Sidebar ─────────────────────────────── */}
             <aside
                 className={cn(
                     "hidden md:flex flex-col h-screen bg-background border-r border-border transition-all",
@@ -63,7 +61,7 @@ export function SidebarNav({
                     {!isCollapsed ? (
                         <h2 className="text-lg font-semibold">User</h2>
                     ) : (
-                        <div className="text-sm font-semibold">F</div>
+                        <div className="text-sm font-semibold">U</div>
                     )}
 
                     <Button
@@ -93,20 +91,27 @@ export function SidebarNav({
                                         : "text-foreground dark:hover:bg-gray-500 hover:bg-gray-50"
                                 )}
                             >
-                                <span className="flex-shrink-0">
-                                    {tab.icon ? <tab.icon className="h-5 w-5" /> : null}
-                                </span>
-
-                                {/* label hidden when collapsed */}
-                                {!isCollapsed && (
-                                    <span className="truncate">{tab.label}</span>
-                                )}
+                                {tab.icon && <tab.icon className="h-5 w-5" />}
+                                {!isCollapsed && <span className="truncate">{tab.label}</span>}
                             </Link>
                         )
                     })}
                 </nav>
 
-                <div className="px-3 py-3 border-t border-border">
+                {/* Logout Button */}
+                <div className="border-t border-border px-3 py-3">
+                    <Button
+                        variant="destructive"
+                        className={cn("w-full flex items-center justify-center gap-2", isCollapsed && "px-0")}
+                        onClick={onLogout}
+                    >
+                        <LogOut className="h-4 w-4" />
+                        {!isCollapsed && <span>Logout</span>}
+                    </Button>
+                </div>
+
+                {/* Footer */}
+                <div className="px-3 py-2 border-t border-border">
                     {!isCollapsed ? (
                         <p className="text-xs text-muted-foreground">© 2025 Your App</p>
                     ) : (
@@ -115,8 +120,7 @@ export function SidebarNav({
                 </div>
             </aside>
 
-            {/* Mobile: icons-only bar (always visible on small screens) */}
-            {/* Mobile: icons-only bar (always visible on small screens) */}
+            {/* ─── Mobile Bottom Bar ───────────────────────────── */}
             <div className="md:hidden fixed bottom-4 left-4 right-4 z-40 flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2 bg-background/80 backdrop-blur rounded-full px-2 py-2 shadow-sm border border-border w-full">
                     <div className="flex justify-evenly gap-1 flex-1 overflow-x-auto">
@@ -126,7 +130,7 @@ export function SidebarNav({
                                 <Link
                                     key={tab.id}
                                     to={tab.url || "#"}
-                                    onClick={() => handleTabClick(tab)} // ONLY change tab
+                                    onClick={() => handleTabClick(tab)}
                                     className={cn(
                                         "flex items-center justify-center p-2 rounded-md",
                                         active ? "bg-primary/10 text-primary" : "text-foreground/80"
@@ -138,24 +142,23 @@ export function SidebarNav({
                         })}
                     </div>
 
-                    {/* Hamburger button opens full drawer */}
-                    {/* <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setMobileOpen(true)}
-                        aria-label="Open menu"
+                    {/* 🔹 Mobile Logout Button on top right */}
+                    <Button
+                        variant="destructive"
+                        size="icon"
+                        onClick={onLogout}
+                        aria-label="Logout"
+                        className="ml-2"
                     >
-                        <Menu className="h-5 w-5" />
-                    </Button> */}
+                        <LogOut className="h-5 w-5" />
+                    </Button>
                 </div>
             </div>
 
-
-            {/* Mobile sliding drawer (AnimatePresence) */}
+            {/* ─── Mobile Drawer ─────────────────────────────── */}
             <AnimatePresence>
                 {mobileOpen && (
                     <>
-                        {/* backdrop */}
                         <motion.div
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 0.35 }}
@@ -164,7 +167,6 @@ export function SidebarNav({
                             className="fixed inset-0 bg-black z-50"
                         />
 
-                        {/* drawer */}
                         <motion.aside
                             initial={{ x: "-100%" }}
                             animate={{ x: 0 }}
@@ -189,7 +191,9 @@ export function SidebarNav({
                                             onClick={() => handleTabClick(tab)}
                                             className={cn(
                                                 "flex items-center gap-3 px-4 py-2 rounded-md transition-colors",
-                                                active ? "bg-primary/10 text-primary font-medium" : "text-foreground hover:bg-gray-50"
+                                                active
+                                                    ? "bg-primary/10 text-primary font-medium"
+                                                    : "text-foreground hover:bg-gray-50"
                                             )}
                                         >
                                             {tab.icon && <tab.icon className="h-5 w-5" />}
@@ -199,8 +203,11 @@ export function SidebarNav({
                                 })}
                             </nav>
 
-                            <div className="px-4 py-3 border-t border-border">
+                            <div className="px-4 py-3 border-t border-border flex justify-between items-center">
                                 <p className="text-xs text-muted-foreground">© 2025 Your App</p>
+                                <Button variant="destructive" size="sm" onClick={onLogout} className="flex items-center gap-2">
+                                    <LogOut className="h-4 w-4" /> Logout
+                                </Button>
                             </div>
                         </motion.aside>
                     </>

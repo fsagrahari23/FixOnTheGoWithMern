@@ -1,0 +1,6 @@
+proc:
+   frontend:
+      cmd: ["npm","run","dev"]
+    
+   backend:
+      cmd: ["npm","start"]
