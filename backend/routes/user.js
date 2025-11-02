@@ -3,6 +3,8 @@ const router = express.Router()
 const User = require("../models/User")
 const Booking = require("../models/Booking")
 const Chat = require("../models/Chat")
+require("dotenv").config();
+
 const Subscription = require("../models/Subscription")
 const cloudinary = require("../config/cloudinary")
 const MechanicProfile = require("../models/MechanicProfile")
@@ -23,7 +25,7 @@ const checkBookingLimits = async (req, res, next) => {
     }
 
     // For basic users, check the limit (2 bookings)
-    const bookingCount = await Booking.countDocuments({ 
+    const bookingCount = await Booking.countDocuments({
       user: req.user._id,
       status: { $ne: "cancelled" } // Don't count cancelled bookings
     })
@@ -95,7 +97,7 @@ router.get("/dashboard", async (req, res) => {
 })
 
 // New booking page
-router.get("/book", checkBookingLimits,async (req, res) => {
+router.get("/book", checkBookingLimits, async (req, res) => {
   res.render("user/book", {
     title: "Book a Mechanic",
   })
@@ -158,9 +160,9 @@ router.post("/book", checkBookingLimits, async (req, res) => {
       status: "active",
       expiresAt: { $gt: new Date() },
     })
-    
+
     const isPremium = !!subscription
-    
+
     // Upload images if any
     const images = []
     if (req.files && req.files.images) {
@@ -652,7 +654,7 @@ router.get("/profile", async (req, res) => {
       status: "active",
       expiresAt: { $gt: new Date() },
     }).sort({ createdAt: -1 })
-    
+
     const isPremium = !!subscription
 
     // Get subscription history
@@ -670,7 +672,7 @@ router.get("/profile", async (req, res) => {
     const remainingBookings = isPremium ? "Unlimited" : Math.max(0, 2 - activeBookingCount)
 
     const premiumFeatures = await User.findById(req.user._id).select("premiumFeatures")
-    
+
 
     res.render("user/profile", {
       title: "My Profile",
@@ -884,7 +886,7 @@ router.post("/profile", async (req, res) => {
       },
     });
 
-  
+
 
     req.flash("success_msg", "Profile updated successfully");
     res.redirect("/user/profile");
@@ -896,34 +898,34 @@ router.post("/profile", async (req, res) => {
 });
 
 
-router.post("/change-password", async(req,res)=>{
-    // console.log(req.user)
-    try{
-      const {newPassword,currentPassword,confirmPassword} = req.body;
-      if(!newPassword||!currentPassword ||!confirmPassword){
-        req.flash("error_msg", "Please fill in all fields");
-        return res.redirect("/user/profile");
-      }
-      const hashPassword= await bcrypt.hash(newPassword,10);
-      const user = await User.findById(req.user._id);
-      const isMatch = await user.comparePassword(currentPassword);
-      if(!isMatch){
-        req.flash("error_msg", "Please enter correct password");
-        return res.redirect("/user/profile");
-      }
-  
-      await User.findByIdAndUpdate(req.user._id, {
-       password:hashPassword
-      })
-      await user.save();
-      req.flash("success_msg", "Profile updated successfully");
-      res.redirect("/user/profile");
-    }catch (error) {
-      console.error("Update profile error:", error);
-      req.flash("error_msg", "Failed to update password");
-      res.redirect("/user/profile");
+router.post("/change-password", async (req, res) => {
+  // console.log(req.user)
+  try {
+    const { newPassword, currentPassword, confirmPassword } = req.body;
+    if (!newPassword || !currentPassword || !confirmPassword) {
+      req.flash("error_msg", "Please fill in all fields");
+      return res.redirect("/user/profile");
     }
-    
+    const hashPassword = await bcrypt.hash(newPassword, 10);
+    const user = await User.findById(req.user._id);
+    const isMatch = await user.comparePassword(currentPassword);
+    if (!isMatch) {
+      req.flash("error_msg", "Please enter correct password");
+      return res.redirect("/user/profile");
+    }
+
+    await User.findByIdAndUpdate(req.user._id, {
+      password: hashPassword
+    })
+    await user.save();
+    req.flash("success_msg", "Profile updated successfully");
+    res.redirect("/user/profile");
+  } catch (error) {
+    console.error("Update profile error:", error);
+    req.flash("error_msg", "Failed to update password");
+    res.redirect("/user/profile");
+  }
+
 })
 
 
