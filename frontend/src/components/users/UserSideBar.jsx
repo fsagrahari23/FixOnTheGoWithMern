@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import { cn } from "@/lib/utils"
 import { useDispatch } from "react-redux"
 import { logout } from "../../store/slices/authThunks"
+import { useSelector } from "react-redux"
 
 export function SidebarNav({
     tabs = [],
@@ -19,6 +20,9 @@ export function SidebarNav({
     const [activeId, setActiveId] = useState(defaultActiveId || tabs[0]?.id)
     const [isCollapsed, setIsCollapsed] = useState(false)
     const [mobileOpen, setMobileOpen] = useState(false)
+    const { user } = useSelector((state) => state.auth)
+    const isAdmin = user?.role === "admin"
+
 
     useEffect(() => {
         const matched = tabs.find((t) => t.url && pathname.startsWith(t.url))
@@ -51,18 +55,14 @@ export function SidebarNav({
             {/* ─── Desktop Sidebar ─────────────────────────────── */}
             <aside
                 className={cn(
-                    "hidden md:flex flex-col h-screen bg-background border-r border-border transition-all",
+                    "hidden md:flex flex-col h-[92vh] bg-background border-r border-border transition-all",
                     isCollapsed ? collapsedWidth : expandedWidth,
                     className
                 )}
             >
                 {/* Header */}
                 <div className="flex items-center justify-between px-3 py-4 border-b border-border">
-                    {!isCollapsed ? (
-                        <h2 className="text-lg font-semibold">User</h2>
-                    ) : (
-                        <div className="text-sm font-semibold">U</div>
-                    )}
+                  {!isCollapsed && <h2 className="text-lg font-semibold">{isAdmin?'Admin':'User'}</h2>}
 
                     <Button
                         variant="ghost"
@@ -110,14 +110,7 @@ export function SidebarNav({
                     </Button>
                 </div>
 
-                {/* Footer */}
-                <div className="px-3 py-2 border-t border-border">
-                    {!isCollapsed ? (
-                        <p className="text-xs text-muted-foreground">© 2025 Your App</p>
-                    ) : (
-                        <p className="text-xs text-muted-foreground text-center">©</p>
-                    )}
-                </div>
+              
             </aside>
 
             {/* ─── Mobile Bottom Bar ───────────────────────────── */}

@@ -24,6 +24,17 @@ import MechanicRegister from "./pages/auth/MechaicRegisterPage";
 import Login from "./pages/auth/Login";
 import PendingApproval from "./components/auth/PendingApproval";
 
+
+//admin imports
+import AdminDashboard from "./pages/admin/Dashboard";
+import AdminLayout from "./pages/admin/adminLayout";
+import Booking from "./pages/admin/Booking";
+import User from "./pages/admin/User";
+import Mechanic from "./pages/admin/Mechanic";
+import Payment from "./pages/admin/Payment";
+import Subscription from "./pages/admin/Subscription";
+
+
 export const userRoutes = {
   dashboard: Dashboard,
   booking_details: Booking_details,
@@ -34,6 +45,16 @@ export const userRoutes = {
   premium: Premium,
   profile: Profile,
 };
+
+export const adminRoutes = {
+  dashboard: AdminDashboard,
+  bookings: Booking,
+  users: User,
+  mechanics: Mechanic,
+  payments: Payment,
+  subscriptions: Subscription,
+}
+
 
 function AppContent() {
   const [isLoading, setIsLoading] = useState(true);
@@ -66,10 +87,27 @@ function AppContent() {
             </ProtectedRoute>
           }
         >
-          {Object.entries(userRoutes).map(([key, Component]) => (
+        {Object.entries(userRoutes).map(([key, Component]) => (
             <Route key={key} path={key} element={<Component />} />
           ))}
         </Route>
+        
+        <Route
+          path="/admin/*"
+          element={
+            <ProtectedRoute allowedRoles={["admin"]}>
+              <LocationProvider>
+                <AdminLayout />
+              </LocationProvider>
+            </ProtectedRoute>
+          }>
+            {Object.entries(adminRoutes).map(([key, Component]) => (
+            <Route key={key} path={key} element={<Component />} />
+          ))}
+
+         </Route>
+
+       
         <Route path="/auth/pending-approval" element={<PendingApproval />} />
       </Routes>
     </BrowserRouter>
