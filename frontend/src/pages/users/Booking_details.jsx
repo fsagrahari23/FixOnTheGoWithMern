@@ -64,7 +64,7 @@ const InfoItem = ({ icon, label, value, highlight }) => {
       <span className={`text-sm font-semibold ${highlight ? 'text-indigo-800 dark:text-slate-200' : 'text-slate-800 dark:text-slate-200'}`}>{value}</span>
     </div>
   );
-};
+}
 
 const BookingDetails = () => {
   const [booking, setBooking] = useState(exampleBooking);
@@ -156,7 +156,7 @@ const BookingDetails = () => {
                 <span className="mr-2">{statusConfig.icon}</span>
                 {booking.status}
               </Badge>
-            
+            </div>
           </CardHeader>
           
           <CardContent className="p-8 space-y-10">
