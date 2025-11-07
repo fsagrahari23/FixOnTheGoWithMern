@@ -1,5 +1,8 @@
 import { useEffect, useState } from 'react';
 import { apiGet, apiPost } from '../../lib/api';
+import MapPicker from '../../components/MapPicker';
+import { useDispatch, useSelector } from 'react-redux';
+import { setCoordinates, setAddress } from '../../store/slices/locationSlice';
 
 export default function MechanicProfile() {
   const [profile, setProfile] = useState(null);
@@ -63,6 +66,19 @@ export default function MechanicProfile() {
   ];
 
   const [availabilityLoading, setAvailabilityLoading] = useState(false);
+
+  const dispatch = useDispatch();
+  const locationStore = useSelector((s) => s.location);
+
+  // When profile loads, seed the shared location store from profile if available
+  useEffect(() => {
+    if (profile && profile.location && Array.isArray(profile.location.coordinates)) {
+      const lat = profile.location.coordinates[1];
+      const lng = profile.location.coordinates[0];
+      dispatch(setCoordinates({ lat, lng }));
+      if (profile.address) dispatch(setAddress(profile.address));
+    }
+  }, [profile, dispatch]);
 
   const handleToggleAvailability = async () => {
     try {
@@ -154,7 +170,13 @@ export default function MechanicProfile() {
 
             <div className="bg-white rounded-lg shadow p-4">
               <h3 className="font-semibold mb-2">Your Location</h3>
-              <div className="w-full h-40 bg-slate-100 rounded-md flex items-center justify-center text-sm text-gray-500">Map placeholder</div>
+              <div className="w-full rounded-md overflow-hidden">
+                <MapPicker
+                  center={locationStore?.coordinates ? { lat: locationStore.coordinates.lat, lng: locationStore.coordinates.lng } : (profile.location && Array.isArray(profile.location.coordinates) ? { lat: profile.location.coordinates[1], lng: profile.location.coordinates[0] } : undefined)}
+                  onChange={() => { /* overview map is read-only here */ }}
+                  className="w-full h-40 rounded-md"
+                />
+              </div>
             </div>
           </aside>
 
@@ -218,9 +240,53 @@ export default function MechanicProfile() {
 
                 <div className="col-span-12">
                   <label className="block text-sm font-medium mb-1">Update Location</label>
-                  <div className="w-full h-48 bg-slate-100 rounded-md" />
+                  <div className="w-full rounded-md overflow-hidden">
+                    <MapPicker
+                      center={locationStore?.coordinates ? { lat: locationStore.coordinates.lat, lng: locationStore.coordinates.lng } : (profile.location && Array.isArray(profile.location.coordinates) ? { lat: profile.location.coordinates[1], lng: profile.location.coordinates[0] } : undefined)}
+                      onChange={async (coords) => {
+                        dispatch(setCoordinates({ lat: coords.lat, lng: coords.lng }));
+                        try {
+                          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${coords.lat}&lon=${coords.lng}`);
+                          const data = await res.json();
+                          const display = data.display_name || '';
+                          dispatch(setAddress(display));
+                        } catch (err) {
+                          console.error('Reverse geocode error:', err);
+                        }
+                      }}
+                    />
+                  </div>
+                  {/* hidden inputs so formData picks them up - prefer shared location coords, fall back to profile */}
+                  <input type="hidden" name="latitude" value={locationStore?.coordinates?.lat ?? (profile.location && Array.isArray(profile.location.coordinates) ? profile.location.coordinates[1] : '')} />
+                  <input type="hidden" name="longitude" value={locationStore?.coordinates?.lng ?? (profile.location && Array.isArray(profile.location.coordinates) ? profile.location.coordinates[0] : '')} />
                   <div className="mt-3">
-                    <button type="button" className="inline-flex items-center gap-2 px-3 py-2 border rounded text-blue-600">Use My Current Location</button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!navigator.geolocation) {
+                          alert('Geolocation is not supported by your browser');
+                          return;
+                        }
+                        navigator.geolocation.getCurrentPosition(async (pos) => {
+                          const { latitude, longitude } = pos.coords;
+                          dispatch(setCoordinates({ lat: latitude, lng: longitude }));
+                          try {
+                            const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
+                            const data = await res.json();
+                            const display = data.display_name || '';
+                            dispatch(setAddress(display));
+                          } catch (err) {
+                            console.error('Reverse geocode error:', err);
+                          }
+                        }, (err) => {
+                          console.error('Geolocation error', err);
+                          alert('Unable to retrieve current location');
+                        }, { enableHighAccuracy: true });
+                      }}
+                      className="inline-flex items-center gap-2 px-3 py-2 border rounded text-blue-600"
+                    >
+                      Use My Current Location
+                    </button>
                   </div>
                 </div>
               </div>
