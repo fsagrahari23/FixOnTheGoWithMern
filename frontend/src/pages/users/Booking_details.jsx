@@ -156,7 +156,7 @@ const BookingDetails = () => {
                 <span className="mr-2">{statusConfig.icon}</span>
                 {booking.status}
               </Badge>
-            </div>
+            
           </CardHeader>
           
           <CardContent className="p-8 space-y-10">
