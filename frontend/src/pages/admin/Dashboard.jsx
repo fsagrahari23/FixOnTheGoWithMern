@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
+import { useDispatch, useSelector } from 'react-redux'
 import { Link } from 'react-router-dom'
 import { Crown, Wrench, Users } from 'lucide-react'
 import { Button } from '../../components/ui/button'
@@ -10,51 +11,17 @@ import { PaymentOverview } from '../../components/admin/dashboard/payment-overvi
 import { BookingChart } from '../../components/admin/dashboard/booking-chart'
 import { PaymentChart } from '../../components/admin/dashboard/payment-chart'
 import { RevenueChart } from '../../components/admin/dashboard/revenue-chart'
+import { fetchAdminDashboard } from '../../store/slices/adminThunks'
 
 export default function Dashboard() {
-    const [dashboardData, setDashboardData] = useState({
-        userCount: 0,
-        mechanicCount: 0,
-        pendingMechanicCount: 0,
-        bookingCount: 0,
-        premiumUserCount: 0,
-        subscriptionStats: { monthly: 0, yearly: 0 },
-        paymentStats: { 
-            totalRevenue: 0, 
-            completed: 0, 
-            pending: 0,
-            subscriptionRevenue: 0 
-        },
-        bookingStats: {
-            pending: 0,
-            accepted: 0,
-            inProgress: 0,
-            completed: 0,
-            cancelled: 0,
-            emergency: 0
-        },
-        recentBookings: [],
-        monthlyRevenueStats: []
-    })
-    const [loading, setLoading] = useState(true)
+    const dispatch = useDispatch()
+    const { dashboard, loading } = useSelector((state) => state.admin)
 
     useEffect(() => {
-        fetchDashboardData()
-    }, [])
+        dispatch(fetchAdminDashboard())
+    }, [dispatch])
 
-    const fetchDashboardData = async () => {
-        try {
-            const response = await fetch('/admin/api/dashboard')
-            const data = await response.json()
-            setDashboardData(data)
-            setLoading(false)
-        } catch (error) {
-            console.error('Error loading dashboard data:', error)
-            setLoading(false)
-        }
-    }
-
-    if (loading) {
+    if (loading.dashboard) {
         return (
             <div className="flex items-center justify-center min-h-screen bg-background">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
@@ -72,7 +39,7 @@ export default function Dashboard() {
                             <div className="p-2 rounded-lg bg-yellow-500/10">
                                 <Crown className="w-8 h-8 text-yellow-600" />
                             </div>
-                            <h1 className="text-3xl font-bold">Admin Dashboard</h1>
+                            <h1 className="text-2xl md:text-3xl font-bold">Admin Dashboard</h1>
                         </div>
                         <div className="flex gap-3">
                             <Link to="/admin/mechanics">
@@ -92,30 +59,35 @@ export default function Dashboard() {
                 </div>
 
                 {/* Stats Overview */}
-                <StatsOverview stats={dashboardData} />
+                <StatsOverview stats={dashboard} />
 
                 {/* Recent Bookings - Full Width */}
-                <div className="mt-8">
-                    <RecentBookings bookings={dashboardData.recentBookings} />
+                <div className="mt-6">
+                    <RecentBookings bookings={dashboard.recentBookings} />
                 </div>
 
-                {/* Approvals & Premium Stats */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
-                    <PendingApprovals count={dashboardData.pendingMechanicCount} />
-                    <PremiumStats stats={dashboardData} />
+                 {/* Revenue Chart - Full Width */}
+                <div className="mt-6">
+                    <RevenueChart monthlyStats={dashboard.monthlyRevenueStats} />
                 </div>
 
-                {/* Charts Section - Payment + Booking + Revenue */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-8">
-                    <PaymentOverview stats={dashboardData.paymentStats} />
-                    <BookingChart stats={dashboardData.bookingStats} />
-                    <PaymentChart stats={dashboardData.paymentStats} />
+                {/* Dashboard Cards Grid */}
+                <div className="space-y-4 mt-6">
+                    {/* Top row: Three equal-height cards */}
+                    <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
+                        <PendingApprovals count={dashboard.pendingMechanicCount} />
+                        <BookingChart stats={dashboard.bookingStats} />
+                        <PaymentChart stats={dashboard.paymentStats} />
+                    </div>
+
+                    {/* Bottom row: Two equal-width cards */}
+                    <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
+                        <PremiumStats stats={dashboard} />
+                        <PaymentOverview stats={dashboard.paymentStats} />
+                    </div>
                 </div>
 
-                {/* Revenue Chart - Full Width */}
-                <div className="mt-8">
-                    <RevenueChart monthlyStats={dashboardData.monthlyRevenueStats} />
-                </div>
+               
             </div>
         </main>
     )
