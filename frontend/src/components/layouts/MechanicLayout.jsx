@@ -1,12 +1,15 @@
 import { Link, Outlet, useLocation } from 'react-router-dom';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '../ui/button';
 import { useSelector, useDispatch } from 'react-redux';
 import { logout } from '../../store/slices/authThunks';
+import { useLocation as useAppLocation } from '../../contexts/LocationContext';
 
 export function MechanicLayout() {
   const location = useLocation();
   const [showFullNav, setShowFullNav] = useState(true);
+  const [notifications, setNotifications] = useState([]);
+  const [notifOpen, setNotifOpen] = useState(false);
   const address = useSelector((s) => s.location?.address);
 
   const dispatch = useDispatch();
@@ -43,16 +46,15 @@ export function MechanicLayout() {
       path: '/mechanic/dashboard'
     },
     {
-      label: 'Booking Details',
+      label: 'Notifications',
       icon: (
         <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M19 4H5C3.89543 4 3 4.89543 3 6V20C3 21.1046 3.89543 22 5 22H19C20.1046 22 21 21.1046 21 20V6C21 4.89543 20.1046 4 19 4Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-          <path d="M16 2V6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-          <path d="M8 2V6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-          <path d="M3 10H21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          <path d="M15 17H9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M18 8C18 5.23858 15.7614 3 13 3H11C8.23858 3 6 5.23858 6 8V11C6 13.7614 4 15 4 15H20C20 15 18 13.7614 18 11V8Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M13.73 21C13.5547 21.3033 13.3017 21.5547 12.9966 21.7356C12.6915 21.9166 12.3466 22.0211 11.9966 22.0401C11.6467 22.059 11.3015 21.9921 10.9866 21.8456C10.6718 21.6991 10.3989 21.4762 10.1893 21.1921" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       ),
-      path: '/mechanic/bookings'
+      notifications: true
     },
     {
       label: 'History',
@@ -75,6 +77,27 @@ export function MechanicLayout() {
       path: '/mechanic/profile'
     }
   ];
+
+  // Access socket from LocationContext to receive realtime notifications
+  const appCtx = useAppLocation();
+  const socket = appCtx?.socket;
+
+  // listen for incoming notifications from server
+  useEffect(() => {
+    if (!socket) return;
+    const pushNotification = (type, payload) => {
+      setNotifications((prev) => [{ id: Date.now() + Math.random(), type, title: payload.title || type, message: payload.message || JSON.stringify(payload), time: Date.now(), read: false }, ...prev]);
+    };
+
+    socket.on('notification', (payload) => pushNotification('notification', payload));
+    socket.on('service-request', (payload) => pushNotification('service-request', payload));
+    socket.on('payment', (payload) => pushNotification('payment', payload));
+    socket.on('profile-updated', (payload) => pushNotification('profile-updated', payload));
+
+    return () => {
+      try { socket.off('notification'); socket.off('service-request'); socket.off('payment'); socket.off('profile-updated'); } catch (e) { }
+    };
+  }, [socket]);
 
   return (
     <div className="flex h-screen">
@@ -122,6 +145,47 @@ export function MechanicLayout() {
   {/* Navigation */}
   <nav className="flex-1 overflow-y-auto py-4">
           {navItems.map((item) => {
+            // Special handling for notifications entry
+            if (item.notifications) {
+              const unread = notifications.filter(n => !n.read).length;
+              return (
+                <div key="notifications" className="relative my-1 mx-2">
+                  <button
+                    onClick={() => {
+                      setNotifOpen((v) => !v);
+                      // mark all as read when opening
+                      if (!notifOpen) setNotifications((prev) => prev.map(n => ({ ...n, read: true })));
+                    }}
+                    className={`flex items-center px-4 py-2 rounded-lg w-full text-left ${showFullNav ? '' : 'justify-center'}`}
+                  >
+                    <div className="w-5 h-5 relative">{item.icon}
+                      {unread > 0 && <span className="absolute -right-1 -top-1 inline-flex items-center justify-center px-1.5 py-0.5 text-xs font-bold leading-none text-white bg-red-600 rounded-full">{unread}</span>}
+                    </div>
+                    {showFullNav && <span className="ml-3">{item.label}</span>}
+                  </button>
+
+                  {notifOpen && showFullNav && (
+                    <div className="absolute left-full ml-2 top-0 w-80 bg-popover text-popover-foreground border rounded-md shadow-lg z-50 p-2">
+                      <div className="flex items-center justify-between px-2 py-1 border-b">
+                        <div className="font-medium">Notifications</div>
+                        <button className="text-sm text-muted-foreground" onClick={() => setNotifications([])}>Clear</button>
+                      </div>
+                      <div className="max-h-64 overflow-auto mt-2">
+                        {notifications.length === 0 && <div className="p-3 text-sm text-muted-foreground">No notifications</div>}
+                        {notifications.map((n) => (
+                          <div key={n.id} className={`p-2 border-b last:border-b-0 ${n.read ? 'opacity-70' : ''}`}>
+                            <div className="text-sm font-medium">{n.title || n.type}</div>
+                            <div className="text-xs text-muted-foreground">{n.message}</div>
+                            <div className="text-xs text-muted-foreground mt-1">{new Date(n.time).toLocaleString()}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            }
+
             const isActive = location.pathname === item.path;
             return (
               <Link
