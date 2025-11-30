@@ -22,7 +22,7 @@ import UserRegister from "./pages/auth/UserRegister";
 import MechanicRegister from "./pages/auth/MechaicRegisterPage";
 import Login from "./pages/auth/Login";
 import PendingApproval from "./components/auth/PendingApproval";
-import MechanicProfile from "./pages/admin/MechanicProfile";
+import AdminMechanicProfile from "./pages/admin/MechanicProfile";
 
 // Mechanic imports
 import MechanicDashboard from "./pages/mechanic/Dashboard";
@@ -62,7 +62,7 @@ export const adminRoutes = {
   mechanics: Mechanic,
   payments: Payment,
   subscriptions: Subscription,
-  "mechanic/:id": MechanicProfile,
+  "mechanic/:id": AdminMechanicProfile,
 }
 
 export const mechanicRoutes = {
