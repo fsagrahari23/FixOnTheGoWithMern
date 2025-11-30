@@ -1265,8 +1265,8 @@ router.get("/api/bookings", isAdmin, async (req, res) => {
 router.get("/api/booking/:id", isAdmin, async (req, res) => {
   try {
     const booking = await Booking.findById(req.params.id)
-      .populate("user", "name phone address")
-      .populate("mechanic", "name phone")
+      .populate("user", "name phone address email")
+      .populate("mechanic", "name phone email")
 
     if (!booking) {
       return res.status(404).json({ error: "Booking not found" })
