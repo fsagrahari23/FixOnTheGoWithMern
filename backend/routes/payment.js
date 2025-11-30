@@ -1,6 +1,17 @@
 const express = require("express")
 const router = express.Router()
-const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY)
+// Initialize Stripe only when secret key provided to avoid crash during startup
+let stripe = null
+try {
+  if (process.env.STRIPE_SECRET_KEY) {
+    stripe = require("stripe")(process.env.STRIPE_SECRET_KEY)
+  } else {
+    console.warn("STRIPE_SECRET_KEY not set. Stripe payment routes will return an error until configured.")
+  }
+} catch (err) {
+  console.warn("Stripe initialization failed:", err && err.message)
+  stripe = null
+}
 const Booking = require("../models/Booking")
 const Subscription = require("../models/Subscription")
 const User = require("../models/User")
@@ -16,6 +27,8 @@ router.post('/premium/process', async (req, res) => {
     }
 
     const amount = plan === 'monthly' ? 999 : 9999 // in cents
+
+    if (!stripe) return res.status(500).json({ success: false, message: 'Payment provider not configured' })
 
     const paymentIntent = await stripe.paymentIntents.create({
       amount,
@@ -179,6 +192,8 @@ router.post("/:bookingId/process", async (req, res) => {
     }
 
     // Create payment intent
+    if (!stripe) return res.status(500).json({ success: false, message: 'Payment provider not configured' })
+
     const paymentIntent = await stripe.paymentIntents.create({
       amount: Math.round(amountToCharge * 100), // Convert to cents
       currency: "usd",
@@ -224,6 +239,8 @@ router.post("/premium/process", async (req, res) => {
     const amount = plan === "monthly" ? 999 : 9999 // $9.99 or $99.99
 
     // Create a payment intent with Stripe
+    if (!stripe) return res.status(500).json({ success: false, message: 'Payment provider not configured' })
+
     const paymentIntent = await stripe.paymentIntents.create({
       amount: amount, // Already in cents
       currency: "usd",
