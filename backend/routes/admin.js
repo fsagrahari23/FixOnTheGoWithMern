@@ -1321,7 +1321,7 @@ router.get("/api/mechanics", isAdmin, async (req, res) => {
     const pendingUsers = await User.find({ role: "mechanic", isApproved: false });
     const approvedUsers = await User.find({ role: "mechanic", isApproved: true });
 
-    const pendingMechanics = await MechanicProfile.find({ user: { $in: pendingUsers.map(u => u._id) } }).populate("user", "name email phone");
+    const pendingMechanics = await MechanicProfile.find({ user: { $in: pendingUsers.map(u => u._id) } }).populate("user", "name email phone createdAt");
     const approvedMechanics = await MechanicProfile.find({ user: { $in: approvedUsers.map(u => u._id) } }).populate("user", "name email phone");
 
     // Add job count for approved mechanics
