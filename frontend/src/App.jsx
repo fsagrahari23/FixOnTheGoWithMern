@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { Provider } from "react-redux";
@@ -23,6 +22,7 @@ import UserRegister from "./pages/auth/UserRegister";
 import MechanicRegister from "./pages/auth/MechaicRegisterPage";
 import Login from "./pages/auth/Login";
 import PendingApproval from "./components/auth/PendingApproval";
+import MechanicProfile from "./pages/admin/MechanicProfile";
 
 // Mechanic imports
 import MechanicDashboard from "./pages/mechanic/Dashboard";
@@ -35,11 +35,12 @@ import MechanicProfile from "./pages/mechanic/Profile";
 import AdminDashboard from "./pages/admin/Dashboard";
 import AdminLayout from "./pages/admin/adminLayout";
 import Booking from "./pages/admin/Booking";
+import BookingDetails from "./pages/admin/BookingDetails";
 import User from "./pages/admin/User";
+import UserProfile from "./pages/admin/UserProfile";
 import Mechanic from "./pages/admin/Mechanic";
 import Payment from "./pages/admin/Payment";
 import Subscription from "./pages/admin/Subscription";
-
 
 export const userRoutes = {
   dashboard: Dashboard,
@@ -55,10 +56,13 @@ export const userRoutes = {
 export const adminRoutes = {
   dashboard: AdminDashboard,
   bookings: Booking,
+  "booking/:id": BookingDetails,
   users: User,
+  "user/:id": UserProfile,
   mechanics: Mechanic,
   payments: Payment,
   subscriptions: Subscription,
+  "mechanic/:id": MechanicProfile,
 }
 
 export const mechanicRoutes = {

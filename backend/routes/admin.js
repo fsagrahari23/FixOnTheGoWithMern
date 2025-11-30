@@ -435,6 +435,31 @@ router.post("/mechanic/:id/reject", async (req, res) => {
   }
 })
 
+// Delete approved mechanic
+router.post("/mechanic/:id/delete", async (req, res) => {
+  try {
+    const mechanic = await User.findById(req.params.id)
+
+    if (!mechanic) {
+      req.flash("error_msg", "Mechanic not found")
+      return res.redirect("/admin/mechanics")
+    }
+
+    // Delete mechanic profile
+    await MechanicProfile.findOneAndDelete({ user: mechanic._id })
+
+    // Delete mechanic user
+    await User.findByIdAndDelete(mechanic._id)
+
+    req.flash("success_msg", "Mechanic deleted successfully")
+    res.redirect("/admin/mechanics")
+  } catch (error) {
+    console.error("Delete mechanic error:", error)
+    req.flash("error_msg", "Failed to delete mechanic")
+    res.redirect("/admin/mechanics")
+  }
+})
+
 // Manage bookings
 router.get("/bookings", async (req, res) => {
   try {
@@ -1404,7 +1429,7 @@ router.get("/api/payments", isAdmin, async (req, res) => {
 
     const subscriptionTotal = subscriptionRevenue.length > 0 ? subscriptionRevenue[0].total : 0;
 
-    const totalAmount = (bookingTotal + subscriptionTotal).toFixed(2);
+    const totalAmount = bookingTotal + subscriptionTotal;
 
     res.json({
       payments,
@@ -1447,7 +1472,43 @@ router.get("/api/premium-users", isAdmin, async (req, res) => {
   }
 })
 
-// Other existing routes...
+// Subscriptions monthly revenue API
+router.get("/api/subscriptions/revenue", isAdmin, async (req, res) => {
+  try {
+    const months = Math.max(1, Math.min(24, Number(req.query.months) || 6));
+
+    // Compute start date months back from now
+    const now = new Date();
+    const start = new Date(now.getFullYear(), now.getMonth() - (months - 1), 1);
+
+    // Aggregate subscription revenue by month based on creation time
+    const agg = await Subscription.aggregate([
+      {
+        $match: {
+          createdAt: { $gte: start },
+          status: "active"
+        }
+      },
+      {
+        $group: {
+          _id: { year: { $year: "$createdAt" }, month: { $month: "$createdAt" } },
+          total: { $sum: "$amount" }
+        }
+      },
+      { $sort: { "_id.year": 1, "_id.month": 1 } }
+    ]);
+
+    const monthlyRevenue = agg.map(({ _id, total }) => ({
+      month: `${_id.year}-${String(_id.month).padStart(2, "0")}`,
+      total
+    }));
+
+    res.json({ monthlyRevenue });
+  } catch (error) {
+    console.error("Subscriptions revenue API error:", error);
+    res.status(500).json({ error: "Failed to load subscription revenue data" });
+  }
+});
 
 module.exports = router
 
