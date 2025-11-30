@@ -24,6 +24,13 @@ import Login from "./pages/auth/Login";
 import PendingApproval from "./components/auth/PendingApproval";
 import MechanicProfile from "./pages/admin/MechanicProfile";
 
+// Mechanic imports
+import MechanicDashboard from "./pages/mechanic/Dashboard";
+import { MechanicLayout } from "./components/layouts/MechanicLayout";
+import MechanicBookingDetails from "./pages/mechanic/BookingDetails";
+import MechanicHistory from "./pages/mechanic/History";
+import MechanicProfile from "./pages/mechanic/Profile";
+
 //admin imports
 import AdminDashboard from "./pages/admin/Dashboard";
 import AdminLayout from "./pages/admin/adminLayout";
@@ -56,6 +63,13 @@ export const adminRoutes = {
   payments: Payment,
   subscriptions: Subscription,
   "mechanic/:id": MechanicProfile,
+}
+
+export const mechanicRoutes = {
+  dashboard: MechanicDashboard,
+  'booking/:id': MechanicBookingDetails,
+  history: MechanicHistory,
+  profile: MechanicProfile,
 }
 
 function AppContent() {
@@ -109,6 +123,19 @@ function AppContent() {
 
          </Route>
 
+        <Route
+          path="/mechanic/*"
+          element={
+            <ProtectedRoute allowedRoles={["mechanic"]}>
+              <LocationProvider>
+                <MechanicLayout />
+              </LocationProvider>
+            </ProtectedRoute>
+          }>
+            {Object.entries(mechanicRoutes).map(([key, Component]) => (
+              <Route key={key} path={key} element={<Component />} />
+            ))}
+         </Route>
        
         <Route path="/auth/pending-approval" element={<PendingApproval />} />
       </Routes>
