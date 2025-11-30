@@ -181,8 +181,8 @@ export default function MechanicProfile() {
           {/* Profile Card */}
           <Card>
             <CardContent className="p-6 text-center">
-              <Avatar className="w-20 h-20 mx-auto mb-4 bg-blue-500">
-                <AvatarFallback className="text-white text-xl font-semibold">
+              <Avatar className="w-20 h-20 mx-auto mb-4 ">
+                <AvatarFallback className="text-white text-xl font-semibold bg-primary">
                   {mechanic.name.charAt(0).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
