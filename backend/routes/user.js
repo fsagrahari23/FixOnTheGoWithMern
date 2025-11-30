@@ -8,7 +8,18 @@ require("dotenv").config();
 const Subscription = require("../models/Subscription")
 const cloudinary = require("../config/cloudinary")
 const MechanicProfile = require("../models/MechanicProfile")
-const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY)
+// Initialize Stripe only if secret key is provided to avoid startup crash
+let stripe = null
+try {
+  if (process.env.STRIPE_SECRET_KEY) {
+    stripe = require("stripe")(process.env.STRIPE_SECRET_KEY)
+  } else {
+    console.warn("STRIPE_SECRET_KEY not set. Stripe features will be disabled.")
+  }
+} catch (err) {
+  console.warn("Stripe initialization failed:", err && err.message)
+  stripe = null
+}
 
 // Middleware to check for basic user booking limits
 const checkBookingLimits = async (req, res, next) => {
