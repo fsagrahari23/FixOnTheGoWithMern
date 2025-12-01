@@ -15,6 +15,7 @@ import {
     scheduleMaintenance,
     fetchEmergencyData,
     requestEmergency,
+    processPayment,
 } from './bookingThunks';
 
 const bookingSlice = createSlice({
@@ -238,6 +239,24 @@ const bookingSlice = createSlice({
                 // Optionally update emergency data or redirect
             })
             .addCase(requestEmergency.rejected, (state, action) => {
+                state.loading = false;
+                state.error = action.payload;
+            })
+            // Payment cases
+            .addCase(processPayment.pending, (state) => {
+                state.loading = true;
+            })
+            .addCase(processPayment.fulfilled, (state, action) => {
+                state.loading = false;
+                // Update current booking payment status
+                if (state.currentBooking) {
+                    state.currentBooking.payment.status = 'completed';
+                    if (action.payload.transactionId) {
+                        state.currentBooking.payment.transactionId = action.payload.transactionId;
+                    }
+                }
+            })
+            .addCase(processPayment.rejected, (state, action) => {
                 state.loading = false;
                 state.error = action.payload;
             });
