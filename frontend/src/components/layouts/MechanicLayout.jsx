@@ -1,9 +1,19 @@
-import { Link, Outlet, useLocation } from 'react-router-dom';
+import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { Button } from '../ui/button';
 import { useSelector, useDispatch } from 'react-redux';
 import { logout } from '../../store/slices/authThunks';
 import { useLocation as useAppLocation } from '../../contexts/LocationContext';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '../ui/dropdown-menu';
+import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
+import { LogOut, Settings, User as UserIcon } from 'lucide-react';
 
 export function MechanicLayout() {
   const location = useLocation();
@@ -266,8 +276,9 @@ export function MechanicLayout() {
 
 function UserMenu() {
   const [open, setOpen] = useState(false);
-  const address = useSelector((s) => s.location?.address);
   const dispatch = useDispatch();
+  const navigate = useNavigate();
+  const { user } = useSelector((s) => s.auth);
 
   const handleLogout = async () => {
     try {
@@ -281,35 +292,53 @@ function UserMenu() {
         localStorage.removeItem('email');
         localStorage.removeItem('avatar');
       } catch (e) {}
-      window.location.href = '/auth/login';
+      navigate('/auth/login');
     }
   };
 
-  return (
-    <div className="relative">
-      <button
-        onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-2 p-1 rounded-full hover:bg-muted"
-        aria-expanded={open}
-      >
-        <img src={localStorage.getItem('avatar') || '/src/assets/avatar.png'} alt="avatar" className="w-8 h-8 rounded-full object-cover" />
-      </button>
+  const getUserInitials = () => {
+    const name = user?.name || localStorage.getItem('name');
+    if (!name) return 'U';
+    const parts = name.trim().split(' ');
+    if (parts.length >= 2) return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+    return name.substring(0, 2).toUpperCase();
+  };
 
-      {open && (
-        <div className="absolute right-0 mt-2 w-56 bg-popover text-popover-foreground border rounded-md shadow-lg z-50">
-          <div className="p-3 border-b">
-            <p className="font-medium">{localStorage.getItem('name') || 'John Doe'}</p>
-            <p className="text-xs text-muted-foreground truncate">{localStorage.getItem('email') || 'email@example.com'}</p>
-          </div>
-          <div className="p-2">
-            <Link to="/mechanic/profile" className="block px-3 py-2 rounded hover:bg-muted">Profile</Link>
-            <Link to="/mechanic/settings" className="block px-3 py-2 rounded hover:bg-muted">Settings</Link>
-          </div>
-          <div className="border-t p-2">
-            <button onClick={handleLogout} className="w-full text-left px-3 py-2 text-destructive rounded hover:bg-muted">Logout</button>
-          </div>
-        </div>
-      )}
-    </div>
+  const handleProfile = () => navigate('/mechanic/profile');
+  const handleSettings = () => navigate('/mechanic/settings');
+
+  return (
+    <DropdownMenu open={open} onOpenChange={setOpen}>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" className="relative h-10 w-10 rounded-full p-0">
+          <Avatar className="h-10 w-10">
+            <AvatarImage src={user?.profilePicture || user?.avatar || localStorage.getItem('avatar') || ''} alt={user?.name || 'User'} />
+            <AvatarFallback className="bg-linear-to-br from-blue-500 to-purple-600 text-white font-semibold">
+              {getUserInitials()}
+            </AvatarFallback>
+          </Avatar>
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-56">
+        <DropdownMenuLabel className="flex flex-col space-y-1">
+          <p className="text-sm font-medium leading-none">{user?.name || localStorage.getItem('name') || 'User'}</p>
+          <p className="text-xs leading-none text-muted-foreground">{user?.email || localStorage.getItem('email') || ''}</p>
+          { (user?.role || 'mechanic') && (
+            <p className="text-xs leading-none text-primary font-medium capitalize">{user?.role || 'mechanic'}</p>
+          )}
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={handleProfile}>
+          <UserIcon className="mr-2 h-4 w-4" /> Profile
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={handleSettings}>
+          <Settings className="mr-2 h-4 w-4" /> Settings
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={handleLogout} className="text-red-600 dark:text-red-400">
+          <LogOut className="mr-2 h-4 w-4" /> Logout
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
