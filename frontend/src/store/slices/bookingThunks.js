@@ -206,3 +206,16 @@ export const requestEmergency = createAsyncThunk(
         }
     }
 );
+
+// Payment thunk
+export const processPayment = createAsyncThunk(
+    'booking/processPayment',
+    async ({ bookingId, paymentMethodId }, { rejectWithValue }) => {
+        try {
+            const response = await apiPost(`/payment/${bookingId}/process`, { paymentMethodId });
+            return response;
+        } catch (error) {
+            return rejectWithValue(error.response?.data || error.message);
+        }
+    }
+);
