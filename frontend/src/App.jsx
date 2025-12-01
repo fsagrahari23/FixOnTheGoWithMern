@@ -44,7 +44,7 @@ import Subscription from "./pages/admin/Subscription";
 
 export const userRoutes = {
   dashboard: Dashboard,
-  booking_details: Booking_details,
+  "booking/:id": Booking_details,
   booking_form: BookingFormPage,
   emergency: Emergency,
   history: History,
@@ -103,11 +103,11 @@ function AppContent() {
             </ProtectedRoute>
           }
         >
-        {Object.entries(userRoutes).map(([key, Component]) => (
+          {Object.entries(userRoutes).map(([key, Component]) => (
             <Route key={key} path={key} element={<Component />} />
           ))}
         </Route>
-        
+
         <Route
           path="/admin/*"
           element={
@@ -117,11 +117,11 @@ function AppContent() {
               </LocationProvider>
             </ProtectedRoute>
           }>
-            {Object.entries(adminRoutes).map(([key, Component]) => (
+          {Object.entries(adminRoutes).map(([key, Component]) => (
             <Route key={key} path={key} element={<Component />} />
           ))}
 
-         </Route>
+        </Route>
 
         <Route
           path="/mechanic/*"
@@ -132,11 +132,11 @@ function AppContent() {
               </LocationProvider>
             </ProtectedRoute>
           }>
-            {Object.entries(mechanicRoutes).map(([key, Component]) => (
-              <Route key={key} path={key} element={<Component />} />
-            ))}
-         </Route>
-       
+          {Object.entries(mechanicRoutes).map(([key, Component]) => (
+            <Route key={key} path={key} element={<Component />} />
+          ))}
+        </Route>
+
         <Route path="/auth/pending-approval" element={<PendingApproval />} />
       </Routes>
     </BrowserRouter>

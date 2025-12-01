@@ -2,266 +2,385 @@ const express = require("express")
 const router = express.Router()
 const User = require("../models/User")
 const Booking = require("../models/Booking")
-const Chat = require("../models/Chat")
-require("dotenv").config();
-
 const Subscription = require("../models/Subscription")
-const cloudinary = require("../config/cloudinary")
+const Chat = require("../models/Chat")
+const GeneralChat = require("../models/GeneralChat")
 const MechanicProfile = require("../models/MechanicProfile")
-// Initialize Stripe only if secret key is provided to avoid startup crash
-let stripe = null
-try {
-  if (process.env.STRIPE_SECRET_KEY) {
-    stripe = require("stripe")(process.env.STRIPE_SECRET_KEY)
-  } else {
-    console.warn("STRIPE_SECRET_KEY not set. Stripe features will be disabled.")
-  }
-} catch (err) {
-  console.warn("Stripe initialization failed:", err && err.message)
-  stripe = null
-}
+const bcrypt = require("bcryptjs")
 
-// Middleware to check for basic user booking limits
-const checkBookingLimits = async (req, res, next) => {
+router.get("/api/maintenance", async (req, res) => {
   try {
-    // Skip for premium users
     const subscription = await Subscription.findOne({
       user: req.user._id,
       status: "active",
       expiresAt: { $gt: new Date() },
     })
 
-    if (subscription) {
-      return next() // Premium users have no limits
-    }
-
-    // For basic users, check the limit (2 bookings)
-    const bookingCount = await Booking.countDocuments({
+    const recentMaintenance = await Booking.find({
       user: req.user._id,
-      status: { $ne: "cancelled" } // Don't count cancelled bookings
-    })
+      problemCategory: "Maintenance",
+      status: { $in: ["completed", "cancelled"] }
+    }).sort({ createdAt: -1 }).limit(5)
 
-    if (bookingCount >= 2) {
-      req.flash("error_msg", "Basic users can only have 2 active bookings. Please upgrade to premium for unlimited bookings.")
-      return res.redirect("/user/premium")
-    }
-
-    // If within limits, proceed
-    next()
-  } catch (error) {
-    console.error("Error checking booking limits:", error)
-    req.flash("error_msg", "An error occurred. Please try again.")
-    return res.redirect("/user/dashboard")
-  }
-}
-
-// User dashboard
-router.get("/dashboard", async (req, res) => {
-  try {
-    // Get user's bookings
-    const bookings = await Booking.find({ user: req.user._id })
-      .populate("mechanic", "name phone")
-      .sort({ createdAt: -1 })
-
-    // Get stats
-    const stats = {
-      total: bookings.length,
-      pending: bookings.filter((b) => b.status === "pending").length,
-      inProgress: bookings.filter((b) => b.status === "in-progress").length,
-      completed: bookings.filter((b) => b.status === "completed").length,
-      cancelled: bookings.filter((b) => b.status === "cancelled").length,
-    }
-
-    // Get category-wise data
-    const categories = {}
-    bookings.forEach((booking) => {
-      if (!categories[booking.problemCategory]) {
-        categories[booking.problemCategory] = 0
-      }
-      categories[booking.problemCategory]++
-    })
-
-    // Get user's subscription status
-    const subscription = await Subscription.findOne({
-      user: req.user._id,
-      status: "active",
-      expiresAt: { $gt: new Date() },
-    })
-
-    // Get basic user booking count
-    const activeBookingCount = await Booking.countDocuments({
-      user: req.user._id,
-      status: { $ne: "cancelled" }
-    })
-
-    // Calculate remaining bookings for basic users
-    const remainingBookings = subscription ? "Unlimited" : Math.max(0, 2 - activeBookingCount)
-
-    res.render("user/dashboard", {
-      title: "User Dashboard",
+    res.json({
+      user: req.user,
+      subscription,
+      recentMaintenance,
     })
   } catch (error) {
-    console.error("User dashboard error:", error)
-    req.flash("error_msg", "Failed to load dashboard")
-    res.redirect("/")
+    console.error("Maintenance API error:", error)
+    res.status(500).json({ error: "Failed to load maintenance data" })
   }
 })
 
-// New booking page
-router.get("/book", checkBookingLimits, async (req, res) => {
-  res.render("user/book", {
-    title: "Book a Mechanic",
-  })
-})
 
-// Create new booking
-router.post("/book", checkBookingLimits, async (req, res) => {
+// Chat APIs
+
+// Get chat for a booking
+router.get("/api/chat/:bookingId", async (req, res) => {
   try {
-    const {
-      problemCategory,
-      description,
-      address,
-      latitude,
-      longitude,
-      requiresTowing,
-      pickupAddress,
-      pickupLatitude,
-      pickupLongitude,
-      dropoffAddress,
-      dropoffLatitude,
-      dropoffLongitude,
-      emergencyRequest,
-    } = req.body
+    const booking = await Booking.findById(req.params.bookingId)
+      .populate("user", "name")
+      .populate("mechanic", "name");
 
-    // Validation
-    if (!problemCategory || !description || !address) {
-      req.flash("error_msg", "Please fill in all required fields")
-      return res.redirect("/user/book")
+    if (!booking) {
+      return res.status(404).json({ success: false, message: "Booking not found" });
     }
 
-    // Validate coordinates
-    const lat = Number.parseFloat(latitude)
-    const lng = Number.parseFloat(longitude)
-
-    if (isNaN(lat) || isNaN(lng) || (lat === 0 && lng === 0) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
-      req.flash("error_msg", "Invalid location coordinates. Please select a valid location.")
-      return res.redirect("/user/book")
+    // Check if user is authorized to view this chat
+    if (
+      booking.user._id.toString() !== req.user._id.toString() &&
+      booking.mechanic &&
+      booking.mechanic._id.toString() !== req.user._id.toString()
+    ) {
+      return res.status(403).json({ success: false, message: "Not authorized" });
     }
 
-    // Check if emergency request is available for user
-    let canRequestEmergency = false
-    if (emergencyRequest === "on") {
-      const subscription = await Subscription.findOne({
-        user: req.user._id,
-        status: "active",
-        expiresAt: { $gt: new Date() },
-        "features.emergencyAssistance": true,
-      })
-
-      if (!subscription) {
-        req.flash("error_msg", "Emergency assistance is only available for yearly premium subscribers.")
-        return res.redirect("/user/book")
-      }
-      canRequestEmergency = true
+    // Get or create chat
+    let chat = await Chat.findOne({ booking: booking._id });
+    if (!chat && booking.mechanic) {
+      chat = new Chat({
+        booking: booking._id,
+        participants: [booking.user._id, booking.mechanic._id],
+      });
+      await chat.save();
     }
 
-    // Check for premium status to set priority
-    const subscription = await Subscription.findOne({
-      user: req.user._id,
-      status: "active",
-      expiresAt: { $gt: new Date() },
-    })
+    if (!chat) {
+      return res.status(404).json({ success: false, message: "Chat not available yet" });
+    }
 
-    const isPremium = !!subscription
-
-    // Upload images if any
-    const images = []
-    if (req.files && req.files.images) {
-      if (Array.isArray(req.files.images)) {
-        // Multiple images
-        for (const file of req.files.images) {
-          const result = await cloudinary.uploader.upload(file.tempFilePath)
-          images.push(result.secure_url)
+    // Mark messages as read
+    if (chat.messages.length > 0) {
+      let updated = false;
+      chat.messages.forEach((message) => {
+        if (
+          message.sender.toString() !== req.user._id.toString() &&
+          !message.read
+        ) {
+          message.read = true;
+          updated = true;
         }
-      } else {
-        // Single image
-        const result = await cloudinary.uploader.upload(req.files.images.tempFilePath)
-        images.push(result.secure_url)
+      });
+
+      if (updated) {
+        await chat.save();
       }
     }
 
-    // Create new booking
-    const bookingData = {
-      user: req.user._id,
-      problemCategory,
-      description,
-      images,
-      location: {
-        type: "Point",
-        coordinates: [lng, lat], // MongoDB uses [longitude, latitude] format
-        address,
-      },
-      requiresTowing: requiresTowing === "on",
-      isPremiumBooking: isPremium,
-      priority: isPremium ? (canRequestEmergency ? 2 : 1) : 0, // Higher priority for premium and emergency
-      emergencyRequest: emergencyRequest === "on" && canRequestEmergency,
-    }
-
-    // Add towing details if required
-    if (requiresTowing === "on") {
-      const dropoffLat = Number.parseFloat(dropoffLatitude)
-      const dropoffLng = Number.parseFloat(dropoffLongitude)
-
-      if (
-        isNaN(dropoffLat) ||
-        isNaN(dropoffLng) ||
-        (dropoffLat === 0 && dropoffLng === 0) ||
-        dropoffLat < -90 ||
-        dropoffLat > 90 ||
-        dropoffLng < -180 ||
-        dropoffLng > 180
-      ) {
-        req.flash("error_msg", "Invalid dropoff location coordinates. Please select a valid dropoff location.")
-        return res.redirect("/user/book")
-      }
-
-      // Use pickup coordinates from form or default to main location
-      const pickupLat = Number.parseFloat(pickupLatitude) || lat
-      const pickupLng = Number.parseFloat(pickupLongitude) || lng
-
-      bookingData.towingDetails = {
-        pickupLocation: {
-          type: "Point",
-          coordinates: [pickupLng, pickupLat], // MongoDB uses [longitude, latitude] format
-          address: pickupAddress || address,
-        },
-        dropoffLocation: {
-          type: "Point",
-          coordinates: [dropoffLng, dropoffLat], // MongoDB uses [longitude, latitude] format
-          address: dropoffAddress,
-        },
-        status: "pending",
-      }
-    }
-
-    const newBooking = new Booking(bookingData)
-    await newBooking.save()
-
-    // Update basic booking count for non-premium users
-    if (!isPremium) {
-      await User.findByIdAndUpdate(req.user._id, {
-        $inc: { basicBookingsUsed: 1 },
-      })
-    }
-
-    req.flash("success_msg", "Booking created successfully")
-    res.redirect(`/user/booking/${newBooking._id}`)
+    res.json({ success: true, chat, booking });
   } catch (error) {
-    console.error("Create booking error:", error)
-    req.flash("error_msg", `Failed to create booking: ${error.message}`)
-    res.redirect("/user/book")
+    console.error("Chat API error:", error);
+    res.status(500).json({ success: false, message: "Failed to load chat" });
   }
-})
+});
+
+// Send message API
+router.post("/api/chat/:chatId/send", async (req, res) => {
+  try {
+    const { message } = req.body;
+
+    if (!message || !message.trim()) {
+      return res.status(400).json({ success: false, message: "Message is required" });
+    }
+
+    const chat = await Chat.findById(req.params.chatId);
+
+    if (!chat) {
+      return res.status(404).json({ success: false, message: "Chat not found" });
+    }
+
+    // Check if user is a participant
+    if (!chat.participants.includes(req.user._id)) {
+      return res.status(403).json({ success: false, message: "Not authorized" });
+    }
+
+    // Add message
+    const newMessage = {
+      sender: req.user._id,
+      content: message.trim(),
+      timestamp: new Date(),
+      read: false,
+    };
+
+    chat.messages.push(newMessage);
+    chat.lastActivity = new Date();
+    chat.updatedAt = new Date();
+    await chat.save();
+
+    // Populate sender info for response
+    await chat.populate('messages.sender', 'name role');
+
+    const savedMessage = chat.messages[chat.messages.length - 1];
+
+    res.status(200).json({ success: true, message: savedMessage });
+  } catch (error) {
+    console.error("Send message API error:", error);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
+// Get messages API
+router.get("/api/chat/:chatId/messages", async (req, res) => {
+  try {
+    const chat = await Chat.findById(req.params.chatId).populate(
+      "messages.sender",
+      "name role"
+    );
+
+    if (!chat) {
+      return res.status(404).json({ success: false, message: "Chat not found" });
+    }
+
+    // Check if user is a participant
+    if (!chat.participants.includes(req.user._id)) {
+      return res.status(403).json({ success: false, message: "Not authorized" });
+    }
+
+    // Mark messages as read
+    let updated = false;
+    chat.messages.forEach((message) => {
+      if (
+        message.sender._id.toString() !== req.user._id.toString() &&
+        !message.read
+      ) {
+        message.read = true;
+        updated = true;
+      }
+    });
+
+    if (updated) {
+      await chat.save();
+    }
+
+    res.status(200).json({ success: true, messages: chat.messages });
+  } catch (error) {
+    console.error("Get messages API error:", error);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
+// Get unread message count
+router.get("/api/chat/unread/count", async (req, res) => {
+  try {
+    // Find all chats where the user is a participant
+    const chats = await Chat.find({
+      participants: req.user._id,
+    });
+
+    let unreadCount = 0;
+
+    // Count unread messages in each chat
+    chats.forEach((chat) => {
+      chat.messages.forEach((message) => {
+        if (
+          message.sender.toString() !== req.user._id.toString() &&
+          !message.read
+        ) {
+          unreadCount++;
+        }
+      });
+    });
+
+    res.status(200).json({ success: true, unreadCount });
+  } catch (error) {
+    console.error("Unread count API error:", error);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
+// General Chat APIs (for non-booking chats)
+
+// Get user's general chats
+router.get("/api/chat", async (req, res) => {
+  try {
+    const chats = await GeneralChat.find({
+      participants: req.user._id,
+    })
+      .populate("participants", "name role")
+      .sort({ updatedAt: -1 });
+
+    res.status(200).json({ success: true, chats });
+  } catch (error) {
+    console.error("Get chats API error:", error);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
+// Create new general chat with a mechanic
+router.post("/api/chat", async (req, res) => {
+  try {
+    const { mechanicId } = req.body;
+
+    if (!mechanicId) {
+      return res.status(400).json({ success: false, message: "Mechanic ID is required" });
+    }
+
+    // Check if mechanic exists and is approved
+    const mechanic = await User.findById(mechanicId);
+    if (!mechanic || mechanic.role !== "mechanic" || !mechanic.isApproved) {
+      return res.status(404).json({ success: false, message: "Mechanic not found or not approved" });
+    }
+
+    // Check if chat already exists
+    const existingChat = await GeneralChat.findOne({
+      participants: { $all: [req.user._id, mechanicId] },
+    });
+
+    if (existingChat) {
+      return res.status(200).json({ success: true, chat: existingChat });
+    }
+
+    // Create new chat
+    const chat = new GeneralChat({
+      participants: [req.user._id, mechanicId],
+    });
+
+    await chat.save();
+
+    // Populate participants for response
+    await chat.populate("participants", "name role");
+
+    res.status(201).json({ success: true, chat });
+  } catch (error) {
+    console.error("Create chat API error:", error);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
+// Get messages for a general chat
+router.get("/api/chat/:chatId/messages", async (req, res) => {
+  try {
+    const chat = await GeneralChat.findById(req.params.chatId).populate(
+      "messages.sender",
+      "name role"
+    );
+
+    if (!chat) {
+      return res.status(404).json({ success: false, message: "Chat not found" });
+    }
+
+    // Check if user is a participant
+    if (!chat.participants.includes(req.user._id)) {
+      return res.status(403).json({ success: false, message: "Not authorized" });
+    }
+
+    // Mark messages as read
+    let updated = false;
+    chat.messages.forEach((message) => {
+      if (
+        message.sender._id.toString() !== req.user._id.toString() &&
+        !message.read
+      ) {
+        message.read = true;
+        updated = true;
+      }
+    });
+
+    if (updated) {
+      await chat.save();
+    }
+
+    res.status(200).json({ success: true, messages: chat.messages });
+  } catch (error) {
+    console.error("Get messages API error:", error);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
+// Send message in general chat
+router.post("/api/chat/:chatId/send", async (req, res) => {
+  try {
+    const { message } = req.body;
+
+    if (!message || !message.trim()) {
+      return res.status(400).json({ success: false, message: "Message is required" });
+    }
+
+    const chat = await GeneralChat.findById(req.params.chatId);
+
+    if (!chat) {
+      return res.status(404).json({ success: false, message: "Chat not found" });
+    }
+
+    // Check if user is a participant
+    if (!chat.participants.includes(req.user._id)) {
+      return res.status(403).json({ success: false, message: "Not authorized" });
+    }
+
+    // Add message
+    const newMessage = {
+      sender: req.user._id,
+      content: message.trim(),
+      timestamp: new Date(),
+      read: false,
+    };
+
+    chat.messages.push(newMessage);
+    chat.lastActivity = new Date();
+    chat.updatedAt = new Date();
+    await chat.save();
+
+    // Populate sender info for response
+    await chat.populate('messages.sender', 'name role');
+
+    const savedMessage = chat.messages[chat.messages.length - 1];
+
+    res.status(200).json({ success: true, message: savedMessage });
+  } catch (error) {
+    console.error("Send message API error:", error);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
+// Get unread count for general chats
+router.get("/api/chat/general/unread/count", async (req, res) => {
+  try {
+    // Find all general chats where the user is a participant
+    const chats = await GeneralChat.find({
+      participants: req.user._id,
+    });
+
+    let unreadCount = 0;
+
+    // Count unread messages in each chat
+    chats.forEach((chat) => {
+      chat.messages.forEach((message) => {
+        if (
+          message.sender.toString() !== req.user._id.toString() &&
+          !message.read
+        ) {
+          unreadCount++;
+        }
+      });
+    });
+
+    res.status(200).json({ success: true, unreadCount });
+  } catch (error) {
+    console.error("General unread count API error:", error);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+});
 
 // View booking details
 router.get("/booking/:id", async (req, res) => {
@@ -339,6 +458,12 @@ router.get("/booking/:id", async (req, res) => {
       })
       freeTowingRemaining = Math.max(0, subscription.features.freeTowing - usedTowingCount)
     }
+    console.log(booking,
+      nearbyMechanics,
+      chat,
+      isPremium,
+      subscription,
+      freeTowingRemaining,)
 
     res.render("user/booking-details", {
       title: "Booking Details",
@@ -1132,27 +1257,86 @@ router.get("/api/premium", async (req, res) => {
 router.get("/api/booking/:id", async (req, res) => {
   try {
     const booking = await Booking.findById(req.params.id)
-      .populate('user', 'name phone address')
-      .populate('mechanic', 'name phone');
+      .populate("mechanic", "name phone")
+      .populate("user", "name phone")
 
-    if (!booking) return res.status(404).json({ error: 'Booking not found' });
+    if (!booking) {
+      req.flash("error_msg", "Booking not found")
+      return res.redirect("/user/dashboard")
+    }
 
     // Check if user is authorized to view this booking
     if (booking.user._id.toString() !== req.user._id.toString()) {
-      return res.status(403).json({ error: 'Not authorized' });
+      req.flash("error_msg", "Not authorized")
+      return res.redirect("/user/dashboard")
     }
 
-    const chat = await Chat.findOne({ booking: booking._id });
+    // Get nearby mechanics if booking is pending
+    let nearbyMechanics = []
+    if (booking.status === "pending") {
+      // Get mechanics sorted by distance, with preference for premium bookings
+      const geoNearPipeline = [
+        {
+          $geoNear: {
+            near: {
+              type: "Point",
+              coordinates: booking.location.coordinates,
+            },
+            distanceField: "distance",
+            maxDistance: 10000, // 10km
+            spherical: true,
+          },
+        },
+        {
+          $match: {
+            role: "mechanic",
+            isApproved: true,
+          },
+        },
+        {
+          $sort: {
+            distance: 1,
+          },
+        },
+        {
+          $limit: 10,
+        },
+      ]
 
+      nearbyMechanics = await User.aggregate(geoNearPipeline)
+    }
+
+    // Get chat if exists
+    const chat = await Chat.findOne({ booking: booking._id })
+
+    // Get subscription status
+    const subscription = await Subscription.findOne({
+      user: req.user._id,
+      status: "active",
+      expiresAt: { $gt: new Date() },
+    })
+    const isPremium = !!subscription
+
+    // Get free towing count for premium users
+    let freeTowingRemaining = 0
+    if (isPremium && subscription.features.freeTowing > 0) {
+      // Count how many bookings have used free towing
+      const usedTowingCount = await Booking.countDocuments({
+        user: req.user._id,
+        requiresTowing: true,
+        "payment.discountApplied": { $gt: 0 },
+        createdAt: { $gte: subscription.startDate },
+      })
+      freeTowingRemaining = Math.max(0, subscription.features.freeTowing - usedTowingCount)
+    }
     res.json({
       booking,
       chat,
       user: req.user,
-      flash: {
-        success_msg: req.flash('success_msg') || [],
-        error_msg: req.flash('error_msg') || [],
-        error: req.flash('error') || []
-      }
+      nearbyMechanics,
+      isPremium,
+      subscription,
+      freeTowingRemaining,
     });
   } catch (error) {
     console.error('Booking API error:', error);
