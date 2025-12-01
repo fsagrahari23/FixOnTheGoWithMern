@@ -67,11 +67,11 @@ export function StatsCards() {
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-      <div className="bg-white rounded-lg shadow p-6">
-        <h3 className="text-sm text-gray-600">Total Bookings</h3>
+      <div className="bg-card dark:bg-card border border-border rounded-lg shadow-sm hover:shadow-md transition-shadow p-6">
+        <h3 className="text-sm text-muted-foreground">Total Bookings</h3>
         <div className="mt-2 flex items-baseline">
-          <span className="text-3xl font-bold">{stats.total || 0}</span>
-          <span className="ml-2 flex items-center text-sm text-blue-600">
+          <span className="text-3xl font-bold text-foreground">{stats.total || 0}</span>
+          <span className="ml-2 flex items-center text-sm text-blue-600 dark:text-blue-400">
             <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M8 10H4V20H8V10Z" fill="currentColor" />
               <path d="M14 4H10V20H14V4Z" fill="currentColor" />
@@ -81,36 +81,36 @@ export function StatsCards() {
         </div>
       </div>
 
-      <div className="bg-white rounded-lg shadow p-6">
-        <h3 className="text-sm text-gray-600">Pending</h3>
+      <div className="bg-card dark:bg-card border border-border rounded-lg shadow-sm hover:shadow-md transition-shadow p-6">
+        <h3 className="text-sm text-muted-foreground">Pending</h3>
         <div className="mt-2 flex items-baseline">
-          <span className="text-3xl font-bold text-yellow-600">{stats.pending || 0}</span>
+          <span className="text-3xl font-bold text-yellow-600 dark:text-yellow-500">{stats.pending || 0}</span>
           <span className="ml-2">
-            <svg className="w-5 h-5 text-yellow-500" viewBox="0 0 20 20" fill="currentColor">
+            <svg className="w-5 h-5 text-yellow-500 dark:text-yellow-400" viewBox="0 0 20 20" fill="currentColor">
               <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
             </svg>
           </span>
         </div>
       </div>
 
-      <div className="bg-white rounded-lg shadow p-6">
-        <h3 className="text-sm text-gray-600">In Progress</h3>
+      <div className="bg-card dark:bg-card border border-border rounded-lg shadow-sm hover:shadow-md transition-shadow p-6">
+        <h3 className="text-sm text-muted-foreground">In Progress</h3>
         <div className="mt-2 flex items-baseline">
-          <span className="text-3xl font-bold text-blue-600">{stats.inProgress || 0}</span>
+          <span className="text-3xl font-bold text-blue-600 dark:text-blue-400">{stats.inProgress || 0}</span>
           <span className="ml-2">
-            <svg className="w-5 h-5 text-blue-500" viewBox="0 0 20 20" fill="currentColor">
+            <svg className="w-5 h-5 text-blue-500 dark:text-blue-400" viewBox="0 0 20 20" fill="currentColor">
               <path fillRule="evenodd" d="M10 3a1 1 0 00-1 1v4a1 1 0 002 0V4a1 1 0 00-1-1zM4 9a1 1 0 011-1h4a1 1 0 010 2H5a1 1 0 01-1-1zm12 0a1 1 0 00-1-1h-4a1 1 0 100 2h4a1 1 0 001-1zm-7 4a1 1 0 011-1h4a1 1 0 110 2h-4a1 1 0 01-1-1z" clipRule="evenodd" />
             </svg>
           </span>
         </div>
       </div>
 
-      <div className="bg-white rounded-lg shadow p-6">
-        <h3 className="text-sm text-gray-600">Completed</h3>
+      <div className="bg-card dark:bg-card border border-border rounded-lg shadow-sm hover:shadow-md transition-shadow p-6">
+        <h3 className="text-sm text-muted-foreground">Completed</h3>
         <div className="mt-2 flex items-baseline">
-          <span className="text-3xl font-bold text-green-600">{stats.completed || 0}</span>
+          <span className="text-3xl font-bold text-green-600 dark:text-green-500">{stats.completed || 0}</span>
           <span className="ml-2">
-            <svg className="w-5 h-5 text-green-500" viewBox="0 0 20 20" fill="currentColor">
+            <svg className="w-5 h-5 text-green-500 dark:text-green-400" viewBox="0 0 20 20" fill="currentColor">
               <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
             </svg>
           </span>

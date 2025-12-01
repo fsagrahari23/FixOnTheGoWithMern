@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { apiPost } from '../../lib/api';
 import { MapPin, Upload, Wrench, Crown, Info, AlertCircle, ArrowLeft, Send } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -193,6 +195,7 @@ const TowingDetails = ({ showTowing, formData, handleInputChange, errors }) => {
 
 // Main Booking Form Component
 const BookingForm = () => {
+  const navigate = useNavigate();
   const [isPremium, setIsPremium] = useState(false);
   const [discount, setDiscount] = useState(10);
   const [showTowing, setShowTowing] = useState(false);
@@ -317,17 +320,56 @@ const BookingForm = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = () => {
-    if (validateForm()) {
-      console.log('Form submitted:', formData);
-      alert('Booking submitted successfully! (This is a demo)');
-      // In real implementation, send data to server
-    } else {
+  const handleSubmit = async () => {
+    if (!validateForm()) {
       const firstError = Object.keys(errors)[0];
       const errorElement = document.getElementById(firstError);
       if (errorElement) {
         errorElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
+      return;
+    }
+
+    try {
+      // Prepare FormData for file uploads
+      const formDataToSend = new FormData();
+
+      // Add form fields
+      Object.keys(formData).forEach(key => {
+        if (formData[key] !== null && formData[key] !== undefined) {
+          formDataToSend.append(key, formData[key]);
+        }
+      });
+
+      // Add images if any
+      if (selectedFiles) {
+        Array.from(selectedFiles).forEach((file, index) => {
+          formDataToSend.append('images', file);
+        });
+      }
+
+      // Use fetch directly for FormData
+      const response = await fetch('/user/book', {
+        method: 'POST',
+        credentials: 'include',
+        body: formDataToSend,
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`HTTP ${response.status}: ${errorText}`);
+      }
+
+      const res = await response.json();
+
+      // Navigate to booking details
+      if (res && res._id) {
+        navigate(`/user/booking/${res._id}`);
+      } else {
+        navigate('/user/dashboard');
+      }
+    } catch (err) {
+      alert('Failed to submit booking. Please try again.');
     }
   };
 
