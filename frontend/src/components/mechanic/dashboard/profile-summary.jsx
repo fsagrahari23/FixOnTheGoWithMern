@@ -2,9 +2,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "../../ui/card"
 import { Button } from "../../ui/button"
 import { User, Phone, MapPin, Edit, Wrench } from "lucide-react"
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { apiGet, apiPost } from '../../../lib/api';
 
 export function ProfileSummary() {
+    const navigate = useNavigate();
     const [profile, setProfile] = useState(null);
     const [user, setUser] = useState(null);
 
@@ -20,6 +22,11 @@ export function ProfileSummary() {
         };
 
         fetchProfile();
+
+        // Listen for profile update events to refresh summary live
+        const onUpdated = () => fetchProfile();
+        window.addEventListener('mechanic:profile-updated', onUpdated);
+        return () => window.removeEventListener('mechanic:profile-updated', onUpdated);
     }, []);
 
     const handleToggleAvailability = async () => {
@@ -43,7 +50,7 @@ export function ProfileSummary() {
             </CardHeader>
             <CardContent className="p-6">
                 <div className="text-center mb-6">
-                    <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 dark:from-blue-600 dark:to-blue-700 text-white flex items-center justify-center text-2xl font-bold mx-auto mb-4 shadow-md">
+                    <div className="w-16 h-16 rounded-full bg-linear-to-br from-blue-500 to-blue-600 dark:from-blue-600 dark:to-blue-700 text-white flex items-center justify-center text-2xl font-bold mx-auto mb-4 shadow-md">
                         {user.name ? user.name[0].toUpperCase() : 'M'}
                     </div>
                     <h3 className="text-lg font-semibold text-foreground">{user.name}</h3>
@@ -52,19 +59,19 @@ export function ProfileSummary() {
 
                 <div className="space-y-4 mb-6">
                     <div className="flex items-center gap-3 text-sm">
-                        <Phone className="w-4 h-4 text-muted-foreground flex-shrink-0" />
-                        <span className="text-foreground">{user.phone}</span>
+                            <Phone className="w-4 h-4 text-muted-foreground shrink-0" />
+                            <span className="text-foreground">{user.phone || 'No phone number'}</span>
                     </div>
                     <div className="flex items-start gap-3 text-sm">
-                        <MapPin className="w-4 h-4 text-muted-foreground flex-shrink-0 mt-0.5" />
-                        <span className="text-foreground">{user.address}</span>
+                            <MapPin className="w-4 h-4 text-muted-foreground shrink-0 mt-0.5" />
+                            <span className="text-foreground">{user.address || profile.address || 'No location set'}</span>
                     </div>
                     <div className="flex items-center gap-3 text-sm">
-                        <Wrench className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                            <Wrench className="w-4 h-4 text-muted-foreground shrink-0" />
                         <span className="text-foreground">{profile.specialization?.join(', ')}</span>
                     </div>
                     <div className="flex items-center gap-3 text-sm">
-                        <User className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                            <User className="w-4 h-4 text-muted-foreground shrink-0" />
                         <span className="text-foreground">{profile.experience} years experience</span>
                     </div>
                 </div>
@@ -79,7 +86,11 @@ export function ProfileSummary() {
                         {profile.availability ? 'Go Offline' : 'Go Online'}
                     </Button>
 
-                    <Button className="w-full bg-transparent" variant="outline">
+                        <Button 
+                            onClick={() => navigate('/mechanic/profile')}
+                            className="w-full bg-transparent" 
+                            variant="outline"
+                        >
                         <Edit className="w-4 h-4 mr-2" />
                         Edit Profile
                     </Button>

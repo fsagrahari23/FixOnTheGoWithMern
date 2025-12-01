@@ -29,7 +29,7 @@ const otpSchema = z.object({
 
 const registrationSchema = z
     .object({
-        name: z.string().min(2, "Enter your full name"),
+        name: z.string().min(2, "Enter your full name").regex(/^[a-zA-Z\s]+$/, "Name can only contain letters and spaces"),
         email: z.string().email("Invalid email"),
         password: z.string().min(6, "Password must be at least 6 characters"),
         confirmPassword: z.string().min(6),
