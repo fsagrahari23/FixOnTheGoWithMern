@@ -3,18 +3,41 @@ import { apiGet, apiPost } from '../../lib/api';
 import MapPicker from '../../components/MapPicker';
 import { useDispatch, useSelector } from 'react-redux';
 import { setCoordinates, setAddress } from '../../store/slices/locationSlice';
+import { validate } from '../../lib/validation';
 
 export default function MechanicProfile() {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [formErrors, setFormErrors] = useState({});
+  const [pwdErrors, setPwdErrors] = useState({});
+
+  // Controlled form state
+  const [formData, setFormData] = useState({
+    name: '',
+    phone: '',
+    address: '',
+    experience: '',
+    hourlyRate: '',
+    specialization: []
+  });
 
   useEffect(() => {
     const fetchProfile = async () => {
       try {
         const response = await apiGet('/mechanic/api/profile');
-        setProfile({
+        const profileData = {
           ...response.user,
           ...response.profile
+        };
+        setProfile(profileData);
+        // Update form data when profile loads
+        setFormData({
+          name: profileData.name || '',
+          phone: profileData.phone || '',
+          address: profileData.address || '',
+          experience: profileData.experience || '',
+          hourlyRate: profileData.hourlyRate || '',
+          specialization: profileData.specialization || []
         });
       } catch (error) {
         console.error('Error fetching profile:', error);
@@ -30,24 +53,72 @@ export default function MechanicProfile() {
     event.preventDefault();
     const formData = new FormData(event.target);
 
+    const values = {
+      name: formData.get('name')?.toString() || '',
+      phone: formData.get('phone')?.toString() || '',
+      address: formData.get('address')?.toString() || '',
+      latitude: formData.get('latitude'),
+      longitude: formData.get('longitude'),
+      specialization: formData.getAll('specialization'),
+      experience: formData.get('experience'),
+      hourlyRate: formData.get('hourlyRate'),
+    };
+
+    const rules = {
+      name: [{ type: 'required', message: 'Name is required' }, { type: 'minLength', min: 2 }, { type: 'name' }],
+      phone: [{ type: 'required', message: 'Phone is required' }, { type: 'phone' }],
+      specialization: [{ type: 'required', message: 'Select at least one specialization' }],
+      experience: [{ type: 'required', message: 'Experience is required' }, { type: 'number' }, { type: 'min', min: 0 }],
+      hourlyRate: [{ type: 'required', message: 'Hourly rate is required' }, { type: 'number' }, { type: 'min', min: 0 }],
+      latitude: [{ type: 'required', message: 'Latitude is required' }],
+      longitude: [{ type: 'required', message: 'Longitude is required' }],
+    };
+
+    const { errors, isValid } = validate(values, rules);
+    setFormErrors(errors);
+    if (!isValid) {
+      const first = Object.keys(errors)[0];
+      const el = document.querySelector(`[name="${first}"]`);
+      if (el && el.scrollIntoView) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+
     try {
       await apiPost('/mechanic/profile', {
-        name: formData.get('name'),
-        phone: formData.get('phone'),
-        address: formData.get('address'),
-        latitude: formData.get('latitude'),
-        longitude: formData.get('longitude'),
-        specialization: formData.getAll('specialization'),
-        experience: formData.get('experience'),
-        hourlyRate: formData.get('hourlyRate'),
+        name: values.name,
+        phone: values.phone,
+        address: values.address,
+        latitude: values.latitude,
+        longitude: values.longitude,
+        specialization: values.specialization,
+        experience: values.experience,
+        hourlyRate: values.hourlyRate,
       });
 
       // Refresh profile data
       const response = await apiGet('/mechanic/api/profile');
-      setProfile({
+      const updatedProfile = {
         ...response.user,
         ...response.profile
+      };
+      setProfile(updatedProfile);
+      
+      // Update form data to show the updated values
+      setFormData({
+        name: updatedProfile.name || '',
+        phone: updatedProfile.phone || '',
+        address: updatedProfile.address || '',
+        experience: updatedProfile.experience || '',
+        hourlyRate: updatedProfile.hourlyRate || '',
+        specialization: updatedProfile.specialization || []
       });
+
+      // Broadcast that profile was updated so dashboard can refresh its summary
+      try {
+        window.dispatchEvent(new CustomEvent('mechanic:profile-updated'));
+      } catch (_) {
+        // no-op if window not available
+      }
 
       alert('Profile updated successfully');
     } catch (error) {
@@ -191,22 +262,39 @@ export default function MechanicProfile() {
               <div className="grid grid-cols-12 gap-4">
                 <div className="col-span-12 md:col-span-8">
                   <label className="block text-sm font-medium mb-1">Full Name</label>
-                  <input name="name" defaultValue={profile.name} className="w-full border rounded p-2" />
+                  <input 
+                    name="name" 
+                    value={formData.name} 
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    className="w-full border rounded p-2" 
+                  />
+                  {formErrors.name && <p className="text-sm text-red-600 mt-1">{formErrors.name}</p>}
                 </div>
 
                 <div className="col-span-12 md:col-span-4">
                   <label className="block text-sm font-medium mb-1">Email Address</label>
-                  <input name="email" defaultValue={profile.email} disabled className="w-full border rounded p-2 bg-gray-100" />
+                  <input name="email" value={profile?.email || ''} disabled className="w-full border rounded p-2 bg-gray-100" />
                 </div>
 
                 <div className="col-span-12 md:col-span-6">
                   <label className="block text-sm font-medium mb-1">Phone Number</label>
-                  <input name="phone" defaultValue={profile.phone} className="w-full border rounded p-2" />
+                  <input 
+                    name="phone" 
+                    value={formData.phone} 
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    className="w-full border rounded p-2" 
+                  />
+                  {formErrors.phone && <p className="text-sm text-red-600 mt-1">{formErrors.phone}</p>}
                 </div>
 
                 <div className="col-span-12 md:col-span-6">
                   <label className="block text-sm font-medium mb-1">Address</label>
-                  <input name="address" defaultValue={profile.address} className="w-full border rounded p-2" />
+                  <input 
+                    name="address" 
+                    value={formData.address} 
+                    onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                    className="w-full border rounded p-2" 
+                  />
                 </div>
 
                 <div className="col-span-12 md:col-span-6">
@@ -218,7 +306,13 @@ export default function MechanicProfile() {
                           type="checkbox"
                           name="specialization"
                           value={spec}
-                          defaultChecked={(profile.specialization || []).includes(spec)}
+                          checked={formData.specialization.includes(spec)}
+                          onChange={(e) => {
+                            const newSpec = e.target.checked
+                              ? [...formData.specialization, spec]
+                              : formData.specialization.filter(s => s !== spec);
+                            setFormData({ ...formData, specialization: newSpec });
+                          }}
                           className="rounded"
                         />
                         <span className="text-sm">{spec}</span>
@@ -226,16 +320,29 @@ export default function MechanicProfile() {
                     ))}
                   </div>
                   <p className="text-xs text-gray-500 mt-1">Select one or more specializations</p>
+                  {formErrors.specialization && <p className="text-sm text-red-600 mt-1">{formErrors.specialization}</p>}
                 </div>
 
                 <div className="col-span-12 md:col-span-3">
                   <label className="block text-sm font-medium mb-1">Experience (Years)</label>
-                  <input name="experience" defaultValue={profile.experience} className="w-full border rounded p-2" />
+                  <input 
+                    name="experience" 
+                    value={formData.experience} 
+                    onChange={(e) => setFormData({ ...formData, experience: e.target.value })}
+                    className="w-full border rounded p-2" 
+                  />
+                  {formErrors.experience && <p className="text-sm text-red-600 mt-1">{formErrors.experience}</p>}
                 </div>
 
                 <div className="col-span-12 md:col-span-3">
                   <label className="block text-sm font-medium mb-1">Hourly Rate ($)</label>
-                  <input name="hourlyRate" defaultValue={profile.hourlyRate} className="w-full border rounded p-2" />
+                  <input 
+                    name="hourlyRate" 
+                    value={formData.hourlyRate} 
+                    onChange={(e) => setFormData({ ...formData, hourlyRate: e.target.value })}
+                    className="w-full border rounded p-2" 
+                  />
+                  {formErrors.hourlyRate && <p className="text-sm text-red-600 mt-1">{formErrors.hourlyRate}</p>}
                 </div>
 
                 <div className="col-span-12">
@@ -259,6 +366,9 @@ export default function MechanicProfile() {
                   {/* hidden inputs so formData picks them up - prefer shared location coords, fall back to profile */}
                   <input type="hidden" name="latitude" value={locationStore?.coordinates?.lat ?? (profile.location && Array.isArray(profile.location.coordinates) ? profile.location.coordinates[1] : '')} />
                   <input type="hidden" name="longitude" value={locationStore?.coordinates?.lng ?? (profile.location && Array.isArray(profile.location.coordinates) ? profile.location.coordinates[0] : '')} />
+                  {(formErrors.latitude || formErrors.longitude) && (
+                    <p className="text-sm text-red-600 mt-1">{formErrors.latitude || formErrors.longitude}</p>
+                  )}
                   <div className="mt-3">
                     <button
                       type="button"
@@ -302,12 +412,21 @@ export default function MechanicProfile() {
               <form onSubmit={async (e) => {
                 e.preventDefault();
                 const fd = new FormData(e.target);
+                const values = {
+                  currentPassword: fd.get('currentPassword')?.toString() || '',
+                  newPassword: fd.get('newPassword')?.toString() || '',
+                  confirmPassword: fd.get('confirmPassword')?.toString() || '',
+                };
+                const rules = {
+                  currentPassword: [{ type: 'required' }, { type: 'minLength', min: 6 }],
+                  newPassword: [{ type: 'required' }, { type: 'minLength', min: 6 }],
+                  confirmPassword: [{ type: 'required' }, { validate: (v, all) => v === all.newPassword, message: 'Passwords do not match' }],
+                };
+                const { errors, isValid } = validate(values, rules);
+                setPwdErrors(errors);
+                if (!isValid) return;
                 try {
-                  await apiPost('/mechanic/change-password', {
-                    currentPassword: fd.get('currentPassword'),
-                    newPassword: fd.get('newPassword'),
-                    confirmPassword: fd.get('confirmPassword'),
-                  });
+                  await apiPost('/mechanic/change-password', values);
                   alert('Password updated');
                 } catch (err) {
                   console.error(err);
@@ -318,14 +437,17 @@ export default function MechanicProfile() {
                   <div className="col-span-12 md:col-span-12">
                     <label className="block text-sm font-medium mb-1">Current Password</label>
                     <input type="password" name="currentPassword" className="w-full border rounded p-2" />
+                    {pwdErrors.currentPassword && <p className="text-sm text-red-600 mt-1">{pwdErrors.currentPassword}</p>}
                   </div>
                   <div className="col-span-12 md:col-span-6">
                     <label className="block text-sm font-medium mb-1">New Password</label>
                     <input type="password" name="newPassword" className="w-full border rounded p-2" />
+                    {pwdErrors.newPassword && <p className="text-sm text-red-600 mt-1">{pwdErrors.newPassword}</p>}
                   </div>
                   <div className="col-span-12 md:col-span-6">
                     <label className="block text-sm font-medium mb-1">Confirm New Password</label>
                     <input type="password" name="confirmPassword" className="w-full border rounded p-2" />
+                    {pwdErrors.confirmPassword && <p className="text-sm text-red-600 mt-1">{pwdErrors.confirmPassword}</p>}
                   </div>
                 </div>
                 <div>
