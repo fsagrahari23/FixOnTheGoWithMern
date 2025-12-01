@@ -1128,6 +1128,38 @@ router.get("/api/premium", async (req, res) => {
   }
 })
 
+// Booking details API
+router.get("/api/booking/:id", async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id)
+      .populate('user', 'name phone address')
+      .populate('mechanic', 'name phone');
+
+    if (!booking) return res.status(404).json({ error: 'Booking not found' });
+
+    // Check if user is authorized to view this booking
+    if (booking.user._id.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ error: 'Not authorized' });
+    }
+
+    const chat = await Chat.findOne({ booking: booking._id });
+
+    res.json({
+      booking,
+      chat,
+      user: req.user,
+      flash: {
+        success_msg: req.flash('success_msg') || [],
+        error_msg: req.flash('error_msg') || [],
+        error: req.flash('error') || []
+      }
+    });
+  } catch (error) {
+    console.error('Booking API error:', error);
+    res.status(500).json({ error: 'Failed to load booking details' });
+  }
+});
+
 // Emergency API
 router.get("/api/emergency", async (req, res) => {
   try {

@@ -34,8 +34,8 @@ export function ProfileSummary() {
     if (!profile || !user) return null;
 
     return (
-        <Card className="border-0 shadow-lg">
-            <CardHeader className="border-b border-border/50">
+        <Card className="border border-border shadow-lg dark:shadow-xl">
+            <CardHeader className="border-b border-border">
                 <CardTitle className="flex items-center gap-2">
                     <User className="w-5 h-5" />
                     Profile Summary
@@ -43,7 +43,7 @@ export function ProfileSummary() {
             </CardHeader>
             <CardContent className="p-6">
                 <div className="text-center mb-6">
-                    <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 text-white flex items-center justify-center text-2xl font-bold mx-auto mb-4">
+                    <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 dark:from-blue-600 dark:to-blue-700 text-white flex items-center justify-center text-2xl font-bold mx-auto mb-4 shadow-md">
                         {user.name ? user.name[0].toUpperCase() : 'M'}
                     </div>
                     <h3 className="text-lg font-semibold text-foreground">{user.name}</h3>

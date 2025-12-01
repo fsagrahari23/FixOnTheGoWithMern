@@ -40,7 +40,7 @@ export default function MechanicDashboard() {
   };
 
   return (
-    <main className="min-h-screen bg-background">
+    <main className="min-h-screen bg-background dark:bg-background">
       <div className="container mx-auto px-4 py-8">
         <StatsCards />
 
@@ -54,16 +54,16 @@ export default function MechanicDashboard() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  <p className="text-sm text-gray-600">Click on the map to pick your location or use the button to fetch your current location.</p>
+                  <p className="text-sm text-muted-foreground">Click on the map to pick your location or use the button to fetch your current location.</p>
                   <MapPicker onChange={async ({ lat, lng }) => {
                     dispatch(setCoordinates({ lat, lng }));
                     await reverseGeocode(lat, lng);
                   }} />
 
                   <div className="flex items-center justify-between">
-                    <div className="text-sm text-gray-700 truncate max-w-[640px]">{address || 'No location selected'}</div>
+                    <div className="text-sm text-foreground truncate max-w-[640px]">{address || 'No location selected'}</div>
                     <div className="flex items-center gap-2">
-                      <button onClick={handleUseMyLocation} className="px-3 py-2 bg-blue-600 text-white rounded">Use My Location</button>
+                      <button onClick={handleUseMyLocation} className="px-3 py-2 bg-blue-600 hover:bg-blue-700 dark:bg-blue-500 dark:hover:bg-blue-600 text-white rounded transition-colors">Use My Location</button>
                     </div>
                   </div>
                 </div>

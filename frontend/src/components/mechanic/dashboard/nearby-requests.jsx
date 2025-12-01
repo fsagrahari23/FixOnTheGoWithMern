@@ -46,10 +46,10 @@ export function NearbyRequests() {
           {nearbyBookings.map((booking) => (
             <div
               key={booking._id}
-              className="flex justify-between items-center p-4 border rounded-lg"
+              className="flex justify-between items-center p-4 border border-border rounded-lg hover:bg-muted/50 dark:hover:bg-muted/20 transition-colors"
             >
               <div>
-                <p className="font-medium">{booking.user.name}</p>
+                <p className="font-medium text-foreground">{booking.user.name}</p>
                 <p className="text-sm text-muted-foreground">{booking.serviceType}</p>
                 <p className="text-sm text-muted-foreground">
                   {booking.address}
