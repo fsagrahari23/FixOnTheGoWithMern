@@ -1,10 +1,23 @@
-# TODO: Implement Redux Store with Location and Theme Reducers
+# TODO: Implement User Booking History Page
 
-## Steps to Complete:
-1. Install Redux Toolkit and React-Redux dependencies. ✅
-2. Create Redux store in frontend/src/store/store.js. ✅
-3. Create location reducer for realtime coordinates and address. ✅
-4. Create theme reducer for dark/light mode with localStorage persistence. ✅
-5. Update Navbar component to add button for setting/showing address. ✅
-6. Integrate Redux store into the main App component. ✅
-7. Test the functionality: theme toggle, location button click to set and display address.
+## Tasks
+- [x] Update History.jsx to fetch and display booking history
+- [x] Add loading and error states
+- [x] Display bookings in a card layout with key details
+- [x] Handle empty state when no bookings exist
+- [x] Test the implementation
+
+## Details
+- Backend API: GET /user/api/history
+- Redux thunk: fetchBookingHistory
+- State: booking.bookingHistory
+- UI Components: Use card, badge, button from ui components
+
+## Maintenance Page Implementation
+- [x] Implement Maintenance.jsx with premium feature check
+- [x] Add maintenance thunks (fetchMaintenanceData, scheduleMaintenance)
+- [x] Add maintenance state to Redux store
+- [x] Create interactive map for location selection
+- [x] Add quarterly schedule display
+- [x] Handle existing maintenance bookings
+- [x] Add form validation and submission

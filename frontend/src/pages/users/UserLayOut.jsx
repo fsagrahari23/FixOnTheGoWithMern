@@ -25,7 +25,6 @@ export default function UserLayout() {
                 <SidebarNav
                     tabs={[
                         { id: "dashboard", label: "Dashboard", url: "/user/dashboard", icon: BarChart3 },
-                        { id: "booking_details", label: "Booking Details", url: "/user/booking_details", icon: FileText },
                         { id: "booking_form", label: "Booking Form", url: "/user/booking_form", icon: Users },
                         { id: "emergency", label: "Emergency", url: "/user/emergency", icon: Bell },
                         { id: "history", label: "History", url: "/user/history", icon: BarChart3 },
