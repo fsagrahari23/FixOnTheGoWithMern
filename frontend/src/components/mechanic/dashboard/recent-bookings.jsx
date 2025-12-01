@@ -30,11 +30,11 @@ export function RecentBookings() {
 
   const getStatusColor = (status) => {
     switch (status) {
-      case 'pending': return 'bg-yellow-100 text-yellow-800';
-      case 'in-progress': return 'bg-blue-100 text-blue-800';
-      case 'completed': return 'bg-green-100 text-green-800';
-      case 'cancelled': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
+      case 'pending': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400';
+      case 'in-progress': return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400';
+      case 'completed': return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400';
+      case 'cancelled': return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400';
+      default: return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300';
     }
   };
 
@@ -47,19 +47,19 @@ export function RecentBookings() {
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="text-left border-b">
-                <th className="pb-3 px-4 font-medium text-gray-600">Date</th>
-                <th className="pb-3 px-4 font-medium text-gray-600">Customer</th>
-                  <th className="pb-3 px-4 font-medium text-gray-600">Problem Category</th>
-                <th className="pb-3 px-4 font-medium text-gray-600">Status</th>
-                <th className="pb-3 px-4 font-medium text-gray-600">Action</th>
+              <tr className="text-left border-b border-border">
+                <th className="pb-3 px-4 font-medium text-muted-foreground">Date</th>
+                <th className="pb-3 px-4 font-medium text-muted-foreground">Customer</th>
+                  <th className="pb-3 px-4 font-medium text-muted-foreground">Problem Category</th>
+                <th className="pb-3 px-4 font-medium text-muted-foreground">Status</th>
+                <th className="pb-3 px-4 font-medium text-muted-foreground">Action</th>
               </tr>
             </thead>
             <tbody>
               {bookings.map((booking) => (
                 <tr 
                   key={booking._id} 
-                  className="border-b last:border-0 hover:bg-slate-50 group transition-colors duration-150 cursor-pointer"
+                  className="border-b border-border last:border-0 hover:bg-muted/50 dark:hover:bg-muted/20 group transition-colors duration-150 cursor-pointer"
                 >
                   <td className="py-4 px-4">
                     {new Date(booking.createdAt).toLocaleDateString()}

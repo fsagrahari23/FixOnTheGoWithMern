@@ -3,11 +3,14 @@
 import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
 import { Menu, X, Moon, Sun } from "lucide-react"
+import { useNavigate } from "react-router-dom"
+import { Button } from "@/components/ui/button"
 
 
 export default function Navbar({ isDark, setIsDark }) {
   const [isOpen, setIsOpen] = useState(false)
   const [isScrolled, setIsScrolled] = useState(false)
+  const navigate = useNavigate()
 
   useEffect(() => {
     const handleScroll = () => {
@@ -65,6 +68,22 @@ export default function Navbar({ isDark, setIsDark }) {
           </div>
 
           <div className="flex items-center gap-4">
+            <div className="hidden md:flex items-center gap-2">
+              <Button
+                variant="ghost"
+                onClick={() => navigate("/auth/login")}
+                className="text-foreground/70 hover:text-primary"
+              >
+                Login
+              </Button>
+              <Button
+                onClick={() => navigate("/auth/register")}
+                className="bg-gradient-to-r from-primary to-secondary hover:opacity-90"
+              >
+                Register
+              </Button>
+            </div>
+
             <motion.button
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.95 }}
@@ -102,6 +121,27 @@ export default function Navbar({ isDark, setIsDark }) {
                 {item.label}
               </a>
             ))}
+            <div className="flex flex-col gap-2 px-4 pt-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  navigate("/auth/login")
+                  setIsOpen(false)
+                }}
+                className="w-full"
+              >
+                Login
+              </Button>
+              <Button
+                onClick={() => {
+                  navigate("/auth/register")
+                  setIsOpen(false)
+                }}
+                className="w-full bg-gradient-to-r from-primary to-secondary"
+              >
+                Register
+              </Button>
+            </div>
           </div>
         </motion.div>
       </div>

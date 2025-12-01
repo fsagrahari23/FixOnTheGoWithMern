@@ -5,8 +5,8 @@ import { Link } from 'react-router-dom';
 
 export function QuickActions() {
     return (
-        <Card className="border-0 shadow-lg">
-            <CardHeader className="border-b border-border/50">
+        <Card className="border border-border shadow-lg dark:shadow-xl">
+            <CardHeader className="border-b border-border">
                 <CardTitle className="flex items-center gap-2">
                     <Zap className="w-5 h-5" />
                     Quick Actions
