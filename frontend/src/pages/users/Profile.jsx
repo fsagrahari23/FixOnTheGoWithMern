@@ -12,6 +12,7 @@ import {
   Crown, Shield, Lock, Save, ArrowLeft, Key,
   CheckCircle2, Zap, TrendingUp, Settings, Moon, Sun
 } from 'lucide-react';
+import { validate } from '../../lib/validation';
 
 export default function UserProfile() {
   const [darkMode, setDarkMode] = useState(false);
@@ -41,6 +42,7 @@ export default function UserProfile() {
   });
 
   const [activeTab, setActiveTab] = useState('profile');
+  const [formErrors, setFormErrors] = useState({});
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -52,6 +54,13 @@ export default function UserProfile() {
 
   const handleProfileSubmit = (e) => {
     e.preventDefault();
+    const rules = {
+      name: [{ type: 'required' }, { type: 'minLength', min: 2 }, { type: 'name' }],
+      phone: [{ type: 'phone', message: 'Enter a valid phone number' }],
+    };
+    const { errors, isValid } = validate(formData, rules);
+    setFormErrors(errors);
+    if (!isValid) return;
     console.log('Profile updated:', formData);
     // Handle profile update
   };
@@ -76,7 +85,7 @@ export default function UserProfile() {
   ];
 
   return (
-    <div className={`${darkMode ? 'dark' : ''} min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 p-4 md:p-8 transition-colors duration-300`}>
+    <div className={`${darkMode ? 'dark' : ''} min-h-screen bg-linear-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 p-4 md:p-8 transition-colors duration-300`}>
         <div className="max-w-7xl mx-auto space-y-6">
           {/* Header */}
           <div className="flex items-center justify-between">
@@ -112,7 +121,7 @@ export default function UserProfile() {
                 <CardContent className="pt-6">
                   <div className="flex flex-col items-center text-center">
                     <Avatar className="h-24 w-24 mb-4">
-                      <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 dark:from-blue-600 dark:to-purple-700 text-white text-2xl font-bold">
+                      <AvatarFallback className="bg-linear-to-br from-blue-500 to-purple-600 dark:from-blue-600 dark:to-purple-700 text-white text-2xl font-bold">
                         {userData.name.split(' ').map(n => n[0]).join('')}
                       </AvatarFallback>
                     </Avatar>
@@ -120,7 +129,7 @@ export default function UserProfile() {
                     <h2 className="text-2xl font-bold text-slate-900 dark:text-white">{userData.name}</h2>
                     <p className="text-slate-600 dark:text-slate-400 mb-4">{userData.email}</p>
                     
-                    <Badge className="bg-gradient-to-r from-amber-500 to-orange-500 dark:from-amber-600 dark:to-orange-600 text-white px-4 py-1">
+                    <Badge className="bg-linear-to-r from-amber-500 to-orange-500 dark:from-amber-600 dark:to-orange-600 text-white px-4 py-1">
                       <Crown className="mr-1 h-3 w-3" />
                       {userData.isPremium ? 'Premium Member' : 'Basic Member'}
                     </Badge>
@@ -143,7 +152,7 @@ export default function UserProfile() {
 
               {/* Membership Status */}
               {userData.isPremium ? (
-                <Card className="border-0 shadow-lg bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-950/50 dark:to-purple-950/50 dark:border-slate-800">
+                <Card className="border-0 shadow-lg bg-linear-to-br from-blue-50 to-purple-50 dark:from-blue-950/50 dark:to-purple-950/50 dark:border-slate-800">
                   <CardHeader>
                     <CardTitle className="flex items-center text-lg text-slate-900 dark:text-white">
                       <Crown className="mr-2 h-5 w-5 text-amber-500 dark:text-amber-400" />
@@ -167,7 +176,7 @@ export default function UserProfile() {
                     ))}
                     
                     <div className="pt-4 space-y-2">
-                      <Button className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 dark:from-blue-500 dark:to-purple-500 dark:hover:from-blue-600 dark:hover:to-purple-600">
+                      <Button className="w-full bg-linear-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 dark:from-blue-500 dark:to-purple-500 dark:hover:from-blue-600 dark:hover:to-purple-600">
                         Change Plan
                       </Button>
                       <Button variant="outline" className="w-full text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-950/30 dark:border-slate-700">
@@ -182,7 +191,7 @@ export default function UserProfile() {
                     <Crown className="h-12 w-12 text-slate-400 dark:text-slate-600 mx-auto mb-4" />
                     <h3 className="font-semibold text-lg mb-2 text-slate-900 dark:text-white">Upgrade to Premium</h3>
                     <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">Unlock exclusive features and benefits</p>
-                    <Button className="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 dark:from-amber-600 dark:to-orange-600 dark:hover:from-amber-700 dark:hover:to-orange-700">
+                    <Button className="w-full bg-linear-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 dark:from-amber-600 dark:to-orange-600 dark:hover:from-amber-700 dark:hover:to-orange-700">
                       <Crown className="mr-2 h-4 w-4" />
                       Upgrade Now
                     </Button>
@@ -249,6 +258,7 @@ export default function UserProfile() {
                               placeholder="Enter your full name"
                               className="h-11 dark:bg-slate-800 dark:border-slate-700 dark:text-white dark:placeholder:text-slate-500"
                             />
+                            {formErrors.name && <p className="text-sm text-red-600 dark:text-red-400 mt-1">{formErrors.name}</p>}
                           </div>
 
                           <div className="space-y-2">
@@ -278,6 +288,7 @@ export default function UserProfile() {
                               placeholder="Enter phone number"
                               className="h-11 dark:bg-slate-800 dark:border-slate-700 dark:text-white dark:placeholder:text-slate-500"
                             />
+                            {formErrors.phone && <p className="text-sm text-red-600 dark:text-red-400 mt-1">{formErrors.phone}</p>}
                           </div>
 
                           <div className="space-y-2">
@@ -336,7 +347,7 @@ export default function UserProfile() {
                         <div className="flex gap-3 pt-4">
                           <Button 
                             onClick={handleProfileSubmit}
-                            className="flex-1 h-11 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 dark:from-blue-500 dark:to-purple-500 dark:hover:from-blue-600 dark:hover:to-purple-600"
+                            className="flex-1 h-11 bg-linear-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 dark:from-blue-500 dark:to-purple-500 dark:hover:from-blue-600 dark:hover:to-purple-600"
                           >
                             <Save className="mr-2 h-4 w-4" />
                             Save Changes
@@ -418,7 +429,7 @@ export default function UserProfile() {
                         <div className="flex gap-3 pt-4">
                           <Button 
                             onClick={handlePasswordSubmit}
-                            className="flex-1 h-11 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 dark:from-blue-500 dark:to-purple-500 dark:hover:from-blue-600 dark:hover:to-purple-600"
+                            className="flex-1 h-11 bg-linear-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 dark:from-blue-500 dark:to-purple-500 dark:hover:from-blue-600 dark:hover:to-purple-600"
                           >
                             <Key className="mr-2 h-4 w-4" />
                             Update Password
