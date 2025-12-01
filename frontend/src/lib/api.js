@@ -11,6 +11,7 @@ async function parseResponse(res) {
 }
 
 export async function apiGet(path, opts = {}) {
+  console.log(`API GET: ${API_PREFIX}${path}`);
   const res = await fetch(`${API_PREFIX}${path}`, {
     method: 'GET',
     credentials: 'include',

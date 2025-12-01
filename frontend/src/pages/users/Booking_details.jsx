@@ -20,8 +20,16 @@ import {
   FileText,
   DollarSign
 } from 'lucide-react';
-
-
+import { useParams, useNavigate } from 'react-router-dom';
+import { useDispatch, useSelector } from 'react-redux';
+import {
+  fetchBookingDetails,
+  selectMechanic,
+  cancelBooking,
+  rateBooking
+} from '../../store/slices/bookingThunks';
+import ChatModal from '../../components/users/ChatModal';
+// import { setCurrentBooking, clearError } from '../../store/slices/bookingSlice';
 
 const InfoItem = ({ icon, label, value, highlight }) => {
   return (
@@ -35,65 +43,55 @@ const InfoItem = ({ icon, label, value, highlight }) => {
   );
 }
 
-import { useParams, useNavigate } from 'react-router-dom';
-import { apiGet, apiPost } from '../../lib/api';
-
 const BookingDetails = () => {
   const { id } = useParams();
+  console.log("BookingDetails component rendering with id:", id);
   const navigate = useNavigate();
-  const [booking, setBooking] = useState(null);
-  const [nearbyMechanics, setNearbyMechanics] = useState([]);
+  const dispatch = useDispatch();
+  const [isChatOpen, setIsChatOpen] = useState(false);
+
+  const { currentBooking, nearbyMechanics, loading, error } = useSelector((state) => state.booking);
   const [selectedRating, setSelectedRating] = useState(5);
   const [comment, setComment] = useState('');
   const [animateIn, setAnimateIn] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
 
   useEffect(() => {
+    console.log("BookingDetails component mounted, id:", id);
     setAnimateIn(true);
-    setLoading(true);
-    setError('');
-    const fetchBooking = async () => {
-      try {
-        // Fetch booking details using the dedicated API endpoint
-        const res = await apiGet(`/user/api/booking/${id}`);
-        if (res.booking) {
-          setBooking(res.booking);
-        } else {
-          setError('Booking not found.');
-        }
-      } catch (e) {
-        setError('Failed to load booking.');
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchBooking();
-  }, [id]);
+    console.log("Dispatching fetchBookingDetails with id:", id);
+    dispatch(fetchBookingDetails(id));
+  }, [id, dispatch]);
+
+  useEffect(() => {
+    if (error) {
+      // Handle error - could show toast or alert
+      console.error('Booking details error:', error);
+    }
+  }, [error]);
 
   const getStatusConfig = (status) => {
     const configs = {
-      pending: { 
+      pending: {
         color: 'bg-linear-to-r from-amber-400 to-orange-500',
         textColor: 'text-white',
         icon: '⏳'
       },
-      accepted: { 
+      accepted: {
         color: 'bg-linear-to-r from-blue-400 to-blue-600',
         textColor: 'text-white',
         icon: '✓'
       },
-      'in-progress': { 
+      'in-progress': {
         color: 'bg-linear-to-r from-purple-400 to-pink-500',
         textColor: 'text-white',
         icon: '🔧'
       },
-      completed: { 
+      completed: {
         color: 'bg-linear-to-r from-emerald-400 to-green-600',
         textColor: 'text-white',
         icon: '✓'
       },
-      cancelled: { 
+      cancelled: {
         color: 'bg-linear-to-r from-red-400 to-red-600',
         textColor: 'text-white',
         icon: '✗'
@@ -103,28 +101,21 @@ const BookingDetails = () => {
   };
 
   const handleRatingSubmit = () => {
-    console.log('Rating submitted:', { rating: selectedRating, comment });
-    setBooking({
-      ...booking,
-      rating: {
-        value: selectedRating,
-        comment: comment,
-        createdAt: new Date().toISOString()
-      }
-    });
+    dispatch(rateBooking({ bookingId: id, rating: selectedRating, comment }));
   };
 
   const handleSelectMechanic = (mechanicId) => {
-    console.log('Selected mechanic:', mechanicId);
+    console.log(id, mechanicId);
+    dispatch(selectMechanic({ id, mechanicId }));
   };
 
   const handleCancelBooking = () => {
     if (window.confirm('Are you sure you want to cancel this booking?')) {
-      console.log('Booking cancelled');
+      dispatch(cancelBooking(id));
     }
   };
 
-  const statusConfig = getStatusConfig(booking.status);
+  const statusConfig = getStatusConfig(currentBooking?.status);
 
   return (
     <div className="min-h-screen transition-all duration-500 bg-linear-to-br from-slate-50 via-blue-50 to-purple-50 dark:bg-linear-to-br dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 py-8 px-4 sm:px-6 lg:px-8">
@@ -134,9 +125,8 @@ const BookingDetails = () => {
       <div className="max-w-7xl mx-auto space-y-8">
         {/* Main Booking Card */}
         <Card
-          className={`overflow-hidden shadow-2xl transition-all duration-700 border-0 ${
-            animateIn ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
-          } bg-white dark:bg-slate-800`}
+          className={`overflow-hidden shadow-2xl transition-all duration-700 border-0 ${animateIn ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
+            } bg-white dark:bg-slate-800`}
         >
           <CardHeader className="bg-linear-to-r from-indigo-600 to-purple-600 dark:from-slate-700 dark:to-slate-600 text-white py-8 px-8">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -146,11 +136,11 @@ const BookingDetails = () => {
               </div>
               <Badge className={`${statusConfig.color} ${statusConfig.textColor} px-6 py-3 text-sm font-bold uppercase tracking-wider shadow-lg`}>
                 <span className="mr-2">{statusConfig.icon}</span>
-                {booking.status}
+                {currentBooking?.status}
               </Badge>
             </div>
           </CardHeader>
-          
+
           <CardContent className="p-8 space-y-10">
             {/* Basic Info Grid */}
             <div className="grid lg:grid-cols-2 gap-8">
@@ -163,27 +153,27 @@ const BookingDetails = () => {
                   <InfoItem
                     icon={<Calendar className="w-5 h-5" />}
                     label="Booking ID"
-                    value={booking._id}
+                    value={currentBooking?._id}
                   />
                   <InfoItem
                     icon={<Calendar className="w-5 h-5" />}
                     label="Date & Time"
-                    value={new Date(booking.createdAt).toLocaleString()}
+                    value={new Date(currentBooking?.createdAt).toLocaleString()}
                   />
                   <InfoItem
                     label="Problem Category"
-                    value={booking.problemCategory}
+                    value={currentBooking?.problemCategory}
                   />
                   <div className="pt-4 border-t border-indigo-200 dark:border-slate-600">
                     <InfoItem
                       label="Current Status"
-                      value={booking.status.replace('-', ' ').toUpperCase()}
+                      value={currentBooking?.status.replace('-', ' ').toUpperCase()}
                       highlight
                     />
                   </div>
                 </div>
               </Card>
-              
+
               <Card className="p-6 shadow-md border-0 animate-fade-in delay-100 bg-linear-to-br from-purple-50 to-pink-50 dark:bg-slate-700">
                 <h3 className="text-lg font-bold mb-6 flex items-center gap-2 text-purple-700 dark:text-purple-300">
                   <MapPin className="w-5 h-5" />
@@ -193,18 +183,18 @@ const BookingDetails = () => {
                   <InfoItem
                     icon={<MapPin className="w-5 h-5" />}
                     label="Service Location"
-                    value={booking.location.address}
+                    value={currentBooking?.location.address}
                   />
-                  {booking.mechanic ? (
+                  {currentBooking?.mechanic ? (
                     <>
                       <InfoItem
                         label="Assigned Mechanic"
-                        value={booking.mechanic.name}
+                        value={currentBooking?.mechanic.name}
                       />
                       <InfoItem
                         icon={<Phone className="w-5 h-5" />}
                         label="Contact Number"
-                        value={booking.mechanic.phone}
+                        value={currentBooking?.mechanic.phone}
                       />
                       <div className="flex items-center gap-2 pt-2">
                         <span className="text-sm text-purple-600 dark:text-slate-400">Rating:</span>
@@ -212,16 +202,15 @@ const BookingDetails = () => {
                           {[...Array(5)].map((_, i) => (
                             <Star
                               key={i}
-                              className={`w-4 h-4 ${
-                                i < Math.round(booking.mechanic.rating)
-                                  ? 'fill-yellow-400 text-yellow-400'
-                                  : 'text-gray-300 dark:text-slate-600'
-                              }`}
+                              className={`w-4 h-4 ${i < Math.round(currentBooking?.mechanic.rating)
+                                ? 'fill-yellow-400 text-yellow-400'
+                                : 'text-gray-300 dark:text-slate-600'
+                                }`}
                             />
                           ))}
                         </div>
                         <span className="text-sm font-semibold text-yellow-600 dark:text-yellow-400">
-                          {booking.mechanic.rating.toFixed(1)}
+                          {currentBooking?.mechanic?.rating}
                         </span>
                       </div>
                     </>
@@ -243,20 +232,20 @@ const BookingDetails = () => {
               </h3>
               <Card className="p-6 shadow-md border-0 bg-slate-50 dark:bg-slate-700">
                 <p className="leading-relaxed text-slate-700 dark:text-slate-300">
-                  {booking.description}
+                  {currentBooking?.description}
                 </p>
               </Card>
             </div>
 
             {/* Images */}
-            {booking.images && booking.images.length > 0 && (
+            {currentBooking?.images && currentBooking?.images.length > 0 && (
               <div className="animate-fade-in delay-300">
                 <h3 className="text-xl font-bold mb-4 flex items-center gap-2 text-slate-800 dark:text-slate-200">
                   <ImageIcon className="w-6 h-6" />
                   Attached Images
                 </h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {booking.images.map((image, index) => (
+                  {currentBooking?.images.map((image, index) => (
                     <div
                       key={index}
                       className="relative overflow-hidden rounded-2xl group cursor-pointer transform transition-all duration-300 hover:scale-105 hover:shadow-2xl shadow-lg dark:shadow-slate-900/50"
@@ -278,7 +267,7 @@ const BookingDetails = () => {
             )}
 
             {/* Payment Details */}
-            {booking.status === 'completed' && booking.payment && (
+            {currentBooking?.status === 'completed' && currentBooking?.payment && (
               <Card className="animate-fade-in delay-400 border-0 shadow-lg overflow-hidden bg-white dark:bg-slate-700">
                 <div className="bg-linear-to-r from-emerald-500 to-teal-500 dark:from-emerald-800 dark:to-teal-800 px-6 py-4">
                   <h3 className="text-xl font-bold text-white flex items-center gap-2">
@@ -290,27 +279,27 @@ const BookingDetails = () => {
                   <div className="flex justify-between items-center">
                     <span className="text-lg text-slate-600 dark:text-slate-400">Total Amount:</span>
                     <span className="text-4xl font-bold text-emerald-600 dark:text-emerald-400">
-                      ${booking.payment.amount.toFixed(2)}
+                      ${currentBooking?.payment.amount.toFixed(2)}
                     </span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-slate-600 dark:text-slate-400">Payment Status:</span>
-                    <Badge className={`${booking.payment.status === 'completed' ? 'bg-emerald-500' : 'bg-amber-500'} text-white px-4 py-2`}>
-                      {booking.payment.status}
+                    <Badge className={`${currentBooking?.payment.status === 'completed' ? 'bg-emerald-500' : 'bg-amber-500'} text-white px-4 py-2`}>
+                      {currentBooking?.payment.status}
                     </Badge>
                   </div>
 
-                  {booking.payment.status === 'pending' && (
+                  {currentBooking.payment.status === 'pending' && (
                     <Button className="w-full py-6 text-lg bg-linear-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white shadow-lg transition-all duration-300 hover:shadow-xl hover:scale-105">
                       <CreditCard className="w-5 h-5 mr-2" />
                       Make Payment Now
                     </Button>
                   )}
 
-                  {booking.payment.status === 'completed' && booking.payment.transactionId && (
+                  {currentBooking?.payment.status === 'completed' && currentBooking?.payment.transactionId && (
                     <>
                       <div className="text-sm text-slate-600 dark:text-slate-400">
-                        <strong>Transaction ID:</strong> {booking.payment.transactionId}
+                        <strong>Transaction ID:</strong> {currentBooking?.payment.transactionId}
                       </div>
                       <Alert className="bg-emerald-50 border-emerald-200 dark:bg-emerald-900/20 dark:border-emerald-700 border-2">
                         <CheckCircle className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
@@ -325,7 +314,7 @@ const BookingDetails = () => {
             )}
 
             {/* Nearby Mechanics */}
-            {booking.status === 'pending' && !booking.mechanic && nearbyMechanics.length > 0 && (
+            {currentBooking?.status === 'pending' && !currentBooking?.mechanic && nearbyMechanics.length > 0 && (
               <div className="animate-fade-in delay-500">
                 <h3 className="text-xl font-bold mb-6 flex items-center gap-2 text-slate-800 dark:text-slate-200">
                   <UserCheck className="w-6 h-6" />
@@ -349,16 +338,15 @@ const BookingDetails = () => {
                               {[...Array(5)].map((_, i) => (
                                 <Star
                                   key={i}
-                                  className={`w-4 h-4 ${
-                                    i < Math.round(mechanic.rating)
-                                      ? 'fill-yellow-400 text-yellow-400'
-                                      : 'text-gray-300 dark:text-slate-600'
-                                  }`}
+                                  className={`w-4 h-4 ${i < Math.round(mechanic.rating)
+                                    ? 'fill-yellow-400 text-yellow-400'
+                                    : 'text-gray-300 dark:text-slate-600'
+                                    }`}
                                 />
                               ))}
                             </div>
                             <span className="text-sm font-semibold text-yellow-600 dark:text-yellow-400">
-                              {mechanic.rating.toFixed(1)}
+                              {mechanic?.rating?.toFixed(1)}
                             </span>
                           </div>
                         </div>
@@ -381,78 +369,77 @@ const BookingDetails = () => {
             )}
 
             {/* Rating Form */}
-            {booking.status === 'completed' &&
-             booking.payment &&
-             booking.payment.status === 'completed' &&
-             !booking.rating && (
-              <Card className="animate-fade-in delay-600 border-0 shadow-lg overflow-hidden bg-linear-to-br from-amber-50 to-orange-50 dark:bg-slate-700">
-                <div className="bg-linear-to-r from-amber-500 to-orange-500 dark:from-amber-800 dark:to-orange-800 px-6 py-4">
-                  <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                    <Star className="w-6 h-6" />
-                    Rate Your Experience
-                  </h3>
-                </div>
-                <CardContent className="p-8">
-                  <div className="space-y-6">
-                    <div>
-                      <Label className="mb-4 block text-lg font-semibold text-slate-800 dark:text-slate-200">
-                        How would you rate the service?
-                      </Label>
-                      <div className="flex gap-3 justify-center mb-6">
-                        {[1, 2, 3, 4, 5].map((rating) => (
-                          <button
-                            key={rating}
-                            type="button"
-                            onClick={() => setSelectedRating(rating)}
-                            className="transition-all duration-300 hover:scale-125"
-                          >
-                            <Star
-                              className={`w-12 h-12 cursor-pointer transition-all duration-300 ${
-                                rating <= selectedRating
+            {currentBooking?.status === 'completed' &&
+              currentBooking?.payment &&
+              currentBooking?.payment.status === 'completed' &&
+              !currentBooking?.rating && (
+                <Card className="animate-fade-in delay-600 border-0 shadow-lg overflow-hidden bg-linear-to-br from-amber-50 to-orange-50 dark:bg-slate-700">
+                  <div className="bg-linear-to-r from-amber-500 to-orange-500 dark:from-amber-800 dark:to-orange-800 px-6 py-4">
+                    <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                      <Star className="w-6 h-6" />
+                      Rate Your Experience
+                    </h3>
+                  </div>
+                  <CardContent className="p-8">
+                    <div className="space-y-6">
+                      <div>
+                        <Label className="mb-4 block text-lg font-semibold text-slate-800 dark:text-slate-200">
+                          How would you rate the service?
+                        </Label>
+                        <div className="flex gap-3 justify-center mb-6">
+                          {[1, 2, 3, 4, 5].map((rating) => (
+                            <button
+                              key={rating}
+                              type="button"
+                              onClick={() => setSelectedRating(rating)}
+                              className="transition-all duration-300 hover:scale-125"
+                            >
+                              <Star
+                                className={`w-12 h-12 cursor-pointer transition-all duration-300 ${rating <= selectedRating
                                   ? 'fill-yellow-400 text-yellow-400 drop-shadow-lg'
                                   : 'text-gray-300 hover:text-yellow-200 dark:text-slate-600 dark:hover:text-slate-500'
-                              }`}
-                            />
-                          </button>
-                        ))}
+                                  }`}
+                              />
+                            </button>
+                          ))}
+                        </div>
+                        <p className="text-center text-sm text-slate-600 dark:text-slate-400">
+                          {selectedRating === 1 && "Poor"}
+                          {selectedRating === 2 && "Fair"}
+                          {selectedRating === 3 && "Good"}
+                          {selectedRating === 4 && "Very Good"}
+                          {selectedRating === 5 && "Excellent"}
+                        </p>
                       </div>
-                      <p className="text-center text-sm text-slate-600 dark:text-slate-400">
-                        {selectedRating === 1 && "Poor"}
-                        {selectedRating === 2 && "Fair"}
-                        {selectedRating === 3 && "Good"}
-                        {selectedRating === 4 && "Very Good"}
-                        {selectedRating === 5 && "Excellent"}
-                      </p>
-                    </div>
 
-                    <div>
-                      <Label htmlFor="comment" className="mb-2 block font-semibold text-slate-800 dark:text-slate-200">
-                        Share Your Feedback (Optional)
-                      </Label>
-                      <Textarea
-                        id="comment"
-                        value={comment}
-                        onChange={(e) => setComment(e.target.value)}
-                        placeholder="Tell us about your experience with the mechanic..."
-                        rows={4}
-                        className="mt-2 bg-white dark:bg-slate-600 dark:text-slate-200 dark:border-slate-500"
-                      />
-                    </div>
+                      <div>
+                        <Label htmlFor="comment" className="mb-2 block font-semibold text-slate-800 dark:text-slate-200">
+                          Share Your Feedback (Optional)
+                        </Label>
+                        <Textarea
+                          id="comment"
+                          value={comment}
+                          onChange={(e) => setComment(e.target.value)}
+                          placeholder="Tell us about your experience with the mechanic..."
+                          rows={4}
+                          className="mt-2 bg-white dark:bg-slate-600 dark:text-slate-200 dark:border-slate-500"
+                        />
+                      </div>
 
-                    <Button
-                      onClick={handleRatingSubmit}
-                      className="w-full py-6 text-lg bg-linear-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white shadow-lg transition-all duration-300 hover:shadow-xl hover:scale-105"
-                    >
-                      <Star className="w-5 h-5 mr-2" />
-                      Submit Rating
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+                      <Button
+                        onClick={handleRatingSubmit}
+                        className="w-full py-6 text-lg bg-linear-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white shadow-lg transition-all duration-300 hover:shadow-xl hover:scale-105"
+                      >
+                        <Star className="w-5 h-5 mr-2" />
+                        Submit Rating
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
 
             {/* Existing Rating Display */}
-            {booking.rating && (
+            {currentBooking?.rating && (
               <Card className="animate-fade-in delay-600 border-0 shadow-lg bg-slate-50 dark:bg-slate-700">
                 <CardHeader>
                   <CardTitle className="text-xl flex items-center gap-2 text-slate-800 dark:text-slate-200">
@@ -466,20 +453,19 @@ const BookingDetails = () => {
                       {[1, 2, 3, 4, 5].map((rating) => (
                         <Star
                           key={rating}
-                          className={`w-6 h-6 ${
-                            rating <= booking.rating.value
-                              ? 'fill-yellow-400 text-yellow-400'
-                              : 'text-gray-300 dark:text-slate-600'
-                          }`}
+                          className={`w-6 h-6 ${rating <= currentBooking.rating.value
+                            ? 'fill-yellow-400 text-yellow-400'
+                            : 'text-gray-300 dark:text-slate-600'
+                            }`}
                         />
                       ))}
                     </div>
                     <span className="text-sm text-slate-500 dark:text-slate-400">
-                      {new Date(booking.rating.createdAt).toLocaleDateString()}
+                      {new Date(currentBooking.rating.createdAt).toLocaleDateString()}
                     </span>
                   </div>
-                  {booking.rating.comment ? (
-                    <p className="leading-relaxed text-slate-700 dark:text-slate-300">{booking.rating.comment}</p>
+                  {currentBooking.rating.comment ? (
+                    <p className="leading-relaxed text-slate-700 dark:text-slate-300">{currentBooking.rating.comment}</p>
                   ) : (
                     <p className="italic text-slate-400 dark:text-slate-500">No comment provided</p>
                   )}
@@ -498,7 +484,7 @@ const BookingDetails = () => {
               </Button>
 
               <div className="flex flex-col sm:flex-row gap-3">
-                {(booking.status === 'pending' || booking.status === 'accepted') && (
+                {(currentBooking?.status === 'pending' || currentBooking?.status === 'accepted') && (
                   <Button
                     onClick={handleCancelBooking}
                     className="py-6 px-8 text-base font-semibold bg-linear-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white shadow-lg transition-all duration-300 hover:shadow-xl hover:scale-105"
@@ -508,12 +494,25 @@ const BookingDetails = () => {
                   </Button>
                 )}
 
-                {booking.mechanic && (
-                  <Button className="py-6 px-8 text-base font-semibold bg-linear-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white shadow-lg transition-all duration-300 hover:shadow-xl hover:scale-105">
+                {currentBooking?.mechanic && (
+                  <Button
+                    onClick={() => setIsChatOpen(true)}
+                    className="py-6 px-8 text-base font-semibold bg-linear-to-r from-blue-500 to-purple-600 
+                   hover:from-blue-600 hover:to-purple-700 text-white shadow-lg transition-all 
+                   duration-300 hover:shadow-xl hover:scale-105 flex items-center"
+                  >
                     <MessageSquare className="w-5 h-5 mr-2" />
                     Chat with Mechanic
                   </Button>
                 )}
+
+                <ChatModal
+                  isOpen={isChatOpen}
+                  onClose={() => setIsChatOpen(false)}
+                  bookingId={currentBooking?._id}
+                  mechanic={currentBooking?.mechanic}
+                />
+
 
               </div>
             </div>
@@ -521,7 +520,7 @@ const BookingDetails = () => {
         </Card>
 
         {/* Tracking Map */}
-        {booking.status === 'in-progress' && booking.mechanic && (
+        {currentBooking?.status === 'in-progress' && currentBooking?.mechanic && (
           <Card className="animate-fade-in delay-700 shadow-2xl border-0 bg-white dark:bg-slate-800">
             <CardHeader className="bg-linear-to-r from-purple-600 to-pink-600 dark:bg-slate-700 text-white py-6">
               <CardTitle className="text-2xl flex items-center gap-2">
@@ -546,4 +545,3 @@ const BookingDetails = () => {
 }
 
 export default BookingDetails;
-              

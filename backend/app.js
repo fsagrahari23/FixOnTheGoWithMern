@@ -16,6 +16,7 @@ const cors = require("cors")
 // Import routes
 const authRoutes = require("./routes/auth");
 const userRoutes = require("./routes/user");
+const emergencyRoutes = require("./routes/emergency");
 const mechanicRoutes = require("./routes/mechanic");
 const adminRoutes = require("./routes/admin");
 const chatRoutes = require("./routes/chat");
@@ -102,6 +103,7 @@ app.set("views", path.join(__dirname, "views"));
 // Routes
 app.use("/auth", authRoutes);
 app.use("/user", isAuthenticated, isUser, userRoutes);
+app.use("/user", isAuthenticated, isUser, emergencyRoutes);
 app.use("/mechanic", isAuthenticated, isMechanic, mechanicRoutes);
 app.use("/admin", isAuthenticated, isAdmin, adminRoutes);
 app.use("/chat", isAuthenticated, chatRoutes);
