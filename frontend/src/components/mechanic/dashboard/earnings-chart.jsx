@@ -49,15 +49,24 @@ export function EarningsChart() {
         <div className="h-[300px]">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={data}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="date" />
-              <YAxis />
-              <Tooltip />
+              <CartesianGrid strokeDasharray="3 3" className="stroke-border dark:stroke-gray-700" />
+              <XAxis dataKey="date" className="text-foreground" />
+              <YAxis className="text-foreground" />
+              <Tooltip 
+                contentStyle={{ 
+                  backgroundColor: 'hsl(var(--card))', 
+                  border: '1px solid hsl(var(--border))',
+                  borderRadius: '8px',
+                  color: 'hsl(var(--foreground))'
+                }}
+              />
               <Line 
                 type="monotone" 
                 dataKey="amount" 
-                stroke="#2563eb" 
-                strokeWidth={2} 
+                stroke="#3b82f6" 
+                strokeWidth={3}
+                dot={{ fill: '#3b82f6', r: 4 }}
+                activeDot={{ r: 6 }}
               />
             </LineChart>
           </ResponsiveContainer>

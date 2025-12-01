@@ -21,38 +21,7 @@ import {
   DollarSign
 } from 'lucide-react';
 
-// Example booking data
-const exampleBooking = {
-  _id: 'BK123456789',
-  createdAt: new Date().toISOString(),
-  problemCategory: 'Engine Trouble',
-  status: 'in-progress',
-  location: {
-    address: '123 Main Street, Downtown, City 12345',
-    coordinates: [40.7128, -74.0060]
-  },
-  mechanic: {
-    name: 'John Smith',
-    phone: '+1 (555) 123-4567',
-    rating: 4.5
-  },
-  description: 'My car engine is making unusual noises and losing power when accelerating. It started this morning and has been getting progressively worse.',
-  images: [
-    'https://images.unsplash.com/photo-1486262715619-67b85e0b08d3?w=400',
-    'https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?w=400',
-  ],
-  payment: {
-    amount: 150.00,
-    status: 'pending',
-    transactionId: null
-  },
-  rating: null
-};
 
-const nearbyMechanicsExample = [
-  { _id: 'M1', name: 'Mike Johnson', phone: '+1 (555) 234-5678', rating: 4.8 },
-  { _id: 'M2', name: 'Sarah Williams', phone: '+1 (555) 345-6789', rating: 4.6 }
-];
 
 const InfoItem = ({ icon, label, value, highlight }) => {
   return (
@@ -66,43 +35,66 @@ const InfoItem = ({ icon, label, value, highlight }) => {
   );
 }
 
+import { useParams, useNavigate } from 'react-router-dom';
+import { apiGet, apiPost } from '../../lib/api';
+
 const BookingDetails = () => {
-  const [booking, setBooking] = useState(exampleBooking);
-  const [nearbyMechanics] = useState(nearbyMechanicsExample);
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const [booking, setBooking] = useState(null);
+  const [nearbyMechanics, setNearbyMechanics] = useState([]);
   const [selectedRating, setSelectedRating] = useState(5);
   const [comment, setComment] = useState('');
   const [animateIn, setAnimateIn] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     setAnimateIn(true);
-  }, []);
-
-
+    setLoading(true);
+    setError('');
+    const fetchBooking = async () => {
+      try {
+        // Fetch booking details using the dedicated API endpoint
+        const res = await apiGet(`/user/api/booking/${id}`);
+        if (res.booking) {
+          setBooking(res.booking);
+        } else {
+          setError('Booking not found.');
+        }
+      } catch (e) {
+        setError('Failed to load booking.');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchBooking();
+  }, [id]);
 
   const getStatusConfig = (status) => {
     const configs = {
       pending: { 
-        color: 'bg-gradient-to-r from-amber-400 to-orange-500',
+        color: 'bg-linear-to-r from-amber-400 to-orange-500',
         textColor: 'text-white',
         icon: '⏳'
       },
       accepted: { 
-        color: 'bg-gradient-to-r from-blue-400 to-blue-600',
+        color: 'bg-linear-to-r from-blue-400 to-blue-600',
         textColor: 'text-white',
         icon: '✓'
       },
       'in-progress': { 
-        color: 'bg-gradient-to-r from-purple-400 to-pink-500',
+        color: 'bg-linear-to-r from-purple-400 to-pink-500',
         textColor: 'text-white',
         icon: '🔧'
       },
       completed: { 
-        color: 'bg-gradient-to-r from-emerald-400 to-green-600',
+        color: 'bg-linear-to-r from-emerald-400 to-green-600',
         textColor: 'text-white',
         icon: '✓'
       },
       cancelled: { 
-        color: 'bg-gradient-to-r from-red-400 to-red-600',
+        color: 'bg-linear-to-r from-red-400 to-red-600',
         textColor: 'text-white',
         icon: '✗'
       }
@@ -135,7 +127,7 @@ const BookingDetails = () => {
   const statusConfig = getStatusConfig(booking.status);
 
   return (
-    <div className="min-h-screen transition-all duration-500 bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 dark:bg-gradient-to-br dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 py-8 px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen transition-all duration-500 bg-linear-to-br from-slate-50 via-blue-50 to-purple-50 dark:bg-linear-to-br dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 py-8 px-4 sm:px-6 lg:px-8">
 
 
 
@@ -146,7 +138,7 @@ const BookingDetails = () => {
             animateIn ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
           } bg-white dark:bg-slate-800`}
         >
-          <CardHeader className="bg-gradient-to-r from-indigo-600 to-purple-600 dark:from-slate-700 dark:to-slate-600 text-white py-8 px-8">
+          <CardHeader className="bg-linear-to-r from-indigo-600 to-purple-600 dark:from-slate-700 dark:to-slate-600 text-white py-8 px-8">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <div>
                 <CardTitle className="text-3xl font-bold mb-2">Booking Details</CardTitle>
@@ -162,7 +154,7 @@ const BookingDetails = () => {
           <CardContent className="p-8 space-y-10">
             {/* Basic Info Grid */}
             <div className="grid lg:grid-cols-2 gap-8">
-              <Card className="p-6 shadow-md border-0 animate-fade-in bg-gradient-to-br from-blue-50 to-indigo-50 dark:bg-slate-700">
+              <Card className="p-6 shadow-md border-0 animate-fade-in bg-linear-to-br from-blue-50 to-indigo-50 dark:bg-slate-700">
                 <h3 className="text-lg font-bold mb-6 flex items-center gap-2 text-indigo-700 dark:text-blue-300">
                   <FileText className="w-5 h-5" />
                   Booking Information
@@ -192,7 +184,7 @@ const BookingDetails = () => {
                 </div>
               </Card>
               
-              <Card className="p-6 shadow-md border-0 animate-fade-in delay-100 bg-gradient-to-br from-purple-50 to-pink-50 dark:bg-slate-700">
+              <Card className="p-6 shadow-md border-0 animate-fade-in delay-100 bg-linear-to-br from-purple-50 to-pink-50 dark:bg-slate-700">
                 <h3 className="text-lg font-bold mb-6 flex items-center gap-2 text-purple-700 dark:text-purple-300">
                   <MapPin className="w-5 h-5" />
                   Location & Mechanic
@@ -275,7 +267,7 @@ const BookingDetails = () => {
                         alt={`Booking ${index + 1}`}
                         className="w-full h-64 object-cover transition-transform duration-500 group-hover:scale-110"
                       />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                      <div className="absolute inset-0 bg-linear-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                       <div className="absolute bottom-4 left-4 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                         <p className="font-semibold">Image {index + 1}</p>
                       </div>
@@ -288,7 +280,7 @@ const BookingDetails = () => {
             {/* Payment Details */}
             {booking.status === 'completed' && booking.payment && (
               <Card className="animate-fade-in delay-400 border-0 shadow-lg overflow-hidden bg-white dark:bg-slate-700">
-                <div className="bg-gradient-to-r from-emerald-500 to-teal-500 dark:from-emerald-800 dark:to-teal-800 px-6 py-4">
+                <div className="bg-linear-to-r from-emerald-500 to-teal-500 dark:from-emerald-800 dark:to-teal-800 px-6 py-4">
                   <h3 className="text-xl font-bold text-white flex items-center gap-2">
                     <DollarSign className="w-6 h-6" />
                     Payment Details
@@ -309,7 +301,7 @@ const BookingDetails = () => {
                   </div>
 
                   {booking.payment.status === 'pending' && (
-                    <Button className="w-full py-6 text-lg bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white shadow-lg transition-all duration-300 hover:shadow-xl hover:scale-105">
+                    <Button className="w-full py-6 text-lg bg-linear-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white shadow-lg transition-all duration-300 hover:shadow-xl hover:scale-105">
                       <CreditCard className="w-5 h-5 mr-2" />
                       Make Payment Now
                     </Button>
@@ -376,7 +368,7 @@ const BookingDetails = () => {
                         </div>
                         <Button
                           onClick={() => handleSelectMechanic(mechanic._id)}
-                          className="w-full py-6 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white shadow-lg transition-all duration-300 hover:shadow-xl hover:scale-105"
+                          className="w-full py-6 bg-linear-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white shadow-lg transition-all duration-300 hover:shadow-xl hover:scale-105"
                         >
                           <UserCheck className="w-5 h-5 mr-2" />
                           Select This Mechanic
@@ -393,8 +385,8 @@ const BookingDetails = () => {
              booking.payment &&
              booking.payment.status === 'completed' &&
              !booking.rating && (
-              <Card className="animate-fade-in delay-600 border-0 shadow-lg overflow-hidden bg-gradient-to-br from-amber-50 to-orange-50 dark:bg-slate-700">
-                <div className="bg-gradient-to-r from-amber-500 to-orange-500 dark:from-amber-800 dark:to-orange-800 px-6 py-4">
+              <Card className="animate-fade-in delay-600 border-0 shadow-lg overflow-hidden bg-linear-to-br from-amber-50 to-orange-50 dark:bg-slate-700">
+                <div className="bg-linear-to-r from-amber-500 to-orange-500 dark:from-amber-800 dark:to-orange-800 px-6 py-4">
                   <h3 className="text-xl font-bold text-white flex items-center gap-2">
                     <Star className="w-6 h-6" />
                     Rate Your Experience
@@ -449,7 +441,7 @@ const BookingDetails = () => {
 
                     <Button
                       onClick={handleRatingSubmit}
-                      className="w-full py-6 text-lg bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white shadow-lg transition-all duration-300 hover:shadow-xl hover:scale-105"
+                      className="w-full py-6 text-lg bg-linear-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white shadow-lg transition-all duration-300 hover:shadow-xl hover:scale-105"
                     >
                       <Star className="w-5 h-5 mr-2" />
                       Submit Rating
@@ -509,7 +501,7 @@ const BookingDetails = () => {
                 {(booking.status === 'pending' || booking.status === 'accepted') && (
                   <Button
                     onClick={handleCancelBooking}
-                    className="py-6 px-8 text-base font-semibold bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white shadow-lg transition-all duration-300 hover:shadow-xl hover:scale-105"
+                    className="py-6 px-8 text-base font-semibold bg-linear-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white shadow-lg transition-all duration-300 hover:shadow-xl hover:scale-105"
                   >
                     <XCircle className="w-5 h-5 mr-2" />
                     Cancel Booking
@@ -517,11 +509,12 @@ const BookingDetails = () => {
                 )}
 
                 {booking.mechanic && (
-                  <Button className="py-6 px-8 text-base font-semibold bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white shadow-lg transition-all duration-300 hover:shadow-xl hover:scale-105">
+                  <Button className="py-6 px-8 text-base font-semibold bg-linear-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white shadow-lg transition-all duration-300 hover:shadow-xl hover:scale-105">
                     <MessageSquare className="w-5 h-5 mr-2" />
                     Chat with Mechanic
                   </Button>
                 )}
+
               </div>
             </div>
           </CardContent>
@@ -530,14 +523,14 @@ const BookingDetails = () => {
         {/* Tracking Map */}
         {booking.status === 'in-progress' && booking.mechanic && (
           <Card className="animate-fade-in delay-700 shadow-2xl border-0 bg-white dark:bg-slate-800">
-            <CardHeader className="bg-gradient-to-r from-purple-600 to-pink-600 dark:bg-slate-700 text-white py-6">
+            <CardHeader className="bg-linear-to-r from-purple-600 to-pink-600 dark:bg-slate-700 text-white py-6">
               <CardTitle className="text-2xl flex items-center gap-2">
                 <MapPin className="w-6 h-6" />
                 Live Tracking
               </CardTitle>
             </CardHeader>
             <CardContent className="p-8">
-              <div className="rounded-2xl h-80 flex items-center justify-center mb-6 bg-gradient-to-br from-purple-100 to-pink-100 dark:bg-slate-700">
+              <div className="rounded-2xl h-80 flex items-center justify-center mb-6 bg-linear-to-br from-purple-100 to-pink-100 dark:bg-slate-700">
                 <div className="text-center">
                   <MapPin className="w-16 h-16 mx-auto mb-4 text-purple-400 dark:text-slate-500" />
                   <p className="text-lg font-semibold text-slate-700 dark:text-slate-300">Interactive Map</p>
@@ -550,7 +543,7 @@ const BookingDetails = () => {
       </div>
     </div>
   );
-};
+}
 
 export default BookingDetails;
               
