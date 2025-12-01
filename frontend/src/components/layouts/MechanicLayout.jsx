@@ -13,7 +13,7 @@ import {
   DropdownMenuTrigger,
 } from '../ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
-import { LogOut, Settings, User as UserIcon } from 'lucide-react';
+import { LogOut, User as UserIcon } from 'lucide-react';
 
 export function MechanicLayout() {
   const location = useLocation();
@@ -305,7 +305,6 @@ function UserMenu() {
   };
 
   const handleProfile = () => navigate('/mechanic/profile');
-  const handleSettings = () => navigate('/mechanic/settings');
 
   return (
     <DropdownMenu open={open} onOpenChange={setOpen}>
@@ -331,9 +330,7 @@ function UserMenu() {
         <DropdownMenuItem onClick={handleProfile}>
           <UserIcon className="mr-2 h-4 w-4" /> Profile
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={handleSettings}>
-          <Settings className="mr-2 h-4 w-4" /> Settings
-        </DropdownMenuItem>
+        {/* Settings removed as per request */}
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={handleLogout} className="text-red-600 dark:text-red-400">
           <LogOut className="mr-2 h-4 w-4" /> Logout

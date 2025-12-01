@@ -316,6 +316,15 @@ const BookingForm = () => {
       newErrors.dropoff = 'Please provide a valid dropoff location';
     }
 
+    // Validate uploaded images (optional) — max 5MB each, must be images
+    if (selectedFiles && selectedFiles.length > 0) {
+      const maxMB = 5 * 1024 * 1024;
+      for (const f of Array.from(selectedFiles)) {
+        if (f.size > maxMB) { newErrors.images = 'Each image must be under 5MB'; break; }
+        if (!f.type.startsWith('image/')) { newErrors.images = 'Only image files are allowed'; break; }
+      }
+    }
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -464,6 +473,9 @@ const BookingForm = () => {
                   You can upload multiple images to help the mechanic understand the issue better.
                 </p>
                 <ImagePreview files={selectedFiles} />
+                {errors.images && (
+                  <p className="text-sm text-red-500 dark:text-red-400 mt-1">{errors.images}</p>
+                )}
               </div>
 
               {/* Location */}
