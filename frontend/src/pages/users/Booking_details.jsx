@@ -26,9 +26,11 @@ import {
   fetchBookingDetails,
   selectMechanic,
   cancelBooking,
-  rateBooking
+  rateBooking,
+  processPayment
 } from '../../store/slices/bookingThunks';
 import ChatModal from '../../components/users/ChatModal';
+import PaymentModal from '../../components/users/PaymentModal';
 // import { setCurrentBooking, clearError } from '../../store/slices/bookingSlice';
 
 const InfoItem = ({ icon, label, value, highlight }) => {
@@ -49,6 +51,7 @@ const BookingDetails = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
   const [isChatOpen, setIsChatOpen] = useState(false);
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
 
   const { currentBooking, nearbyMechanics, loading, error } = useSelector((state) => state.booking);
   const [selectedRating, setSelectedRating] = useState(5);
@@ -113,6 +116,28 @@ const BookingDetails = () => {
     if (window.confirm('Are you sure you want to cancel this booking?')) {
       dispatch(cancelBooking(id));
     }
+  };
+
+  const handlePayment = async (paymentMethodId) => {
+    try {
+      const result = await dispatch(processPayment({ 
+        bookingId: id, 
+        paymentMethodId 
+      })).unwrap();
+      
+      if (result.success) {
+        alert('Payment completed successfully!');
+        // Refresh booking details to show updated payment status
+        dispatch(fetchBookingDetails(id));
+      }
+    } catch (error) {
+      console.error('Payment failed:', error);
+      alert(`Payment failed: ${error.message || 'Please try again'}`);
+    }
+  };
+
+  const handleOpenPaymentModal = () => {
+    setIsPaymentModalOpen(true);
   };
 
   const statusConfig = getStatusConfig(currentBooking?.status);
@@ -290,7 +315,11 @@ const BookingDetails = () => {
                   </div>
 
                   {currentBooking.payment.status === 'pending' && (
-                    <Button className="w-full py-6 text-lg bg-linear-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white shadow-lg transition-all duration-300 hover:shadow-xl hover:scale-105">
+                    <Button 
+                      onClick={handleOpenPaymentModal}
+                      disabled={loading}
+                      className="w-full py-6 text-lg bg-linear-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white shadow-lg transition-all duration-300 hover:shadow-xl hover:scale-105"
+                    >
                       <CreditCard className="w-5 h-5 mr-2" />
                       Make Payment Now
                     </Button>
@@ -513,6 +542,14 @@ const BookingDetails = () => {
                   mechanic={currentBooking?.mechanic}
                 />
 
+                <PaymentModal
+                  isOpen={isPaymentModalOpen}
+                  onClose={() => setIsPaymentModalOpen(false)}
+                  onPayment={handlePayment}
+                  amount={currentBooking?.payment?.amount}
+                  bookingId={currentBooking?._id}
+                  loading={loading}
+                />
 
               </div>
             </div>
