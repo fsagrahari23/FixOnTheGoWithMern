@@ -7,9 +7,9 @@ module.exports = (io) => {
   const onlineUsers = {};
 
   io.on("connection", (socket) => {
-  console.log("Backend: New client connected");
+    console.log("Backend: New client connected");
 
-  socket.on("authenticate", async (userId) => {
+    socket.on("authenticate", async (userId) => {
       try {
         const user = await User.findById(userId);
         if (user) {
@@ -56,6 +56,19 @@ module.exports = (io) => {
         }
       } catch (error) {
         console.error("Join chat error:", error);
+      }
+    });
+
+    // Join a general chat room
+    socket.on("join-general-chat", async (chatId) => {
+      try {
+        const chat = await GeneralChat.findById(chatId);
+        if (chat && chat.participants.includes(socket.userId)) {
+          socket.join(`general-${chatId}`);
+          console.log(`User ${socket.userId} joined general chat ${chatId}`);
+        }
+      } catch (error) {
+        console.error("Join general chat error:", error);
       }
     });
 
@@ -112,6 +125,59 @@ module.exports = (io) => {
       }
     });
 
+    // Send a message in general chat
+    socket.on("send-general-message", async (data) => {
+      try {
+        const { chatId, content, attachments } = data;
+
+        // Save message to database
+        const chat = await GeneralChat.findById(chatId);
+        if (chat && chat.participants.includes(socket.userId)) {
+          const newMessage = {
+            sender: socket.userId,
+            content,
+            timestamp: new Date(),
+            read: false,
+            attachments: attachments || [],
+          };
+
+          chat.messages.push(newMessage);
+          chat.lastActivity = new Date();
+          chat.updatedAt = new Date();
+          await chat.save();
+
+          // Get sender info for the message
+          const sender = await User.findById(socket.userId).select("name role");
+
+          // Broadcast to all users in the general chat room
+          io.to(`general-${chatId}`).emit("new-general-message", {
+            chatId,
+            message: {
+              ...newMessage,
+              sender: {
+                _id: socket.userId,
+                name: sender.name,
+                role: sender.role,
+              },
+            },
+          });
+
+          // Send notification to offline participants
+          chat.participants.forEach((participantId) => {
+            if (
+              participantId.toString() !== socket.userId &&
+              !onlineUsers[participantId.toString()]
+            ) {
+              // Here you would implement push notifications or other notification methods
+              console.log(`Should notify offline user ${participantId}`);
+            }
+          });
+        }
+      } catch (error) {
+        console.error("Send general message error:", error);
+      }
+    });
+
     // Mark message as read
     socket.on("mark-read", async (data) => {
       try {
@@ -140,6 +206,37 @@ module.exports = (io) => {
         }
       } catch (error) {
         console.error("Mark read error:", error);
+      }
+    });
+
+    // Mark general message as read
+    socket.on("mark-general-read", async (data) => {
+      try {
+        const { chatId, messageId } = data;
+
+        const chat = await GeneralChat.findById(chatId);
+        if (chat && chat.participants.includes(socket.userId)) {
+          const message = chat.messages.id(messageId);
+          if (
+            message &&
+            message.sender.toString() !== socket.userId &&
+            !message.read
+          ) {
+            message.read = true;
+            await chat.save();
+
+            // Notify sender that message was read
+            const senderId = message.sender.toString();
+            if (onlineUsers[senderId]) {
+              io.to(onlineUsers[senderId]).emit("general-message-read", {
+                chatId,
+                messageId,
+              });
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Mark general read error:", error);
       }
     });
 
