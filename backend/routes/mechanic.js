@@ -45,7 +45,7 @@ router.get("/api/dashboard", async (req, res) => {
       0
     );
 
-    const nearbyBookings = await Booking.find({
+    const nearbyBookings = req.user.location && req.user.location.coordinates ? await Booking.find({
       status: "pending",
       mechanic: null,
       location: {
@@ -59,9 +59,9 @@ router.get("/api/dashboard", async (req, res) => {
       },
     })
       .populate("user", "name")
-      .limit(5);
+      .limit(5) : [];
 
-    const userRequestedJob = await Booking.find({
+    const userRequestedJob = req.user.location && req.user.location.coordinates ? await Booking.find({
       mechanic: req.user._id,
       status: "pending",
       location: {
@@ -73,7 +73,7 @@ router.get("/api/dashboard", async (req, res) => {
           $maxDistance: 10000,
         },
       },
-    }).populate("user", "name");
+    }).populate("user", "name") : [];
 
     res.json({
       title: "Mechanic Dashboard",
@@ -131,12 +131,18 @@ router.post("/booking/:id/accept", async (req, res) => {
     const booking = await Booking.findById(req.params.id);
 
     if (!booking) {
+      if (req.headers.accept?.includes('application/json')) {
+        return res.status(404).json({ success: false, message: "Booking not found" });
+      }
       req.flash("error_msg", "Booking not found");
       return res.redirect("/mechanic/dashboard");
     }
 
     // Check if booking is in pending state
     if (booking.status !== "pending") {
+      if (req.headers.accept?.includes('application/json')) {
+        return res.status(400).json({ success: false, message: "Booking is not in pending state" });
+      }
       req.flash("error_msg", "Booking is not in pending state");
       return res.redirect(`/mechanic/booking/${booking._id}`);
     }
@@ -157,10 +163,18 @@ router.post("/booking/:id/accept", async (req, res) => {
       await chat.save();
     }
 
+    // Return JSON for API calls, redirect for form submissions
+    if (req.headers.accept?.includes('application/json')) {
+      return res.json({ success: true, message: "Booking accepted successfully", booking });
+    }
+
     req.flash("success_msg", "Booking accepted successfully");
     res.redirect(`/mechanic/booking/${booking._id}`);
   } catch (error) {
     console.error("Accept booking error:", error);
+    if (req.headers.accept?.includes('application/json')) {
+      return res.status(500).json({ success: false, message: "Failed to accept booking" });
+    }
     req.flash("error_msg", "Failed to accept booking");
     res.redirect(`/mechanic/booking/${req.params.id}`);
   }
@@ -172,18 +186,27 @@ router.post("/booking/:id/start", async (req, res) => {
     const booking = await Booking.findById(req.params.id);
 
     if (!booking) {
+      if (req.headers.accept?.includes('application/json')) {
+        return res.status(404).json({ success: false, message: "Booking not found" });
+      }
       req.flash("error_msg", "Booking not found");
       return res.redirect("/mechanic/dashboard");
     }
 
     // Check if mechanic is authorized
     if (booking.mechanic.toString() !== req.user._id.toString()) {
+      if (req.headers.accept?.includes('application/json')) {
+        return res.status(403).json({ success: false, message: "Not authorized" });
+      }
       req.flash("error_msg", "Not authorized");
       return res.redirect("/mechanic/dashboard");
     }
 
     // Check if booking is in accepted state
     if (booking.status !== "accepted") {
+      if (req.headers.accept?.includes('application/json')) {
+        return res.status(400).json({ success: false, message: "Booking is not in accepted state" });
+      }
       req.flash("error_msg", "Booking is not in accepted state");
       return res.redirect(`/mechanic/booking/${booking._id}`);
     }
@@ -193,10 +216,17 @@ router.post("/booking/:id/start", async (req, res) => {
     booking.updatedAt = new Date();
     await booking.save();
 
+    if (req.headers.accept?.includes('application/json')) {
+      return res.json({ success: true, message: "Service started successfully", booking });
+    }
+
     req.flash("success_msg", "Service started successfully");
     res.redirect(`/mechanic/booking/${booking._id}`);
   } catch (error) {
     console.error("Start service error:", error);
+    if (req.headers.accept?.includes('application/json')) {
+      return res.status(500).json({ success: false, message: "Failed to start service" });
+    }
     req.flash("error_msg", "Failed to start service");
     res.redirect(`/mechanic/booking/${req.params.id}`);
   }
@@ -208,6 +238,9 @@ router.post("/booking/:id/complete", async (req, res) => {
     const { amount, notes } = req.body;
 
     if (!amount) {
+      if (req.headers.accept?.includes('application/json')) {
+        return res.status(400).json({ success: false, message: "Please enter the service amount" });
+      }
       req.flash("error_msg", "Please enter the service amount");
       return res.redirect(`/mechanic/booking/${req.params.id}`);
     }
@@ -215,18 +248,27 @@ router.post("/booking/:id/complete", async (req, res) => {
     const booking = await Booking.findById(req.params.id);
 
     if (!booking) {
+      if (req.headers.accept?.includes('application/json')) {
+        return res.status(404).json({ success: false, message: "Booking not found" });
+      }
       req.flash("error_msg", "Booking not found");
       return res.redirect("/mechanic/dashboard");
     }
 
     // Check if mechanic is authorized
     if (booking.mechanic.toString() !== req.user._id.toString()) {
+      if (req.headers.accept?.includes('application/json')) {
+        return res.status(403).json({ success: false, message: "Not authorized" });
+      }
       req.flash("error_msg", "Not authorized");
       return res.redirect("/mechanic/dashboard");
     }
 
     // Check if booking is in in-progress state
     if (booking.status !== "in-progress") {
+      if (req.headers.accept?.includes('application/json')) {
+        return res.status(400).json({ success: false, message: "Booking is not in in-progress state" });
+      }
       req.flash("error_msg", "Booking is not in in-progress state");
       return res.redirect(`/mechanic/booking/${booking._id}`);
     }
@@ -266,10 +308,17 @@ router.post("/booking/:id/complete", async (req, res) => {
       console.error('Error emitting booking status change:', emitErr);
     }
 
+    if (req.headers.accept?.includes('application/json')) {
+      return res.json({ success: true, message: "Service completed successfully", booking });
+    }
+
     req.flash("success_msg", "Service completed successfully");
     res.redirect(`/mechanic/booking/${booking._id}`);
   } catch (error) {
     console.error("Complete service error:", error);
+    if (req.headers.accept?.includes('application/json')) {
+      return res.status(500).json({ success: false, message: "Failed to complete service" });
+    }
     req.flash("error_msg", "Failed to complete service");
     res.redirect(`/mechanic/booking/${req.params.id}`);
   }

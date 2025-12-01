@@ -1,6 +1,7 @@
 module.exports = {
   isAuthenticated: (req, res, next) => {
     if (req.session.user) {
+      req.user = req.session.user;
       return next();
     }
     return res.status(401).json({ message: "Please log in to access this resource" });
@@ -8,6 +9,7 @@ module.exports = {
 
   isUser: (req, res, next) => {
     if (req.session.user && req.session.user.role === "user") {
+      req.user = req.session.user;
       return next();
     }
     return res.status(403).json({ message: "Not authorized as a user" });
@@ -18,6 +20,7 @@ module.exports = {
       if (!req.session.user.isApproved) {
         return res.status(403).json({ message: "Your account is pending approval by admin" });
       }
+      req.user = req.session.user;
       return next();
     }
     return res.status(403).json({ message: "Not authorized as a mechanic" });
@@ -25,6 +28,7 @@ module.exports = {
 
   isAdmin: (req, res, next) => {
     if (req.session.user && req.session.user.role === "admin") {
+      req.user = req.session.user;
       return next();
     }
     return res.status(403).json({ message: "Not authorized as an admin" });
