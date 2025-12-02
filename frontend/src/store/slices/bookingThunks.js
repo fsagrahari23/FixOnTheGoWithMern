@@ -43,13 +43,12 @@ export const fetchBookingDetails = createAsyncThunk(
 export const selectMechanic = createAsyncThunk(
     'booking/selectMechanic',
     async ({ id, mechanicId }, { rejectWithValue }) => {
-
         console.log(id)
         try {
             const response = await apiPost(`/user/booking/${id}/select-mechanic`, { mechanicId });
-            return response.data;
+            return response; // apiPost already returns parsed JSON
         } catch (error) {
-            return rejectWithValue(error.response.data);
+            return rejectWithValue(error.message || 'Failed to select mechanic');
         }
     }
 );
