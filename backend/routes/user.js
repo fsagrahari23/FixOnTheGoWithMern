@@ -33,6 +33,29 @@ router.get("/api/maintenance", async (req, res) => {
   }
 })
 
+// Get premium subscription data
+router.get("/api/premium", async (req, res) => {
+  try {
+    const subscription = await Subscription.findOne({
+      user: req.user._id,
+      status: "active",
+      expiresAt: { $gt: new Date() },
+    })
+
+    res.json({
+      success: true,
+      subscription,
+      user: {
+        isPremium: req.user.isPremium,
+        premiumTier: req.user.premiumTier
+      }
+    })
+  } catch (error) {
+    console.error("Premium API error:", error)
+    res.status(500).json({ success: false, error: "Failed to load premium data" })
+  }
+})
+
 
 // Chat APIs
 
@@ -737,8 +760,7 @@ router.post("/premium/cancel", async (req, res) => {
     })
 
     if (!subscription) {
-      req.flash("error_msg", "No active subscription found")
-      return res.redirect("/user/profile")
+      return res.status(404).json({ success: false, message: "No active subscription found" })
     }
 
     // Update subscription
@@ -760,12 +782,10 @@ router.post("/premium/cancel", async (req, res) => {
       },
     })
 
-    req.flash("success_msg", "Your premium subscription has been cancelled")
-    res.redirect("/user/profile")
+    return res.status(200).json({ success: true, message: "Your premium subscription has been cancelled" })
   } catch (error) {
     console.error("Cancel subscription error:", error)
-    req.flash("error_msg", "Failed to cancel subscription")
-    res.redirect("/user/profile")
+    return res.status(500).json({ success: false, message: "Failed to cancel subscription" })
   }
 })
 router.get("/premium/success", async (req, res) => {
