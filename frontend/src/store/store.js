@@ -4,7 +4,8 @@ import themeReducer from './slices/themeSlice';
 import authReducer from './slices/authSlice';
 import adminReducer from './slices/adminSlice';
 import bookingReducer from './slices/bookingSlice';
-import chatReducer from "./slices/chatSlice"; // 👈 ADD THIS
+import chatReducer from "./slices/chatSlice";
+import mechanicReducer from './slices/mechanicSlice';
 
 
 const store = configureStore({
@@ -15,6 +16,7 @@ const store = configureStore({
         admin: adminReducer,
         booking: bookingReducer,
         chat: chatReducer,
+        mechanic: mechanicReducer,
     },
 });
 
