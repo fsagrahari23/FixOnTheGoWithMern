@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { apiGet } from '../../../lib/api';
+import { useSelector } from 'react-redux';
 import { Card, CardContent, CardHeader, CardTitle } from '../../ui/card';
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
@@ -12,31 +12,20 @@ const COLORS = {
 
 export function PerformanceStats() {
   const [data, setData] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const { bookings, loading } = useSelector((state) => state.mechanic);
 
   useEffect(() => {
-    const fetch = async () => {
-      try {
-  const res = await apiGet('/mechanic/api/dashboard');
-  const bookings = res?.bookings || [];
-        const counts = bookings.reduce((acc, b) => {
-          const s = b.status || 'unknown';
-          acc[s] = (acc[s] || 0) + 1;
-          return acc;
-        }, {});
+    if (bookings && bookings.length > 0) {
+      const counts = bookings.reduce((acc, b) => {
+        const s = b.status || 'unknown';
+        acc[s] = (acc[s] || 0) + 1;
+        return acc;
+      }, {});
 
-        const chartData = Object.entries(counts).map(([key, value]) => ({ name: key, value }));
-        setData(chartData);
-      } catch (err) {
-        console.error('Error fetching performance stats:', err);
-        setData([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetch();
-  }, []);
+      const chartData = Object.entries(counts).map(([key, value]) => ({ name: key, value }));
+      setData(chartData);
+    }
+  }, [bookings]);
 
   if (loading) {
     return (

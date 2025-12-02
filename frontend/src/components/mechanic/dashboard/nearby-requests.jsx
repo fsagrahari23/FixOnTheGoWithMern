@@ -1,34 +1,25 @@
-import { useEffect, useState } from 'react';
-import { apiGet, apiPost } from '../../../lib/api';
+import { useEffect } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
 import { Card, CardContent, CardHeader, CardTitle } from '../../ui/card';
 import { Button } from '../../ui/button';
 import { Link } from 'react-router-dom';
+import { acceptBooking, fetchMechanicDashboard } from '../../../store/slices/mechanicThunks';
 
 export function NearbyRequests() {
-  const [nearbyBookings, setNearbyBookings] = useState([]);
-
-  useEffect(() => {
-    const fetchNearbyBookings = async () => {
-      try {
-  const response = await apiGet('/mechanic/api/dashboard');
-  setNearbyBookings(response?.nearbyBookings || []);
-      } catch (error) {
-        console.error('Error fetching nearby bookings:', error);
-        setNearbyBookings([]);
-      }
-    };
-
-    fetchNearbyBookings();
-  }, []);
+  const dispatch = useDispatch();
+  const { nearbyBookings, loading } = useSelector((state) => state.mechanic);
 
   const handleAcceptBooking = async (bookingId) => {
     try {
-  await apiPost(`/mechanic/booking/${bookingId}/accept`);
-  // Refresh the list
-  const response = await apiGet('/mechanic/api/dashboard');
-  setNearbyBookings(response.nearbyBookings);
+      const result = await dispatch(acceptBooking(bookingId)).unwrap();
+      if (result.success) {
+        alert('Booking accepted successfully!');
+        // Refresh dashboard data
+        dispatch(fetchMechanicDashboard());
+      }
     } catch (error) {
       console.error('Error accepting booking:', error);
+      alert(error || 'Failed to accept booking');
     }
   };
 
@@ -59,8 +50,11 @@ export function NearbyRequests() {
                 <Link to={`/mechanic/booking/${booking._id}`}>
                   <Button variant="outline">View Details</Button>
                 </Link>
-                <Button onClick={() => handleAcceptBooking(booking._id)}>
-                  Accept
+                <Button 
+                  onClick={() => handleAcceptBooking(booking._id)}
+                  disabled={loading}
+                >
+                  {loading ? 'Accepting...' : 'Accept'}
                 </Button>
               </div>
             </div>
