@@ -320,7 +320,7 @@ export default function Mechanic() {
                           )}
                         </TableCell>
                         <TableCell>
-                          {new Date(mechanic.createdAt).toLocaleDateString()}
+                          {new Date(mechanic.user.createdAt).toLocaleDateString()}
                         </TableCell>
                         <TableCell>
                           <Button

@@ -553,7 +553,6 @@ export default function BookingDetails() {
                   {booking.user?.name.charAt(0).toUpperCase()}
                 </div>
                 <h4 className="font-semibold">{booking.user?.name}</h4>
-                <p className="text-gray-600 text-sm">{booking.user?.email}</p>
               </div>
               <div className="space-y-3 mb-4">
                 <div className="flex items-center gap-2">
@@ -599,7 +598,6 @@ export default function BookingDetails() {
                     {booking.mechanic?.name.charAt(0).toUpperCase()}
                   </div>
                   <h4 className="font-semibold">{booking.mechanic?.name}</h4>
-                  <p className="text-gray-600 text-sm">{booking.mechanic?.email}</p>
                 </div>
                 <div className="space-y-3">
                   <div className="flex items-center gap-2">

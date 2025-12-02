@@ -1265,8 +1265,8 @@ router.get("/api/bookings", isAdmin, async (req, res) => {
 router.get("/api/booking/:id", isAdmin, async (req, res) => {
   try {
     const booking = await Booking.findById(req.params.id)
-      .populate("user", "name phone address")
-      .populate("mechanic", "name phone")
+      .populate("user", "name phone address email")
+      .populate("mechanic", "name phone email")
 
     if (!booking) {
       return res.status(404).json({ error: "Booking not found" })
@@ -1321,7 +1321,7 @@ router.get("/api/mechanics", isAdmin, async (req, res) => {
     const pendingUsers = await User.find({ role: "mechanic", isApproved: false });
     const approvedUsers = await User.find({ role: "mechanic", isApproved: true });
 
-    const pendingMechanics = await MechanicProfile.find({ user: { $in: pendingUsers.map(u => u._id) } }).populate("user", "name email phone");
+    const pendingMechanics = await MechanicProfile.find({ user: { $in: pendingUsers.map(u => u._id) } }).populate("user", "name email phone createdAt");
     const approvedMechanics = await MechanicProfile.find({ user: { $in: approvedUsers.map(u => u._id) } }).populate("user", "name email phone");
 
     // Add job count for approved mechanics
