@@ -57,6 +57,7 @@ const BookingDetails = () => {
   const [selectedRating, setSelectedRating] = useState(5);
   const [comment, setComment] = useState('');
   const [animateIn, setAnimateIn] = useState(false);
+  const [selectedMechanicId, setSelectedMechanicId] = useState(null);
 
   useEffect(() => {
     console.log("BookingDetails component mounted, id:", id);
@@ -70,7 +71,12 @@ const BookingDetails = () => {
       // Handle error - could show toast or alert
       console.error('Booking details error:', error);
     }
-  }, [error]);
+    
+    // Debug logs
+    console.log('Current booking:', currentBooking);
+    console.log('Nearby mechanics:', nearbyMechanics);
+    console.log('Booking status:', currentBooking?.status);
+  }, [error, currentBooking, nearbyMechanics]);
 
   const getStatusConfig = (status) => {
     const configs = {
@@ -108,8 +114,26 @@ const BookingDetails = () => {
   };
 
   const handleSelectMechanic = (mechanicId) => {
-    console.log(id, mechanicId);
-    dispatch(selectMechanic({ id, mechanicId }));
+    setSelectedMechanicId(mechanicId);
+  };
+
+  const handleConfirmMechanic = async () => {
+    if (selectedMechanicId) {
+      try {
+        console.log(id, selectedMechanicId);
+        const result = await dispatch(selectMechanic({ id, mechanicId: selectedMechanicId })).unwrap();
+        
+        if (result.success) {
+          alert('Request sent to mechanic successfully! Please wait for the mechanic to accept your booking.');
+          // Refresh booking details to show updated status
+          dispatch(fetchBookingDetails(id));
+          setSelectedMechanicId(null);
+        }
+      } catch (error) {
+        console.error('Failed to assign mechanic:', error);
+        alert(`Failed to assign mechanic: ${error.message || 'Please try again'}`);
+      }
+    }
   };
 
   const handleCancelBooking = () => {
@@ -343,20 +367,43 @@ const BookingDetails = () => {
             )}
 
             {/* Nearby Mechanics */}
-            {currentBooking?.status === 'pending' && !currentBooking?.mechanic && nearbyMechanics.length > 0 && (
+            {currentBooking?.status === 'pending' && !currentBooking?.mechanic && (
               <div className="animate-fade-in delay-500">
                 <h3 className="text-xl font-bold mb-6 flex items-center gap-2 text-slate-800 dark:text-slate-200">
                   <UserCheck className="w-6 h-6" />
                   Available Mechanics Nearby
                 </h3>
-                <div className="grid md:grid-cols-2 gap-6">
+                {nearbyMechanics.length === 0 ? (
+                  <Card className="p-8 text-center border-0 shadow-lg bg-amber-50 dark:bg-amber-900/20">
+                    <AlertCircle className="w-16 h-16 mx-auto mb-4 text-amber-500" />
+                    <h4 className="text-xl font-semibold mb-2 text-amber-900 dark:text-amber-100">No Mechanics Available</h4>
+                    <p className="text-amber-700 dark:text-amber-300 mb-4">
+                      Currently, there are no approved mechanics within 10km of your location.
+                    </p>
+                    <p className="text-sm text-amber-600 dark:text-amber-400">
+                      Please try again later or contact support for assistance.
+                    </p>
+                  </Card>
+                ) : (
+                  <>
+                    <div className="grid md:grid-cols-2 gap-6">
                   {nearbyMechanics.map((mechanic, index) => (
                     <Card
                       key={mechanic._id}
-                      className="hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 border-0 overflow-hidden bg-white hover:bg-slate-50 dark:bg-slate-700 dark:hover:bg-slate-650"
+                      className={`hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 border-2 overflow-hidden ${
+                        selectedMechanicId === mechanic._id
+                          ? 'border-green-500 bg-green-50 dark:bg-green-900/20'
+                          : 'border-transparent bg-white hover:bg-slate-50 dark:bg-slate-700 dark:hover:bg-slate-650'
+                      }`}
                       style={{ animationDelay: `${index * 100}ms` }}
                     >
                       <CardContent className="p-6">
+                        {selectedMechanicId === mechanic._id && (
+                          <div className="flex items-center gap-2 mb-3 text-green-600 dark:text-green-400 font-semibold">
+                            <CheckCircle className="w-5 h-5" />
+                            <span>Selected</span>
+                          </div>
+                        )}
                         <div className="flex justify-between items-start mb-4">
                           <div>
                             <h4 className="font-bold text-xl mb-1 text-slate-800 dark:text-slate-200">{mechanic.name}</h4>
@@ -367,10 +414,11 @@ const BookingDetails = () => {
                               {[...Array(5)].map((_, i) => (
                                 <Star
                                   key={i}
-                                  className={`w-4 h-4 ${i < Math.round(mechanic.rating)
-                                    ? 'fill-yellow-400 text-yellow-400'
-                                    : 'text-gray-300 dark:text-slate-600'
-                                    }`}
+                                  className={`w-4 h-4 ${
+                                    i < Math.round(mechanic.rating)
+                                      ? 'fill-yellow-400 text-yellow-400'
+                                      : 'text-gray-300 dark:text-slate-600'
+                                  }`}
                                 />
                               ))}
                             </div>
@@ -385,15 +433,42 @@ const BookingDetails = () => {
                         </div>
                         <Button
                           onClick={() => handleSelectMechanic(mechanic._id)}
-                          className="w-full py-6 bg-linear-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white shadow-lg transition-all duration-300 hover:shadow-xl hover:scale-105"
+                          className={`w-full py-6 shadow-lg transition-all duration-300 hover:shadow-xl hover:scale-105 ${
+                            selectedMechanicId === mechanic._id
+                              ? 'bg-green-600 hover:bg-green-700 text-white'
+                              : 'bg-linear-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white'
+                          }`}
                         >
-                          <UserCheck className="w-5 h-5 mr-2" />
-                          Select This Mechanic
+                          {selectedMechanicId === mechanic._id ? (
+                            <>
+                              <CheckCircle className="w-5 h-5 mr-2" />
+                              Selected
+                            </>
+                          ) : (
+                            <>
+                              <UserCheck className="w-5 h-5 mr-2" />
+                              Select This Mechanic
+                            </>
+                          )}
                         </Button>
                       </CardContent>
                     </Card>
                   ))}
                 </div>
+                {selectedMechanicId && (
+                  <div className="mt-8 animate-fade-in">
+                    <Button
+                      onClick={handleConfirmMechanic}
+                      disabled={loading}
+                      className="w-full py-8 text-xl bg-linear-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white shadow-2xl transition-all duration-300 hover:shadow-3xl hover:scale-105"
+                    >
+                      <CheckCircle className="w-6 h-6 mr-3" />
+                      Send Request to Mechanic
+                    </Button>
+                  </div>
+                )}
+                  </>
+                )}
               </div>
             )}
 

@@ -8,6 +8,7 @@ import { validate } from '../../lib/validation';
 export default function MechanicProfile() {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState(null);
   const [formErrors, setFormErrors] = useState({});
   const [pwdErrors, setPwdErrors] = useState({});
 
@@ -30,17 +31,19 @@ export default function MechanicProfile() {
           ...response.profile
         };
         setProfile(profileData);
+        setFetchError(null);
         // Update form data when profile loads
         setFormData({
           name: profileData.name || '',
           phone: profileData.phone || '',
-          address: profileData.address || '',
+          address: profileData.address || profile?.location?.address || '',
           experience: profileData.experience || '',
           hourlyRate: profileData.hourlyRate || '',
           specialization: profileData.specialization || []
         });
       } catch (error) {
         console.error('Error fetching profile:', error);
+        setFetchError('Failed to load profile. Please ensure the backend server is running.');
       } finally {
         setLoading(false);
       }
@@ -184,9 +187,39 @@ export default function MechanicProfile() {
       <div className="container mx-auto px-4 py-8">
         <h1 className="text-3xl font-bold mb-6">My Profile</h1>
 
+        {fetchError && (
+          <div className="mb-4 p-3 rounded border border-red-300 bg-red-50 text-red-700">
+            {fetchError}
+          </div>
+        )}
+
         <div className="grid grid-cols-12 gap-6">
           {/* Left column - profile card and small map */}
           <aside className="col-span-12 lg:col-span-4 space-y-6">
+            {/* Detailed Profile Info Card */}
+            <div className="bg-white rounded-lg shadow p-6">
+              <h3 className="font-semibold mb-4">Profile Details</h3>
+              <div className="space-y-3 text-sm text-gray-700">
+                <div className="flex justify-between"><span className="text-gray-500">Full Name</span><span className="font-medium">{profile.name || '-'}</span></div>
+                <div className="flex justify-between"><span className="text-gray-500">Email</span><span className="font-medium">{profile.email || '-'}</span></div>
+                <div className="flex justify-between"><span className="text-gray-500">Mobile</span><span className="font-medium">{profile.phone || '-'}</span></div>
+                  <div className="flex justify-between"><span className="text-gray-500">Address</span><span className="font-medium text-right truncate max-w-[60%]">{profile.address || (profile.location && profile.location.address) || '-'}</span></div>
+                <div className="flex justify-between"><span className="text-gray-500">Experience</span><span className="font-medium">{profile.experience || 0} years</span></div>
+                <div className="flex justify-between"><span className="text-gray-500">Hourly Rate</span><span className="font-medium">${(profile.hourlyRate ?? 0).toFixed ? Number(profile.hourlyRate).toFixed(2) : profile.hourlyRate}</span></div>
+                <div>
+                  <div className="text-gray-500">Specialization</div>
+                  <div className="mt-1 flex flex-wrap gap-2">
+                    {(profile.specialization && profile.specialization.length > 0) ? (
+                      profile.specialization.map((spec, idx) => (
+                        <span key={idx} className="inline-flex items-center px-2 py-1 rounded-full bg-blue-100 text-blue-800 text-xs font-medium">{spec}</span>
+                      ))
+                    ) : (
+                      <span className="text-sm text-gray-500">-</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
             <div className="bg-white rounded-lg shadow p-6">
               <div className="flex items-center space-x-4">
                 <div className="w-20 h-20 rounded-full bg-blue-600 flex items-center justify-center text-white text-3xl font-bold">
@@ -267,6 +300,7 @@ export default function MechanicProfile() {
                     value={formData.name} 
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     className="w-full border rounded p-2" 
+                    disabled={!profile}
                   />
                   {formErrors.name && <p className="text-sm text-red-600 mt-1">{formErrors.name}</p>}
                 </div>
@@ -283,6 +317,7 @@ export default function MechanicProfile() {
                     value={formData.phone} 
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                     className="w-full border rounded p-2" 
+                    disabled={!profile}
                   />
                   {formErrors.phone && <p className="text-sm text-red-600 mt-1">{formErrors.phone}</p>}
                 </div>
@@ -294,6 +329,7 @@ export default function MechanicProfile() {
                     value={formData.address} 
                     onChange={(e) => setFormData({ ...formData, address: e.target.value })}
                     className="w-full border rounded p-2" 
+                    disabled={!profile}
                   />
                 </div>
 
@@ -314,6 +350,7 @@ export default function MechanicProfile() {
                             setFormData({ ...formData, specialization: newSpec });
                           }}
                           className="rounded"
+                          disabled={!profile}
                         />
                         <span className="text-sm">{spec}</span>
                       </label>
@@ -330,6 +367,7 @@ export default function MechanicProfile() {
                     value={formData.experience} 
                     onChange={(e) => setFormData({ ...formData, experience: e.target.value })}
                     className="w-full border rounded p-2" 
+                    disabled={!profile}
                   />
                   {formErrors.experience && <p className="text-sm text-red-600 mt-1">{formErrors.experience}</p>}
                 </div>
@@ -341,6 +379,7 @@ export default function MechanicProfile() {
                     value={formData.hourlyRate} 
                     onChange={(e) => setFormData({ ...formData, hourlyRate: e.target.value })}
                     className="w-full border rounded p-2" 
+                    disabled={!profile}
                   />
                   {formErrors.hourlyRate && <p className="text-sm text-red-600 mt-1">{formErrors.hourlyRate}</p>}
                 </div>

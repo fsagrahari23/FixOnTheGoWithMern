@@ -21,6 +21,7 @@ const mechanicRoutes = require("./routes/mechanic");
 const adminRoutes = require("./routes/admin");
 const chatRoutes = require("./routes/chat");
 const paymentRoutes = require("./routes/payment");
+const bookingRoutes = require("./routes/booking");
 
 // Import middleware
 const {
@@ -54,8 +55,13 @@ app.use(
   })
 );
 
-// MOVE THIS ABOVE express.json
-
+// File upload middleware (before express.json)
+app.use(fileUpload({
+  useTempFiles: true,
+  tempFileDir: path.join(__dirname, 'tmp'),
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit
+  abortOnLimit: true,
+}));
 
 // THEN parse normal JSON (for non-file routes)
 app.use(express.json());
@@ -103,6 +109,7 @@ app.set("views", path.join(__dirname, "views"));
 // Routes
 app.use("/auth", authRoutes);
 app.use("/user", isAuthenticated, isUser, userRoutes);
+app.use("/user", isAuthenticated, isUser, bookingRoutes);
 app.use("/user", isAuthenticated, isUser, emergencyRoutes);
 app.use("/mechanic", isAuthenticated, isMechanic, mechanicRoutes);
 app.use("/admin", isAuthenticated, isAdmin, adminRoutes);
