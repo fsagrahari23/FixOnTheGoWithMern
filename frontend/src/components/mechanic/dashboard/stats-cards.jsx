@@ -1,44 +1,14 @@
-import { useEffect, useState } from 'react';
-import { apiGet } from '../../../lib/api';
+import { useEffect } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import { fetchMechanicDashboard } from '../../../store/slices/mechanicThunks';
 
 export function StatsCards() {
-  const [stats, setStats] = useState({
-    total: 0,
-    pending: 0,
-    inProgress: 0,
-    completed: 0,
-    cancelled: 0,
-    todayEarnings: 0,
-    totalEarnings: 0
-  });
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const dispatch = useDispatch();
+  const { stats, earnings, loading, error } = useSelector((state) => state.mechanic);
 
   useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        setLoading(true);
-  const response = await apiGet('/mechanic/api/dashboard');
-  const { stats: fetchedStats, todayEarnings, totalEarnings } = response;
-        setStats({
-          total: fetchedStats?.total || 0,
-          pending: fetchedStats?.pending || 0,
-          inProgress: fetchedStats?.inProgress || 0,
-          completed: fetchedStats?.completed || 0,
-          cancelled: fetchedStats?.cancelled || 0,
-          todayEarnings: todayEarnings || 0,
-          totalEarnings: totalEarnings || 0
-        });
-      } catch (error) {
-        console.error('Error fetching stats:', error);
-        setError(error.message || 'Failed to load statistics');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchStats();
-  }, []);
+    dispatch(fetchMechanicDashboard());
+  }, [dispatch]);
 
   const formatCurrency = (value) => {
     return typeof value === 'number' ? `₹${value.toFixed(2)}` : '₹0.00';
@@ -112,6 +82,31 @@ export function StatsCards() {
           <span className="ml-2">
             <svg className="w-5 h-5 text-green-500 dark:text-green-400" viewBox="0 0 20 20" fill="currentColor">
               <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+            </svg>
+          </span>
+        </div>
+      </div>
+
+      <div className="bg-card dark:bg-card border border-border rounded-lg shadow-sm hover:shadow-md transition-shadow p-6">
+        <h3 className="text-sm text-muted-foreground">Today's Earnings</h3>
+        <div className="mt-2 flex items-baseline">
+          <span className="text-3xl font-bold text-emerald-600 dark:text-emerald-400">{formatCurrency(earnings.today)}</span>
+          <span className="ml-2">
+            <svg className="w-5 h-5 text-emerald-500" viewBox="0 0 20 20" fill="currentColor">
+              <path d="M8.433 7.418c.155-.103.346-.196.567-.267v1.698a2.305 2.305 0 01-.567-.267C8.07 8.34 8 8.114 8 8c0-.114.07-.34.433-.582zM11 12.849v-1.698c.22.071.412.164.567.267.364.243.433.468.433.582 0 .114-.07.34-.433.582a2.305 2.305 0 01-.567.267z" />
+              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-13a1 1 0 10-2 0v.092a4.535 4.535 0 00-1.676.662C6.602 6.234 6 7.009 6 8c0 .99.602 1.765 1.324 2.246.48.32 1.054.545 1.676.662v1.941c-.391-.127-.68-.317-.843-.504a1 1 0 10-1.51 1.31c.562.649 1.413 1.076 2.353 1.253V15a1 1 0 102 0v-.092a4.535 4.535 0 001.676-.662C13.398 13.766 14 12.991 14 12c0-.99-.602-1.765-1.324-2.246A4.535 4.535 0 0011 9.092V7.151c.391.127.68.317.843.504a1 1 0 101.511-1.31c-.563-.649-1.413-1.076-2.354-1.253V5z" clipRule="evenodd" />
+            </svg>
+          </span>
+        </div>
+      </div>
+
+      <div className="bg-card dark:bg-card border border-border rounded-lg shadow-sm hover:shadow-md transition-shadow p-6">
+        <h3 className="text-sm text-muted-foreground">Total Earnings</h3>
+        <div className="mt-2 flex items-baseline">
+          <span className="text-3xl font-bold text-blue-600 dark:text-blue-400">{formatCurrency(earnings.total)}</span>
+          <span className="ml-2">
+            <svg className="w-5 h-5 text-blue-500" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M4 4a2 2 0 00-2 2v4a2 2 0 002 2V6h10a2 2 0 00-2-2H4zm2 6a2 2 0 012-2h8a2 2 0 012 2v4a2 2 0 01-2 2H8a2 2 0 01-2-2v-4zm6 4a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
             </svg>
           </span>
         </div>

@@ -1,35 +1,22 @@
 import { useEffect, useState } from 'react';
-import { apiGet } from '../../../lib/api';
+import { useSelector } from 'react-redux';
 import { Card, CardContent, CardHeader, CardTitle } from '../../ui/card';
 import { Link } from 'react-router-dom';
 
 export function RecentBookings() {
+  const { bookings: allBookings, loading: isLoading } = useSelector((state) => state.mechanic);
   const [bookings, setBookings] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('all');
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [dateFilter, setDateFilter] = useState('all'); // all | today | week | month
 
   useEffect(() => {
-    const fetchBookings = async () => {
-      try {
-        setIsLoading(true);
-        const response = await apiGet('/mechanic/api/dashboard');
-        if (response && response.bookings) {
-          setBookings(response.bookings.slice(0, 5));
-        } else {
-          setBookings([]);
-        }
-      } catch (error) {
-        console.error('Error fetching bookings:', error);
-        setBookings([]);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchBookings();
-  }, []);
+    if (allBookings && allBookings.length > 0) {
+      setBookings(allBookings.slice(0, 5));
+    } else {
+      setBookings([]);
+    }
+  }, [allBookings]);
 
   const getStatusColor = (status) => {
     switch (status) {
