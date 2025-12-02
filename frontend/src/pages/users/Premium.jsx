@@ -3,6 +3,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   Crown,
   Check,
@@ -22,12 +25,22 @@ import {
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { apiGet, apiPost } from '@/lib/api';
+import { processPayment } from '@/store/slices/bookingThunks';
 
 const Premium = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { subscription, loading, error } = useSelector((state) => state.booking);
   const [subscriptionData, setSubscriptionData] = useState(null);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState(null);
+  const [paymentDetails, setPaymentDetails] = useState({
+    cardNumber: '',
+    expiryDate: '',
+    cvv: '',
+    name: ''
+  });
+  const [processing, setProcessing] = useState(false);
 
   useEffect(() => {
     // Fetch subscription data
@@ -43,24 +56,64 @@ const Premium = () => {
     }
   };
 
-  const handleSubscribe = async (plan) => {
+  const handleSubscribe = (plan) => {
+    setSelectedPlan(plan);
+    setShowPaymentModal(true);
+  };
+
+  const handlePaymentSubmit = async (e) => {
+    e.preventDefault();
+    
+    // Validate card details
+    if (!paymentDetails.cardNumber || !paymentDetails.expiryDate || !paymentDetails.cvv || !paymentDetails.name) {
+      alert('Please fill in all payment details');
+      return;
+    }
+
+    if (paymentDetails.cardNumber.replace(/\s/g, '').length !== 16) {
+      alert('Please enter a valid 16-digit card number');
+      return;
+    }
+
+    if (!/^\d{2}\/\d{2}$/.test(paymentDetails.expiryDate)) {
+      alert('Please enter expiry date in MM/YY format');
+      return;
+    }
+
+    if (paymentDetails.cvv.length !== 3) {
+      alert('Please enter a valid 3-digit CVV');
+      return;
+    }
+
+    setProcessing(true);
+
     try {
-      const response = await fetch('/user/premium/subscribe', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ plan }),
+      const amount = selectedPlan === 'monthly' ? 9.99 : 99.99;
+      
+      // Process payment for subscription
+      const response = await apiPost('/payment/premium/process', {
+        plan: selectedPlan,
+        amount,
+        paymentDetails: {
+          ...paymentDetails,
+          cardNumber: paymentDetails.cardNumber.replace(/\s/g, '')
+        }
       });
 
-      if (response.ok) {
-        // Redirect to payment or success page
-        navigate('/user/dashboard');
+      if (response.success) {
+        alert(`Successfully subscribed to ${selectedPlan} premium plan!`);
+        setShowPaymentModal(false);
+        setPaymentDetails({ cardNumber: '', expiryDate: '', cvv: '', name: '' });
+        // Refresh subscription data
+        await fetchSubscriptionData();
       } else {
-        console.error('Subscription failed');
+        alert(response.message || 'Payment failed. Please try again.');
       }
     } catch (error) {
-      console.error('Error subscribing:', error);
+      console.error('Payment error:', error);
+      alert(error.message || 'Payment failed. Please try again.');
+    } finally {
+      setProcessing(false);
     }
   };
 
@@ -408,6 +461,129 @@ const Premium = () => {
             </div>
           </CardContent>
         </Card>
+
+        {/* Payment Modal */}
+        <Dialog open={showPaymentModal} onOpenChange={setShowPaymentModal}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Crown className="w-5 h-5 text-yellow-500" />
+                Subscribe to {selectedPlan === 'monthly' ? 'Monthly' : 'Yearly'} Premium
+              </DialogTitle>
+              <DialogDescription>
+                Complete your payment to activate premium features
+              </DialogDescription>
+            </DialogHeader>
+
+            <form onSubmit={handlePaymentSubmit} className="space-y-4">
+              <div className="bg-slate-100 dark:bg-slate-800 p-4 rounded-lg">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-slate-600 dark:text-slate-400">Plan</span>
+                  <span className="font-semibold">{selectedPlan === 'monthly' ? 'Monthly' : 'Yearly'} Premium</span>
+                </div>
+                <div className="flex justify-between items-center mt-2">
+                  <span className="text-sm text-slate-600 dark:text-slate-400">Amount</span>
+                  <span className="font-bold text-lg">${selectedPlan === 'monthly' ? '9.99' : '99.99'}</span>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <div>
+                  <Label htmlFor="name">Cardholder Name</Label>
+                  <Input
+                    id="name"
+                    placeholder="John Doe"
+                    value={paymentDetails.name}
+                    onChange={(e) => setPaymentDetails({ ...paymentDetails, name: e.target.value })}
+                    disabled={processing}
+                    required
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="cardNumber">Card Number</Label>
+                  <Input
+                    id="cardNumber"
+                    placeholder="1234 5678 9012 3456"
+                    value={paymentDetails.cardNumber}
+                    onChange={(e) => {
+                      const value = e.target.value.replace(/\s/g, '').replace(/\D/g, '');
+                      const formatted = value.match(/.{1,4}/g)?.join(' ') || value;
+                      setPaymentDetails({ ...paymentDetails, cardNumber: formatted });
+                    }}
+                    maxLength={19}
+                    disabled={processing}
+                    required
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label htmlFor="expiryDate">Expiry Date</Label>
+                    <Input
+                      id="expiryDate"
+                      placeholder="MM/YY"
+                      value={paymentDetails.expiryDate}
+                      onChange={(e) => {
+                        let value = e.target.value.replace(/\D/g, '');
+                        if (value.length >= 2) {
+                          value = value.slice(0, 2) + '/' + value.slice(2, 4);
+                        }
+                        setPaymentDetails({ ...paymentDetails, expiryDate: value });
+                      }}
+                      maxLength={5}
+                      disabled={processing}
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="cvv">CVV</Label>
+                    <Input
+                      id="cvv"
+                      placeholder="123"
+                      type="password"
+                      value={paymentDetails.cvv}
+                      onChange={(e) => {
+                        const value = e.target.value.replace(/\D/g, '');
+                        setPaymentDetails({ ...paymentDetails, cvv: value });
+                      }}
+                      maxLength={3}
+                      disabled={processing}
+                      required
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-2 pt-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowPaymentModal(false)}
+                  disabled={processing}
+                  className="flex-1"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={processing}
+                  className="flex-1 bg-blue-500 hover:bg-blue-600"
+                >
+                  {processing ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Processing...
+                    </>
+                  ) : (
+                    `Pay $${selectedPlan === 'monthly' ? '9.99' : '99.99'}`
+                  )}
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );
