@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiPost } from '../../lib/api';
 import { MapPin, Upload, Wrench, Crown, Info, AlertCircle, ArrowLeft, Send } from 'lucide-react';
+import MapPicker from '../../components/MapPicker';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -186,7 +187,29 @@ const TowingDetails = ({ showTowing, formData, handleInputChange, errors }) => {
             )}
           </div>
 
-          <MapComponent id="towing-map" height={200} />
+          <div className="border rounded-lg overflow-hidden">
+            <MapPicker
+              center={formData.dropoffLatitude && formData.dropoffLongitude ? { lat: parseFloat(formData.dropoffLatitude), lng: parseFloat(formData.dropoffLongitude) } : undefined}
+              onChange={async (coords) => {
+                setFormData(prev => ({
+                  ...prev,
+                  dropoffLatitude: coords.lat,
+                  dropoffLongitude: coords.lng
+                }));
+                
+                // Reverse geocode to get dropoff address
+                try {
+                  const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${coords.lat}&lon=${coords.lng}`);
+                  const data = await res.json();
+                  const address = data.display_name || '';
+                  setFormData(prev => ({ ...prev, dropoffAddress: address }));
+                } catch (err) {
+                  console.error('Reverse geocode error:', err);
+                }
+              }}
+              className="w-full h-64"
+            />
+          </div>
         </div>
       </CardContent>
     </Card>
@@ -275,7 +298,7 @@ const BookingForm = () => {
   const getCurrentLocation = () => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
-        (position) => {
+        async (position) => {
           const lat = position.coords.latitude;
           const lng = position.coords.longitude;
           setFormData(prev => ({
@@ -285,12 +308,22 @@ const BookingForm = () => {
             pickupLatitude: lat,
             pickupLongitude: lng,
           }));
-          // In real implementation, update the map and reverse geocode
+          
+          // Reverse geocode to get address
+          try {
+            const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
+            const data = await res.json();
+            const address = data.display_name || '';
+            setFormData(prev => ({ ...prev, address }));
+          } catch (err) {
+            console.error('Reverse geocode error:', err);
+          }
         },
         (error) => {
           console.error('Geolocation error:', error);
           alert('Could not get your location. Please enter it manually.');
-        }
+        },
+        { enableHighAccuracy: true }
       );
     } else {
       alert('Geolocation is not supported by your browser.');
@@ -358,27 +391,31 @@ const BookingForm = () => {
       }
 
       // Use fetch directly for FormData
-      const response = await fetch('/user/book', {
+      const API_PREFIX = import.meta.env.DEV ? 'http://localhost:3000' : '';
+      const response = await fetch(`${API_PREFIX}/user/book`, {
         method: 'POST',
         credentials: 'include',
         body: formDataToSend,
       });
 
       if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`HTTP ${response.status}: ${errorText}`);
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `HTTP ${response.status}: Failed to create booking`);
       }
 
       const res = await response.json();
 
       // Navigate to booking details
-      if (res && res._id) {
-        navigate(`/user/booking/${res._id}`);
+      if (res.success && res.bookingId) {
+        alert('Booking created successfully!');
+        navigate(`/user/booking/${res.bookingId}`);
       } else {
+        alert('Booking created but ID not returned. Redirecting to dashboard.');
         navigate('/user/dashboard');
       }
     } catch (err) {
-      alert('Failed to submit booking. Please try again.');
+      console.error('Booking submission error:', err);
+      alert(`Failed to submit booking: ${err.message || 'Please try again.'}`);
     }
   };
 
@@ -507,7 +544,29 @@ const BookingForm = () => {
               </div>
 
               {/* Map */}
-              <MapComponent id="location-map" height={300} />
+              <div className="border rounded-lg overflow-hidden">
+                <MapPicker
+                  center={formData.latitude && formData.longitude ? { lat: parseFloat(formData.latitude), lng: parseFloat(formData.longitude) } : undefined}
+                  onChange={async (coords) => {
+                    setFormData(prev => ({
+                      ...prev,
+                      latitude: coords.lat,
+                      longitude: coords.lng
+                    }));
+                    
+                    // Reverse geocode to get address
+                    try {
+                      const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${coords.lat}&lon=${coords.lng}`);
+                      const data = await res.json();
+                      const address = data.display_name || '';
+                      setFormData(prev => ({ ...prev, address }));
+                    } catch (err) {
+                      console.error('Reverse geocode error:', err);
+                    }
+                  }}
+                  className="w-full h-80"
+                />
+              </div>
 
               {/* Towing Service */}
               <div className="flex items-center space-x-2 p-4 rounded-lg bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700">

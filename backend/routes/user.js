@@ -490,40 +490,38 @@ router.post("/booking/:id/select-mechanic", async (req, res) => {
     const booking = await Booking.findById(req.params.id)
 
     if (!booking) {
-      req.flash("error_msg", "Booking not found")
-      return res.redirect("/user/dashboard")
+      return res.status(404).json({ success: false, message: "Booking not found" });
     }
 
     // Check if user is authorized
     if (booking.user.toString() !== req.user._id.toString()) {
-      req.flash("error_msg", "Not authorized")
-      return res.redirect("/user/dashboard")
+      return res.status(403).json({ success: false, message: "Not authorized" });
     }
 
     // Check if booking is in pending state
     if (booking.status !== "pending") {
-      req.flash("error_msg", "Booking is not in pending state")
-      return res.redirect(`/user/booking/${booking._id}`)
+      return res.status(400).json({ success: false, message: "Booking is not in pending state" });
     }
 
     // Update booking with selected mechanic
     booking.mechanic = mechanicId
+    // Keep status as pending - mechanic needs to accept
     await booking.save()
 
     // Create a chat for this booking
-    const newChat = new Chat({
-      booking: booking._id,
-      participants: [req.user._id, mechanicId],
-    })
+    const existingChat = await Chat.findOne({ booking: booking._id });
+    if (!existingChat) {
+      const newChat = new Chat({
+        booking: booking._id,
+        participants: [req.user._id, mechanicId],
+      });
+      await newChat.save();
+    }
 
-    await newChat.save()
-
-    req.flash("success_msg", "Mechanic selected successfully")
-    res.redirect(`/user/booking/${booking._id}`)
+    return res.status(200).json({ success: true, message: "Request sent to mechanic successfully. Waiting for mechanic to accept.", booking });
   } catch (error) {
     console.error("Select mechanic error:", error)
-    req.flash("error_msg", "Failed to select mechanic")
-    res.redirect(`/user/booking/${req.params.id}`)
+    return res.status(500).json({ success: false, message: "Failed to select mechanic" });
   }
 })
 
