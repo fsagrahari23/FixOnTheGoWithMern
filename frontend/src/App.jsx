@@ -6,6 +6,7 @@ import { getMe } from "../src/store/slices/authThunks";
 import store from "./store/store";
 import { LocationProvider } from "./contexts/LocationContext";
 import ProtectedRoute from "../src/components/ProtectedRoute";
+import { Toaster } from "./components/ui/sonner";
 
 import Dashboard from "./pages/users/Dashboard";
 import HomePage from "./pages/common/HomePage";
@@ -41,6 +42,7 @@ import UserProfile from "./pages/admin/UserProfile";
 import Mechanic from "./pages/admin/Mechanic";
 import Payment from "./pages/admin/Payment";
 import Subscription from "./pages/admin/Subscription";
+import AdminProfile from "./pages/admin/AdminProfile";
 
 export const userRoutes = {
   dashboard: Dashboard,
@@ -63,6 +65,7 @@ export const adminRoutes = {
   payments: Payment,
   subscriptions: Subscription,
   "mechanic/:id": AdminMechanicProfile,
+  "profile": AdminProfile,
 }
 
 export const mechanicRoutes = {
@@ -148,6 +151,7 @@ export default function App() {
   return (
     <Provider store={store}>
       <AppContent />
+      <Toaster />
     </Provider>
   );
 }
