@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Alert, AlertDescription, } from '@/components/ui/alert';
 import {
   ArrowLeft,
   Star,
@@ -18,7 +18,8 @@ import {
   Calendar,
   Image as ImageIcon,
   FileText,
-  DollarSign
+  DollarSign,
+  AlertCircle
 } from 'lucide-react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';

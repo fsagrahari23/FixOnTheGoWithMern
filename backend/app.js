@@ -1,3 +1,5 @@
+'use strict';
+
 const express = require("express");
 const mongoose = require("mongoose");
 const session = require("express-session");
@@ -11,7 +13,10 @@ const passport = require("passport");
 const fileUpload = require("express-fileupload");
 const expressLayouts = require("express-ejs-layouts");
 require("dotenv").config();
-const cors = require("cors")
+const cors = require("cors");
+const isProduction = process.env.NODE_ENV === 'production';
+const winston = require('winston');
+const AppError = require("./utils/AppError");
 
 // Import routes
 const authRoutes = require("./routes/auth");
@@ -67,10 +72,11 @@ app.use(fileUpload({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-app.use(express.static(path.join(__dirname, "public")));
+// Method override for PUT/DELETE in forms
+app.use(methodOverride('_method'));
 
+app.use(express.static(path.join(__dirname, "public")));
 app.use(express.static(path.join(__dirname, "uploads")));
-app.set("views", path.join(__dirname, "views"));
 app.use(flash());
 
 app.use(expressLayouts);
@@ -79,14 +85,67 @@ app.use((req, res, next) => {
   next();
 });
 
+const logger = winston.createLogger({
+  level: isProduction ? 'info' : 'debug', // More verbose in dev
+  format: winston.format.combine(
+    winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
+    winston.format.errors({ stack: true }), // Handle stack traces
+    winston.format.splat(),
+    isProduction
+      ? winston.format.json() // JSON for prod (easier for log aggregators like ELK)
+      : winston.format.simple() // Human-readable for dev
+  ),
+  transports: [
+    new winston.transports.Console({
+      format: isProduction ? winston.format.json() : winston.format.colorize({ all: true }), // Colorize in dev console
+    }),
+    // Add file transport for production (optional: use daily-rotate-file for rotation)
+    ...(isProduction
+      ? [
+          new winston.transports.File({
+            filename: 'error.log',
+            level: 'error', // Only errors to this file
+          }),
+          new winston.transports.File({
+            filename: 'combined.log', // All logs
+          }),
+        ]
+      : []),
+  ],
+  // Handle uncaught exceptions and rejections
+  exceptionHandlers: [
+    new winston.transports.Console(),
+    ...(isProduction ? [new winston.transports.File({ filename: 'exceptions.log' })] : []),
+  ],
+  rejectionHandlers: [
+    new winston.transports.Console(),
+    ...(isProduction ? [new winston.transports.File({ filename: 'rejections.log' })] : []),
+  ],
+});
+
+// Pipe Morgan to Winston
+// Create a stream for Morgan to write to Winston at 'http' level
+const morgan = require('morgan');
+morgan.token('message', (req, res) => res.statusMessage || ''); // Optional custom token
+app.use(
+  morgan(isProduction ? 'combined' : 'dev', {
+    stream: {
+      write: (message) => logger.http(message.trim()), // Log HTTP requests at 'http' level
+    },
+    skip: (req, res) => {
+      if (isProduction && req.path === '/health') {
+        return true;
+      }
+      return false; // Log all in dev; customize as needed
+    },
+  })
+);
 app.set("layout", "layout");
 
-app.use(cors(
-  {
-    origin: true,
-    credentials: true
-  }
-))
+app.use(cors({
+  origin: true,
+  credentials: true
+}));
 
 // Passport middleware
 app.use(passport.initialize());
@@ -124,10 +183,52 @@ app.get("/", (req, res) => {
 // Socket.io setup
 require("./socket")(io);
 
+// Global error handler
+app.use((err, req, res, next) => {
+  // Normalize to AppError
+  let error = err instanceof AppError ? err : new AppError(err.message || 'An unexpected error occurred', err.statusCode || 500, { cause: err });
+
+  // Handle specific error types
+  if (err.name === 'CastError') {
+    error = AppError.notFound('Resource not found');
+  }
+  if (err.code === 11000) {
+    error = AppError.badRequest('Duplicate field value entered', { data: { fields: err.keyValue } });
+  }
+  if (err.name === 'ValidationError') {
+    const messages = Object.values(err.errors).map((val) => val.message).join('; ');
+    error = AppError.badRequest(messages, { code: 'VALIDATION_ERROR', data: { errors: err.errors } });
+  }
+  if (err.name === 'JsonWebTokenError') {
+    error = AppError.unauthorized('Invalid token', { code: 'AUTH_ERROR' });
+  }
+  if (err.name === 'TokenExpiredError') {
+    error = AppError.unauthorized('Token expired', { code: 'AUTH_ERROR' });
+  }
+
+  // For non-operational errors, use generic message
+  if (!error.isOperational) {
+    error.message = 'Internal Server Error';
+    error.statusCode = 500;
+    error.isOperational = true;
+  }
+
+  // Log the error with Winston
+  logger.error('Application error', {
+    message: error.message,
+    stack: error.stack,
+    path: req.path,
+    method: req.method,
+    user: req.user ? req.user.id : 'unauthenticated', // Example: log user if authenticated
+    ...(error.data && { data: error.data }),
+  });
+
+  // Send response
+  res.status(error.statusCode).json(error.toJSON(isProduction));
+});
 
 // Start server
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 3002;
 server.listen(PORT, () => {
-
-  console.log(`Server running on http://localhost:${PORT}`);
+  logger.info(`Server running on http://localhost:${PORT} in ${isProduction ? 'production' : 'development'} mode`);
 });
