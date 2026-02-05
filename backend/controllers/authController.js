@@ -3,20 +3,21 @@ const cloudinary = require("../config/cloudinary");
 const multer = require("multer");
 const User = require("../models/User");
 const MechanicProfile = require("../models/MechanicProfile");
+const AppError = require("../utils/AppError");
 
 const storage = multer.memoryStorage();
 const upload = multer({ storage: storage });
 
-exports.sendOtp = async (req, res) => {
+exports.sendOtp = async (req, res, next) => {
   try {
     const { email } = req.body;
     if (!email) {
-      return res.status(400).json({ message: "Email is required for OTP verification." });
+      return next(new AppError("Email is required for OTP verification.", 400));
     }
 
     const existingUser = await User.findOne({ email });
     if (existingUser) {
-      return res.status(400).json({ message: "Email is already registered." });
+      return next(new AppError("Email is already registered.", 400));
     }
 
     const otp = otpService.generateOtp();
@@ -28,7 +29,7 @@ exports.sendOtp = async (req, res) => {
     res.json({ message: "OTP sent to your email. Please verify." });
   } catch (error) {
     console.error("Send OTP error:", error);
-    res.status(500).json({ message: "Failed to send OTP. Please try again." });
+    next(new AppError("Failed to send OTP. Please try again.", 500));
   }
 };
 
