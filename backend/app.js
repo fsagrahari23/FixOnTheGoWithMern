@@ -13,6 +13,8 @@ const passport = require("passport");
 const fileUpload = require("express-fileupload");
 const expressLayouts = require("express-ejs-layouts");
 require("dotenv").config();
+const cors = require("cors")
+const helmet = require('helmet');
 const cors = require("cors");
 const isProduction = process.env.NODE_ENV === 'production';
 const winston = require('winston');
@@ -84,6 +86,11 @@ app.use((req, res, next) => {
   res.locals.path = req.path; // This makes `path` available in all views
   next();
 });
+
+// Security middleware
+if(process.env.NODE_ENV === 'production') {
+  app.use(helmet());
+}
 
 const logger = winston.createLogger({
   level: isProduction ? 'info' : 'debug', // More verbose in dev
