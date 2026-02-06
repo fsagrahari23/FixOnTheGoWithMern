@@ -40,6 +40,13 @@ export default function Hero() {
         delay: 0.3,
         ease: "power3.out",
       })
+
+      // Keep image visible after animation
+      gsap.to(".hero-image", {
+        opacity: 1,
+        delay: 1.5,
+        duration: 0
+      })
     }, containerRef)
 
     return () => ctx.revert()
@@ -119,7 +126,7 @@ export default function Hero() {
             transition={{ duration: 1, delay: 0.3 }}
           >
             <div className="relative w-full max-w-md">
-              <img src="HeroImage.png" />
+              <img src="HeroImage.png" alt="Hero Dashboard" className="w-full h-auto object-contain" style={{ opacity: 1 }} />
             </div>
           </motion.div>
         </div>
