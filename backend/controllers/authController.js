@@ -206,7 +206,7 @@ exports.login = async (req, res) => {
     } else if (user.role === "admin") {
       redirectUrl = "/admin/users";
     }
-
+    console.log(req.session)
     res.json({ message: "Login successful!", user: req.session.user, redirectUrl });
   } catch (error) {
     console.error("Login error:", error);

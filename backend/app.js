@@ -1,4 +1,4 @@
-'use strict';
+require("dotenv").config();
 
 const express = require("express");
 const mongoose = require("mongoose");
@@ -12,13 +12,14 @@ const methodOverride = require("method-override");
 const passport = require("passport");
 const fileUpload = require("express-fileupload");
 const expressLayouts = require("express-ejs-layouts");
-require("dotenv").config();
-const cors = require("cors")
-const helmet = require('helmet');
 const cors = require("cors");
+const helmet = require('helmet');
 const isProduction = process.env.NODE_ENV === 'production';
-const winston = require('winston');
 const AppError = require("./utils/AppError");
+const setupSwagger = require("./swagger");
+const logger = require("./utils/Logger");
+const metricsMiddleware = require("./middleware/metircs.middleware")
+const { register } = require("./metrics/prometheus");
 
 // Import routes
 const authRoutes = require("./routes/auth");
@@ -44,6 +45,7 @@ const server = http.createServer(app);
 const io = socketIo(server);
 // Make io available to routes via app.get('io')
 app.set('io', io);
+setupSwagger(app);
 
 // Connect to MongoDB (driver v4+ no longer needs deprecated options)
 mongoose
@@ -82,53 +84,22 @@ app.use(express.static(path.join(__dirname, "uploads")));
 app.use(flash());
 
 app.use(expressLayouts);
+app.use(metricsMiddleware);
+
+app.get("/metrics", async (req, res) => {
+  res.setHeader("Content-Type", register.contentType);
+  res.end(await register.metrics());
+});
 app.use((req, res, next) => {
   res.locals.path = req.path; // This makes `path` available in all views
   next();
 });
 
 // Security middleware
-if(process.env.NODE_ENV === 'production') {
+if (process.env.NODE_ENV === 'production') {
   app.use(helmet());
 }
 
-const logger = winston.createLogger({
-  level: isProduction ? 'info' : 'debug', // More verbose in dev
-  format: winston.format.combine(
-    winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
-    winston.format.errors({ stack: true }), // Handle stack traces
-    winston.format.splat(),
-    isProduction
-      ? winston.format.json() // JSON for prod (easier for log aggregators like ELK)
-      : winston.format.simple() // Human-readable for dev
-  ),
-  transports: [
-    new winston.transports.Console({
-      format: isProduction ? winston.format.json() : winston.format.colorize({ all: true }), // Colorize in dev console
-    }),
-    // Add file transport for production (optional: use daily-rotate-file for rotation)
-    ...(isProduction
-      ? [
-          new winston.transports.File({
-            filename: 'error.log',
-            level: 'error', // Only errors to this file
-          }),
-          new winston.transports.File({
-            filename: 'combined.log', // All logs
-          }),
-        ]
-      : []),
-  ],
-  // Handle uncaught exceptions and rejections
-  exceptionHandlers: [
-    new winston.transports.Console(),
-    ...(isProduction ? [new winston.transports.File({ filename: 'exceptions.log' })] : []),
-  ],
-  rejectionHandlers: [
-    new winston.transports.Console(),
-    ...(isProduction ? [new winston.transports.File({ filename: 'rejections.log' })] : []),
-  ],
-});
 
 // Pipe Morgan to Winston
 // Create a stream for Morgan to write to Winston at 'http' level
@@ -238,4 +209,5 @@ app.use((err, req, res, next) => {
 const PORT = process.env.PORT || 3002;
 server.listen(PORT, () => {
   logger.info(`Server running on http://localhost:${PORT} in ${isProduction ? 'production' : 'development'} mode`);
+  logger.info(`Swagger Docs at http://localhost:${PORT}/api-docs`)
 });
