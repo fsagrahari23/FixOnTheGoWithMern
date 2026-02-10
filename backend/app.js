@@ -20,6 +20,11 @@ const setupSwagger = require("./swagger");
 const logger = require("./utils/Logger");
 const metricsMiddleware = require("./middleware/metircs.middleware")
 const { register } = require("./metrics/prometheus");
+const globalRateLimiter = require("./middleware/rateLimiter");
+
+
+
+
 
 // Import routes
 const authRoutes = require("./routes/auth");
@@ -144,6 +149,8 @@ app.set("view engine", "ejs");
 app.set("views", path.join(__dirname, "views"));
 
 // Routes
+app.use(globalRateLimiter);
+
 app.use("/auth", authRoutes);
 app.use("/user", isAuthenticated, isUser, userRoutes);
 app.use("/user", isAuthenticated, isUser, bookingRoutes);
@@ -211,3 +218,4 @@ server.listen(PORT, () => {
   logger.info(`Server running on http://localhost:${PORT} in ${isProduction ? 'production' : 'development'} mode`);
   logger.info(`Swagger Docs at http://localhost:${PORT}/api-docs`)
 });
+
