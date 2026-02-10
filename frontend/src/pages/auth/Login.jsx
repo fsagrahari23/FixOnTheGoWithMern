@@ -124,7 +124,7 @@ export default function Login() {
 
                                 <Button
                                     type="submit"
-                                    className="mt-6 w-full bg-emerald-600 hover:bg-emerald-700"
+                                    className="mt-6 w-full button"
                                     disabled={status === "loading"}
                                 >
                                     Login
