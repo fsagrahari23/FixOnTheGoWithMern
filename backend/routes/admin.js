@@ -1447,6 +1447,97 @@ router.get("/api/payments", isAdmin, async (req, res) => {
   }
 });
 
+// Payment details API
+router.get("/api/payment/:id", isAdmin, async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id)
+      .populate("user", "name email phone address")
+      .populate("mechanic", "name phone email");
+
+    if (!booking) {
+      return res.status(404).json({ error: "Payment not found" });
+    }
+
+    if (!booking.payment || booking.payment.amount <= 0) {
+      return res.status(404).json({ error: "No payment associated with this booking" });
+    }
+
+    res.json({
+      payment: {
+        _id: booking._id,
+        bookingId: booking._id,
+        amount: booking.payment.amount,
+        status: booking.payment.status,
+        transactionId: booking.payment.transactionId,
+        method: booking.payment.method || "card",
+        gateway: booking.payment.gateway || "stripe",
+        createdAt: booking.createdAt,
+        updatedAt: booking.updatedAt
+      },
+      booking: {
+        _id: booking._id,
+        serviceType: booking.problemCategory,
+        description: booking.description,
+        location: booking.location,
+        scheduledDate: booking.scheduledDate,
+        status: booking.status,
+        emergencyRequest: booking.emergencyRequest
+      },
+      customer: booking.user,
+      mechanic: booking.mechanic
+    });
+  } catch (error) {
+    console.error("Payment details API error:", error);
+    res.status(500).json({ error: "Failed to load payment details" });
+  }
+});
+
+// Update payment status API
+router.put("/api/payment/:id/status", isAdmin, async (req, res) => {
+  try {
+    const { status } = req.body;
+    const validStatuses = ["pending", "completed"];
+
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({ error: `Invalid payment status. Must be one of: ${validStatuses.join(", ")}` });
+    }
+
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) {
+      return res.status(404).json({ error: "Payment not found" });
+    }
+
+    if (!booking.payment || booking.payment.amount <= 0) {
+      return res.status(404).json({ error: "No payment associated with this booking" });
+    }
+
+    // Validate status transitions
+    const currentStatus = booking.payment.status;
+
+    // Prevent invalid transitions
+    if (currentStatus === "completed" && status === "pending") {
+      return res.status(400).json({ error: "Cannot change completed payment back to pending" });
+    }
+
+    // Update payment status
+    booking.payment.status = status;
+    booking.updatedAt = new Date();
+    await booking.save();
+
+    res.json({
+      message: "Payment status updated successfully",
+      payment: {
+        _id: booking._id,
+        status: booking.payment.status,
+        updatedAt: booking.updatedAt
+      }
+    });
+  } catch (error) {
+    console.error("Payment status update error:", error);
+    res.status(500).json({ error: "Failed to update payment status" });
+  }
+});
+
 // Subscriptions API
 router.get("/api/subscriptions", isAdmin, async (req, res) => {
   try {
