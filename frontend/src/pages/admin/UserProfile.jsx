@@ -363,7 +363,7 @@ export default function UserProfile() {
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => navigate(`/admin/bookings/${booking._id}`)}
+                              onClick={() => navigate(`/admin/booking/${booking._id}`)}
                             >
                               <Eye className="w-4 h-4" />
                             </Button>
