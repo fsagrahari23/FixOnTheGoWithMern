@@ -7,7 +7,6 @@
     "start": "node app.js",
     "dev": "nodemon app.js",
     "test": "cross-env NODE_ENV=test jest --runInBand --detectOpenHandles --forceExit"
-    "test": "cross-env NODE_ENV=test jest --runInBand --detectOpenHandles --forceExit"
   },
   "keywords": [],
   "author": "",
