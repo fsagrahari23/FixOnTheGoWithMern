@@ -70,6 +70,28 @@ router.post("/emergency", async (req, res) => {
 
         await booking.save()
 
+        // Notify nearby mechanics about emergency request
+        const io = req.app.get('io');
+        if (io && io.notifyNearbyMechanics) {
+            await io.notifyNearbyMechanics(booking);
+        }
+
+        // Also notify admins about emergency request
+        if (io && io.notifyAdmins) {
+            await io.notifyAdmins({
+                type: "emergency-request",
+                title: "🚨 Emergency Request!",
+                message: `${req.user.name} has submitted an emergency assistance request. Urgency: ${urgencyLevel}`,
+                data: {
+                    bookingId: booking._id,
+                    userId: req.user._id,
+                    link: `/admin/booking/${booking._id}`,
+                    meta: { urgencyLevel },
+                },
+                priority: "urgent",
+            });
+        }
+
         req.flash("success_msg", "Emergency assistance request submitted. A mechanic will be assigned shortly.")
         res.redirect(`/user/booking/${booking._id}`)
     } catch (error) {

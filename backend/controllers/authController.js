@@ -234,3 +234,101 @@ exports.getMe = async (req, res) => {
     res.status(500).json({ message: "Failed to fetch user data." });
   }
 };
+
+// Forgot Password - Send OTP
+exports.sendForgotPasswordOtp = async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({ message: "Email is required." });
+    }
+
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ message: "No account found with this email address." });
+    }
+
+    const otp = otpService.generateOtp();
+    await otpService.sendOtp(email, otp);
+
+    req.session.forgotPasswordOtp = otp;
+    req.session.forgotPasswordEmail = email;
+    req.session.forgotPasswordExpires = Date.now() + 10 * 60 * 1000; // 10 minutes
+
+    res.json({ message: "OTP sent to your email. Please verify." });
+  } catch (error) {
+    console.error("Send forgot password OTP error:", error);
+    res.status(500).json({ message: "Failed to send OTP. Please try again." });
+  }
+};
+
+// Verify Forgot Password OTP
+exports.verifyForgotPasswordOtp = async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+    if (!email || !otp) {
+      return res.status(400).json({ message: "Email and OTP are required." });
+    }
+
+    if (email !== req.session.forgotPasswordEmail) {
+      return res.status(400).json({ message: "Email does not match." });
+    }
+
+    if (Date.now() > req.session.forgotPasswordExpires) {
+      delete req.session.forgotPasswordOtp;
+      delete req.session.forgotPasswordEmail;
+      delete req.session.forgotPasswordExpires;
+      return res.status(400).json({ message: "OTP has expired. Please request a new one." });
+    }
+
+    if (otp === req.session.forgotPasswordOtp) {
+      req.session.otpVerified = true;
+      res.json({ message: "OTP verified successfully. You can now reset your password." });
+    } else {
+      res.status(400).json({ message: "Invalid OTP. Please try again." });
+    }
+  } catch (error) {
+    console.error("Verify forgot password OTP error:", error);
+    res.status(500).json({ message: "OTP verification failed. Please try again." });
+  }
+};
+
+// Reset Password
+exports.resetPassword = async (req, res) => {
+  try {
+    const { email, newPassword } = req.body;
+    if (!email || !newPassword) {
+      return res.status(400).json({ message: "Email and new password are required." });
+    }
+
+    if (email !== req.session.forgotPasswordEmail) {
+      return res.status(400).json({ message: "Email does not match." });
+    }
+
+    if (!req.session.otpVerified) {
+      return res.status(400).json({ message: "OTP not verified. Please verify OTP first." });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({ message: "Password must be at least 6 characters." });
+    }
+
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ message: "User not found." });
+    }
+
+    user.password = newPassword;
+    await user.save();
+
+    delete req.session.forgotPasswordOtp;
+    delete req.session.forgotPasswordEmail;
+    delete req.session.forgotPasswordExpires;
+    delete req.session.otpVerified;
+
+    res.json({ message: "Password reset successful! Please log in with your new password." });
+  } catch (error) {
+    console.error("Reset password error:", error);
+    res.status(500).json({ message: "Password reset failed. Please try again." });
+  }
+};

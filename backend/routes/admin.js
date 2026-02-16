@@ -401,6 +401,21 @@ router.post("/mechanic/:id/approve", async (req, res) => {
     mechanic.isApproved = true
     await mechanic.save()
 
+    // Notify the mechanic about approval
+    const io = req.app.get('io');
+    if (io && io.createNotification) {
+      await io.createNotification({
+        recipient: mechanic._id,
+        type: "mechanic-approval",
+        title: "🎉 Congratulations! You're Approved!",
+        message: "Your mechanic profile has been approved. You can now start accepting service requests!",
+        data: {
+          link: "/mechanic/dashboard",
+        },
+        priority: "high",
+      });
+    }
+
     req.flash("success_msg", "Mechanic approved successfully")
     res.redirect("/admin/mechanics")
   } catch (error) {

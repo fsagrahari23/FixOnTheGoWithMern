@@ -1,11 +1,13 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
 
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:3001";
+
 export const sendOtp = createAsyncThunk(
     "auth/sendOtp",
     async ({ email }, { rejectWithValue }) => {
         try {
             console.log(email)
-            const response = await fetch("http://localhost:3000/auth/send-otp", {
+            const response = await fetch(`${API_BASE}/auth/send-otp`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ email }),
@@ -29,7 +31,7 @@ export const verifyOtp = createAsyncThunk(
     "auth/verifyOtp",
     async ({ otp }, { rejectWithValue }) => {
         try {
-            const response = await fetch("http://localhost:3000/auth/verify-otp", {
+            const response = await fetch(`${API_BASE}/auth/verify-otp`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ otp }),
@@ -55,7 +57,7 @@ export const registerUser = createAsyncThunk(
     "auth/registerUser",
     async (userData, { rejectWithValue }) => {
         try {
-            const response = await fetch("http://localhost:3000/auth/register-user", {
+            const response = await fetch(`${API_BASE}/auth/register-user`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(userData),
@@ -99,7 +101,7 @@ export const registerMechanic = createAsyncThunk(
             console.log(mechanicData.documents);
             console.log(mechanicData);
 
-            const response = await fetch("http://localhost:3000/auth/register-mechanic", {
+            const response = await fetch(`${API_BASE}/auth/register-mechanic`, {
                 method: "POST",
                 body: formData,
                 credentials: "include",
@@ -123,7 +125,7 @@ export const login = createAsyncThunk(
     "auth/login",
     async ({ email, password }, { rejectWithValue }) => {
         try {
-            const response = await fetch("http://localhost:3000/auth/login", {
+            const response = await fetch(`${API_BASE}/auth/login`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ email, password }),
@@ -147,7 +149,7 @@ export const logout = createAsyncThunk(
     "auth/logout",
     async (_, { rejectWithValue }) => {
         try {
-            const response = await fetch("http://localhost:3000/auth/logout", {
+            const response = await fetch(`${API_BASE}/auth/logout`, {
                 method: "GET",
                 credentials: "include",
             });
@@ -169,7 +171,7 @@ export const getMe = createAsyncThunk(
     "auth/getMe",
     async (_, { rejectWithValue }) => {
         try {
-            const response = await fetch("http://localhost:3000/auth/me", {
+            const response = await fetch(`${API_BASE}/auth/me`, {
                 method: "GET",
                 credentials: "include",
             });

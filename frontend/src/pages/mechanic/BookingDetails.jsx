@@ -86,13 +86,15 @@ export default function MechanicBookingDetails() {
               <div className="space-y-2">
                 <p><span className="font-medium">Name:</span> {booking.user.name}</p>
                 <p><span className="font-medium">Phone:</span> {booking.user.phone}</p>
-                <p><span className="font-medium">Address:</span> {booking.address}</p>
+                <p><span className="font-medium">Address:</span> {booking.location?.address || 'Not provided'}</p>
               </div>
             </div>
 
             <div className="bg-card rounded-lg shadow p-6">
               <h2 className="text-2xl font-bold mb-4">Service Details</h2>
               <div className="space-y-2">
+                <p><span className="font-medium">Category:</span> {booking.problemCategory}</p>
+                <p><span className="font-medium">Description:</span> {booking.description}</p>
                 <p><span className="font-medium">Type:</span> {booking.serviceType}</p>
                 <p><span className="font-medium">Status:</span> {booking.status}</p>
                 <p><span className="font-medium">Created:</span> {new Date(booking.createdAt).toLocaleString()}</p>
@@ -101,6 +103,24 @@ export default function MechanicBookingDetails() {
                 )}
               </div>
             </div>
+
+            {booking.images && booking.images.length > 0 && (
+              <div className="bg-card rounded-lg shadow p-6">
+                <h2 className="text-2xl font-bold mb-4">Reference Images</h2>
+                <div className="grid grid-cols-2 gap-4">
+                  {booking.images.map((image, index) => (
+                    <div key={index} className="rounded-lg overflow-hidden border border-border">
+                      <img 
+                        src={image} 
+                        alt={`Reference ${index + 1}`}
+                        className="w-full h-40 object-cover hover:scale-105 transition-transform cursor-pointer"
+                        onClick={() => window.open(image, '_blank')}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="space-y-6">

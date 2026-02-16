@@ -12,7 +12,14 @@ const fileUpload = require("express-fileupload");
 const expressLayouts = require("express-ejs-layouts");
 require("dotenv").config();
 const cors = require("cors")
-
+const helmet = require('helmet');
+const isProduction = process.env.NODE_ENV === 'production';
+const AppError = require("./utils/AppError");
+const setupSwagger = require("./swagger");
+const logger = require("./utils/Logger");
+const metricsMiddleware = require("./middleware/metircs.middleware")
+const { register } = require("./metrics/prometheus");
+const globalRateLimiter = require("./middleware/rateLimiter");
 // Import routes
 const authRoutes = require("./routes/auth");
 const userRoutes = require("./routes/user");
@@ -22,6 +29,7 @@ const adminRoutes = require("./routes/admin");
 const chatRoutes = require("./routes/chat");
 const paymentRoutes = require("./routes/payment");
 const bookingRoutes = require("./routes/booking");
+const notificationRoutes = require("./routes/notification");
 
 // Import middleware
 const {
@@ -51,7 +59,12 @@ app.use(
     resave: false,
     saveUninitialized: false,
     store: MongoStore.create({ mongoUrl: process.env.MONGODB_URI }),
-    cookie: { maxAge: 1000 * 60 * 60 * 24 }, // 1 day
+    cookie: { 
+      maxAge: 1000 * 60 * 60 * 24, // 1 day
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: false // Set to true in production with HTTPS
+    }
   })
 );
 
@@ -67,6 +80,12 @@ app.use(fileUpload({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Request logging middleware (for debugging)
+app.use((req, res, next) => {
+  console.log(`${req.method} ${req.path} - Session User:`, req.session?.user?.email || 'Not logged in');
+  next();
+});
+
 app.use(express.static(path.join(__dirname, "public")));
 
 app.use(express.static(path.join(__dirname, "uploads")));
@@ -80,7 +99,40 @@ app.use((req, res, next) => {
 });
 
 app.set("layout", "layout");
+app.use(metricsMiddleware);
 
+app.get("/metrics", async (req, res) => {
+  res.setHeader("Content-Type", register.contentType);
+  res.end(await register.metrics());
+});
+app.use((req, res, next) => {
+  res.locals.path = req.path; // This makes `path` available in all views
+  next();
+});
+
+// Security middleware
+if (process.env.NODE_ENV === 'production') {
+  app.use(helmet());
+}
+
+
+// Pipe Morgan to Winston
+// Create a stream for Morgan to write to Winston at 'http' level
+const morgan = require('morgan');
+morgan.token('message', (req, res) => res.statusMessage || ''); // Optional custom token
+app.use(
+  morgan(isProduction ? 'combined' : 'dev', {
+    stream: {
+      write: (message) => logger.http(message.trim()), // Log HTTP requests at 'http' level
+    },
+    skip: (req, res) => {
+      if (isProduction && req.path === '/health') {
+        return true;
+      }
+      return false; // Log all in dev; customize as needed
+    },
+  })
+);
 app.use(cors(
   {
     origin: true,
@@ -115,6 +167,7 @@ app.use("/mechanic", isAuthenticated, isMechanic, mechanicRoutes);
 app.use("/admin", isAuthenticated, isAdmin, adminRoutes);
 app.use("/chat", isAuthenticated, chatRoutes);
 app.use("/payment", isAuthenticated, paymentRoutes);
+app.use("/api/notifications", isAuthenticated, notificationRoutes);
 
 // Home route
 app.get("/", (req, res) => {
@@ -123,11 +176,53 @@ app.get("/", (req, res) => {
 
 // Socket.io setup
 require("./socket")(io);
+// Global error handler
+app.use((err, req, res, next) => {
+  // Normalize to AppError
+  let error = err instanceof AppError ? err : new AppError(err.message || 'An unexpected error occurred', err.statusCode || 500, { cause: err });
 
+  // Handle specific error types
+  if (err.name === 'CastError') {
+    error = AppError.notFound('Resource not found');
+  }
+  if (err.code === 11000) {
+    error = AppError.badRequest('Duplicate field value entered', { data: { fields: err.keyValue } });
+  }
+  if (err.name === 'ValidationError') {
+    const messages = Object.values(err.errors).map((val) => val.message).join('; ');
+    error = AppError.badRequest(messages, { code: 'VALIDATION_ERROR', data: { errors: err.errors } });
+  }
+  if (err.name === 'JsonWebTokenError') {
+    error = AppError.unauthorized('Invalid token', { code: 'AUTH_ERROR' });
+  }
+  if (err.name === 'TokenExpiredError') {
+    error = AppError.unauthorized('Token expired', { code: 'AUTH_ERROR' });
+  }
+
+  // For non-operational errors, use generic message
+  if (!error.isOperational) {
+    error.message = 'Internal Server Error';
+    error.statusCode = 500;
+    error.isOperational = true;
+  }
+
+  // Log the error with Winston
+  logger.error('Application error', {
+    message: error.message,
+    stack: error.stack,
+    path: req.path,
+    method: req.method,
+    user: req.user ? req.user.id : 'unauthenticated', // Example: log user if authenticated
+    ...(error.data && { data: error.data }),
+  });
+
+  // Send response
+  res.status(error.statusCode).json(error.toJSON(isProduction));
+});
 
 // Start server
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 3002;
 server.listen(PORT, () => {
-
-  console.log(`Server running on http://localhost:${PORT}`);
+  logger.info(`Server running on http://localhost:${PORT} in ${isProduction ? 'production' : 'development'} mode`);
+  logger.info(`Swagger Docs at http://localhost:${PORT}/api-docs`)
 });

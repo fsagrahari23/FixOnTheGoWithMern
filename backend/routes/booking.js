@@ -30,6 +30,13 @@ const checkBookingLimits = async (req, res, next) => {
         })
 
         if (bookingCount >= 2) {
+            // Check if request expects JSON (API call) or HTML
+            if (req.headers.accept?.includes('application/json') || req.headers['content-type']?.includes('multipart/form-data') || !req.headers.accept?.includes('text/html')) {
+                return res.status(403).json({
+                    success: false,
+                    message: "Basic users can only have 2 active bookings. Please upgrade to premium for unlimited bookings."
+                })
+            }
             req.flash("error_msg", "Basic users can only have 2 active bookings. Please upgrade to premium for unlimited bookings.")
             return res.redirect("/user/premium")
         }
@@ -38,6 +45,13 @@ const checkBookingLimits = async (req, res, next) => {
         next()
     } catch (error) {
         console.error("Error checking booking limits:", error)
+        // Check if request expects JSON (API call) or HTML
+        if (req.headers.accept?.includes('application/json') || req.headers['content-type']?.includes('multipart/form-data') || !req.headers.accept?.includes('text/html')) {
+            return res.status(500).json({
+                success: false,
+                message: "An error occurred. Please try again."
+            })
+        }
         req.flash("error_msg", "An error occurred. Please try again.")
         return res.redirect("/user/dashboard")
     }
@@ -71,8 +85,10 @@ router.post("/book", checkBookingLimits, async (req, res) => {
 
         // Validation
         if (!problemCategory || !description || !address) {
-            req.flash("error_msg", "Please fill in all required fields")
-            return res.redirect("/user/book")
+            return res.status(400).json({ 
+                success: false, 
+                message: "Please fill in all required fields" 
+            })
         }
 
         // Validate coordinates
@@ -80,13 +96,15 @@ router.post("/book", checkBookingLimits, async (req, res) => {
         const lng = Number.parseFloat(longitude)
 
         if (isNaN(lat) || isNaN(lng) || (lat === 0 && lng === 0) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
-            req.flash("error_msg", "Invalid location coordinates. Please select a valid location.")
-            return res.redirect("/user/book")
+            return res.status(400).json({ 
+                success: false, 
+                message: "Invalid location coordinates. Please select a valid location." 
+            })
         }
 
         // Check if emergency request is available for user
         let canRequestEmergency = false
-        if (emergencyRequest === "on") {
+        if (emergencyRequest === "on" || emergencyRequest === true) {
             const subscription = await Subscription.findOne({
                 user: req.user._id,
                 status: "active",
@@ -95,8 +113,10 @@ router.post("/book", checkBookingLimits, async (req, res) => {
             })
 
             if (!subscription) {
-                req.flash("error_msg", "Emergency assistance is only available for yearly premium subscribers.")
-                return res.redirect("/user/book")
+                return res.status(400).json({ 
+                    success: false, 
+                    message: "Emergency assistance is only available for yearly premium subscribers." 
+                })
             }
             canRequestEmergency = true
         }
@@ -137,14 +157,14 @@ router.post("/book", checkBookingLimits, async (req, res) => {
                 coordinates: [lng, lat], // MongoDB uses [longitude, latitude] format
                 address,
             },
-            requiresTowing: requiresTowing === "on",
+            requiresTowing: requiresTowing === "on" || requiresTowing === true,
             isPremiumBooking: isPremium,
             priority: isPremium ? (canRequestEmergency ? 2 : 1) : 0, // Higher priority for premium and emergency
-            emergencyRequest: emergencyRequest === "on" && canRequestEmergency,
+            emergencyRequest: (emergencyRequest === "on" || emergencyRequest === true) && canRequestEmergency,
         }
 
         // Add towing details if required
-        if (requiresTowing === "on") {
+        if (requiresTowing === "on" || requiresTowing === true) {
             const dropoffLat = Number.parseFloat(dropoffLatitude)
             const dropoffLng = Number.parseFloat(dropoffLongitude)
 
@@ -157,8 +177,10 @@ router.post("/book", checkBookingLimits, async (req, res) => {
                 dropoffLng < -180 ||
                 dropoffLng > 180
             ) {
-                req.flash("error_msg", "Invalid dropoff location coordinates. Please select a valid dropoff location.")
-                return res.redirect("/user/book")
+                return res.status(400).json({ 
+                    success: false, 
+                    message: "Invalid dropoff location coordinates. Please select a valid dropoff location." 
+                })
             }
 
             // Use pickup coordinates from form or default to main location
@@ -188,6 +210,27 @@ router.post("/book", checkBookingLimits, async (req, res) => {
             await User.findByIdAndUpdate(req.user._id, {
                 $inc: { basicBookingsUsed: 1 },
             })
+        }
+
+        // Notify nearby mechanics about the new service request
+        const io = req.app.get('io');
+        if (io && io.notifyNearbyMechanics) {
+            await io.notifyNearbyMechanics(newBooking);
+        }
+
+        // Notify admins about the new booking
+        if (io && io.notifyAdmins) {
+            await io.notifyAdmins({
+                type: "service-request",
+                title: "New Booking Created",
+                message: `${req.user.name} created a new booking for ${problemCategory}`,
+                data: {
+                    bookingId: newBooking._id,
+                    userId: req.user._id,
+                    link: `/admin/booking/${newBooking._id}`,
+                },
+                priority: canRequestEmergency ? "urgent" : "normal",
+            });
         }
 
         res.json({ success: true, message: "Booking created successfully", bookingId: newBooking._id })

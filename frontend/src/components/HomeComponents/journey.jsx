@@ -196,11 +196,15 @@ export default function Journey() {
         mainTl.to(smoke, { opacity: 1, duration: 0.5 }, "-=0.5")
         mainTl.to(car, { x: "+=5", duration: 0.1, repeat: 5, yoyo: true, ease: "power2.inOut" })
         mainTl.to(man, { opacity: 1, x: 0, duration: 0.6, ease: "back.out(1.7)" })
-        mainTl.to(
-            man.querySelector(".man-arm"),
-            { rotation: -30, duration: 0.3, repeat: 2, yoyo: true, transformOrigin: "bottom center" },
-            "-=0.3",
-        )
+        // Animate the left arm if present (previous selector ".man-arm" didn't exist)
+        const manArmLeft = man.querySelector(".man-arm-left") || man.querySelector(".man-arm-right") || null
+        if (manArmLeft) {
+            mainTl.to(
+                manArmLeft,
+                { rotation: -30, duration: 0.3, repeat: 2, yoyo: true, transformOrigin: "bottom center" },
+                "-=0.3",
+            )
+        }
         mainTl.to(speechBubble, { opacity: 1, scale: 1, duration: 0.4, ease: "back.out(1.7)" }, "-=0.6")
         mainTl.to({}, { duration: 0.6 })
         mainTl.to(speechBubble, { opacity: 0, scale: 0, duration: 0.2 })
@@ -748,7 +752,10 @@ export default function Journey() {
                                 </div>
                                 <svg className="absolute inset-0 w-full h-full pointer-events-none">
                                     <path
-                                        d="M 16 8 Q 24 12 Q 32 16 Q 40 20 L 128 64"
+                                        // Each `Q` command requires control point and end point pairs: `Q cx cy x y`.
+                                        // The previous string had lone pairs which caused the SVG parser error.
+                                        // Use valid numeric pairs for each command — adjust coordinates to taste.
+                                        d="M16 8 Q24 12 32 16 Q40 20 64 28 L128 64"
                                         stroke="#3b82f6"
                                         strokeWidth="2"
                                         strokeDasharray="4,2"

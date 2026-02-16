@@ -163,6 +163,23 @@ router.post("/booking/:id/accept", async (req, res) => {
       await chat.save();
     }
 
+    // Notify the user that their booking was accepted
+    const io = req.app.get('io');
+    if (io && io.createNotification) {
+      await io.createNotification({
+        recipient: booking.user,
+        type: "booking-accepted",
+        title: "🎉 Booking Accepted!",
+        message: `${req.user.name} has accepted your service request and is on the way!`,
+        data: {
+          bookingId: booking._id,
+          mechanicId: req.user._id,
+          link: `/user/booking/${booking._id}`,
+        },
+        priority: "high",
+      });
+    }
+
     // Return JSON for API calls, redirect for form submissions
     if (req.headers.accept?.includes('application/json')) {
       return res.json({ success: true, message: "Booking accepted successfully", booking });
@@ -215,6 +232,23 @@ router.post("/booking/:id/start", async (req, res) => {
     booking.status = "in-progress";
     booking.updatedAt = new Date();
     await booking.save();
+
+    // Notify the user that service has started
+    const io = req.app.get('io');
+    if (io && io.createNotification) {
+      await io.createNotification({
+        recipient: booking.user,
+        type: "booking-started",
+        title: "🔧 Service Started!",
+        message: `${req.user.name} has started working on your vehicle.`,
+        data: {
+          bookingId: booking._id,
+          mechanicId: req.user._id,
+          link: `/user/booking/${booking._id}`,
+        },
+        priority: "normal",
+      });
+    }
 
     if (req.headers.accept?.includes('application/json')) {
       return res.json({ success: true, message: "Service started successfully", booking });
@@ -303,6 +337,23 @@ router.post("/booking/:id/complete", async (req, res) => {
             });
           }
         });
+
+        // Send notification to user about service completion
+        if (io.createNotification) {
+          await io.createNotification({
+            recipient: booking.user,
+            type: "booking-completed",
+            title: "✅ Service Completed!",
+            message: `Your service has been completed. Amount due: ₹${amount}`,
+            data: {
+              bookingId: booking._id,
+              mechanicId: req.user._id,
+              amount: Number.parseFloat(amount),
+              link: `/user/booking/${booking._id}`,
+            },
+            priority: "high",
+          });
+        }
       }
     } catch (emitErr) {
       console.error('Error emitting booking status change:', emitErr);

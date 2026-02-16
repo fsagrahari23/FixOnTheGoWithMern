@@ -16,6 +16,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { toggleTheme } from "../store/slices/themeSlice";
 import { useNavigate } from "react-router-dom";
 import { logout } from "../store/slices/authThunks";
+import { NotificationCenter } from "./notifications";
 
 export function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
@@ -62,9 +63,11 @@ export function Navbar() {
   };
 
   return (
-    <nav className="h-16 bg-background border-b border-border flex items-center justify-between px-6 sticky top-0 z-40">
+    <nav className="h-16 border-b border-border flex items-center justify-between px-6 sticky top-0 z-40 backdrop-blur-md bg-background/80 dark:bg-background/90 dark:shadow-lg dark:shadow-primary/5">
       <div className="flex items-center gap-2">
-        <h2 className="text-2xl font-semibold text-foreground">FixOnTheGo</h2>
+        <h2 className="text-2xl font-semibold bg-linear-to-r from-primary to-secondary bg-clip-text text-transparent">
+          FixOnTheGo
+        </h2>
       </div>
 
       <div className="flex items-center gap-4">
@@ -93,6 +96,9 @@ export function Navbar() {
           {theme === "dark" ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
         </Button>
 
+        {/* Notification Center - only show for logged in users */}
+        {user && <NotificationCenter />}
+
         {/* Conditional rendering: Login/Register buttons or User dropdown */}
         {!user ? (
           <>
@@ -117,7 +123,7 @@ export function Navbar() {
               <Button variant="ghost" className="relative h-10 w-10 rounded-full p-0">
                 <Avatar className="h-10 w-10">
                   <AvatarImage src={user?.profilePicture || user?.avatar} alt={user?.name || "User"} />
-                  <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white font-semibold">
+                  <AvatarFallback className="bg-linear-to-br from-blue-500 to-purple-600 text-white font-semibold">
                     {getUserInitials()}
                   </AvatarFallback>
                 </Avatar>

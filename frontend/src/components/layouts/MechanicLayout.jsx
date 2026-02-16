@@ -1,9 +1,9 @@
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Button } from '../ui/button';
 import { useSelector, useDispatch } from 'react-redux';
 import { logout } from '../../store/slices/authThunks';
-import { useLocation as useAppLocation } from '../../contexts/LocationContext';
+import { NotificationCenter } from '../notifications';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,14 +13,15 @@ import {
   DropdownMenuTrigger,
 } from '../ui/dropdown-menu';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
-import { LogOut, User as UserIcon } from 'lucide-react';
+import { LogOut, User as UserIcon, Bell } from 'lucide-react';
 
 export function MechanicLayout() {
   const location = useLocation();
+  const navigate = useNavigate();
   const [showFullNav, setShowFullNav] = useState(true);
-  const [notifications, setNotifications] = useState([]);
-  const [notifOpen, setNotifOpen] = useState(false);
   const address = useSelector((s) => s.location?.address);
+  const { unreadCount } = useSelector((s) => s.notifications);
+  const { user } = useSelector((s) => s.auth);
 
   const dispatch = useDispatch();
 
@@ -28,7 +29,6 @@ export function MechanicLayout() {
     try {
       await dispatch(logout()).unwrap();
     } catch (err) {
-      // If logout fails, still clear local storage
       console.warn('Logout thunk failed:', err);
     } finally {
       try {
@@ -42,6 +42,7 @@ export function MechanicLayout() {
       window.location.href = '/auth/login';
     }
   };
+
   const navItems = [
     {
       label: 'Dashboard',
@@ -57,13 +58,7 @@ export function MechanicLayout() {
     },
     {
       label: 'Notifications',
-      icon: (
-        <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <path d="M15 17H9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-          <path d="M18 8C18 5.23858 15.7614 3 13 3H11C8.23858 3 6 5.23858 6 8V11C6 13.7614 4 15 4 15H20C20 15 18 13.7614 18 11V8Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-          <path d="M13.73 21C13.5547 21.3033 13.3017 21.5547 12.9966 21.7356C12.6915 21.9166 12.3466 22.0211 11.9966 22.0401C11.6467 22.059 11.3015 21.9921 10.9866 21.8456C10.6718 21.6991 10.3989 21.4762 10.1893 21.1921" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-      ),
+      icon: <Bell className="w-5 h-5" />,
       notifications: true
     },
     {
@@ -88,31 +83,18 @@ export function MechanicLayout() {
     }
   ];
 
-  // Access socket from LocationContext to receive realtime notifications
-  const appCtx = useAppLocation();
-  const socket = appCtx?.socket;
-
-  // listen for incoming notifications from server
-  useEffect(() => {
-    if (!socket) return;
-    const pushNotification = (type, payload) => {
-      setNotifications((prev) => [{ id: Date.now() + Math.random(), type, title: payload.title || type, message: payload.message || JSON.stringify(payload), time: Date.now(), read: false }, ...prev]);
-    };
-
-    socket.on('notification', (payload) => pushNotification('notification', payload));
-    socket.on('service-request', (payload) => pushNotification('service-request', payload));
-    socket.on('payment', (payload) => pushNotification('payment', payload));
-    socket.on('profile-updated', (payload) => pushNotification('profile-updated', payload));
-
-    return () => {
-      try { socket.off('notification'); socket.off('service-request'); socket.off('payment'); socket.off('profile-updated'); } catch (e) { }
-    };
-  }, [socket]);
+  const getUserInitials = () => {
+    const name = user?.name || localStorage.getItem('name');
+    if (!name) return 'U';
+    const parts = name.trim().split(' ');
+    if (parts.length >= 2) return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+    return name.substring(0, 2).toUpperCase();
+  };
 
   return (
     <div className="flex h-screen">
-  {/* Sidebar */}
-  <div className={`${showFullNav ? 'w-64' : 'w-16'} bg-card text-card-foreground flex flex-col border-r transition-all duration-300`}>
+      {/* Sidebar */}
+      <div className={`${showFullNav ? 'w-64' : 'w-16'} bg-card text-card-foreground flex flex-col border-r transition-all duration-300`}>
         {/* Logo */}
         <div className="p-4 border-b flex items-center">
           <h1 className={`font-semibold ${!showFullNav ? 'text-center' : ''}`}>
@@ -120,8 +102,8 @@ export function MechanicLayout() {
           </h1>
         </div>
 
-  {/* User type and toggle placed below the logo */}
-  <div className="p-3 border-b flex items-center justify-between">
+        {/* User type and toggle */}
+        <div className="p-3 border-b flex items-center justify-between">
           {showFullNav ? (
             <>
               <div className="flex items-center">
@@ -152,46 +134,29 @@ export function MechanicLayout() {
           )}
         </div>
 
-  {/* Navigation */}
-  <nav className="flex-1 overflow-y-auto py-4">
+        {/* Navigation */}
+        <nav className="flex-1 overflow-y-auto py-4">
           {navItems.map((item) => {
-            // Special handling for notifications entry
+            // Special handling for notifications - use centralized NotificationCenter
             if (item.notifications) {
-              const unread = notifications.filter(n => !n.read).length;
               return (
                 <div key="notifications" className="relative my-1 mx-2">
-                  <button
-                    onClick={() => {
-                      setNotifOpen((v) => !v);
-                      // mark all as read when opening
-                      if (!notifOpen) setNotifications((prev) => prev.map(n => ({ ...n, read: true })));
-                    }}
-                    className={`flex items-center px-4 py-2 rounded-lg w-full text-left ${showFullNav ? '' : 'justify-center'}`}
+                  <div
+                    className={`flex items-center px-4 py-2 rounded-lg w-full text-muted-foreground hover:bg-muted ${showFullNav ? '' : 'justify-center'}`}
                   >
-                    <div className="w-5 h-5 relative">{item.icon}
-                      {unread > 0 && <span className="absolute -right-1 -top-1 inline-flex items-center justify-center px-1.5 py-0.5 text-xs font-bold leading-none text-white bg-red-600 rounded-full">{unread}</span>}
+                    <div className="relative">
+                      {item.icon}
+                      {unreadCount > 0 && (
+                        <span className="absolute -right-1 -top-1 inline-flex items-center justify-center min-w-[16px] h-4 px-1 text-xs font-bold leading-none text-white bg-red-600 rounded-full">
+                          {unreadCount > 99 ? '99+' : unreadCount}
+                        </span>
+                      )}
                     </div>
                     {showFullNav && <span className="ml-3">{item.label}</span>}
-                  </button>
-
-                  {notifOpen && showFullNav && (
-                    <div className="absolute left-full ml-2 top-0 w-80 bg-popover text-popover-foreground border rounded-md shadow-lg z-50 p-2">
-                      <div className="flex items-center justify-between px-2 py-1 border-b">
-                        <div className="font-medium">Notifications</div>
-                        <button className="text-sm text-muted-foreground" onClick={() => setNotifications([])}>Clear</button>
-                      </div>
-                      <div className="max-h-64 overflow-auto mt-2">
-                        {notifications.length === 0 && <div className="p-3 text-sm text-muted-foreground">No notifications</div>}
-                        {notifications.map((n) => (
-                          <div key={n.id} className={`p-2 border-b last:border-b-0 ${n.read ? 'opacity-70' : ''}`}>
-                            <div className="text-sm font-medium">{n.title || n.type}</div>
-                            <div className="text-xs text-muted-foreground">{n.message}</div>
-                            <div className="text-xs text-muted-foreground mt-1">{new Date(n.time).toLocaleString()}</div>
-                          </div>
-                        ))}
-                      </div>
+                    <div className={showFullNav ? 'ml-auto' : 'ml-0'}>
+                      <NotificationCenter />
                     </div>
-                  )}
+                  </div>
                 </div>
               );
             }
@@ -221,10 +186,7 @@ export function MechanicLayout() {
             className="w-full flex items-center justify-center"
             onClick={handleLogout}
           >
-            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
-                d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-            </svg>
+            <LogOut className="w-5 h-5" />
             {showFullNav && <span className="ml-2">Logout</span>}
           </Button>
         </div>
@@ -232,14 +194,11 @@ export function MechanicLayout() {
 
       {/* Main content */}
       <div className="flex-1 overflow-auto bg-background">
-        {/* Top header similar to user dashboard */}
+        {/* Top header */}
         <header className="flex items-center justify-between px-6 py-3 border-b bg-card">
           <div className="flex items-center gap-4">
-            <button
-              title="Location"
-              className="p-2 rounded-full hover:bg-muted"
-            >
-              <svg className="w-5 h-5 text-muted-foreground" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <button title="Location" className="p-2 rounded-full hover:bg-muted">
+              <svg className="w-5 h-5 text-muted-foreground" viewBox="0 0 24 24" fill="none">
                 <path d="M12 2C8.686 2 6 4.686 6 8c0 5.25 6 12 6 12s6-6.75 6-12c0-3.314-2.686-6-6-6z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
                 <circle cx="12" cy="8" r="2" fill="currentColor" />
               </svg>
@@ -250,19 +209,45 @@ export function MechanicLayout() {
           </div>
 
           <div className="flex items-center gap-4">
-            {/* Theme toggle (stub) */}
+            {/* Theme toggle */}
             <button
               title="Toggle theme"
               className="p-2 rounded-full hover:bg-muted"
               onClick={() => document.documentElement.classList.toggle('dark')}
             >
-              <svg className="w-5 h-5 text-muted-foreground" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <svg className="w-5 h-5 text-muted-foreground" viewBox="0 0 24 24" fill="none">
                 <path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
             </button>
 
-            {/* Avatar + dropdown */}
-            <UserMenu />
+            {/* User dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" className="relative h-10 w-10 rounded-full p-0">
+                  <Avatar className="h-10 w-10">
+                    <AvatarImage src={user?.profilePicture || user?.avatar} alt={user?.name || 'User'} />
+                    <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white font-semibold">
+                      {getUserInitials()}
+                    </AvatarFallback>
+                  </Avatar>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel className="flex flex-col space-y-1">
+                  <p className="text-sm font-medium leading-none">{user?.name || 'User'}</p>
+                  <p className="text-xs leading-none text-muted-foreground">{user?.email || ''}</p>
+                  <p className="text-xs leading-none text-primary font-medium capitalize">Mechanic</p>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => navigate('/mechanic/profile')}>
+                  <UserIcon className="mr-2 h-4 w-4" /> Profile
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleLogout} className="text-red-600 dark:text-red-400">
+                  <LogOut className="mr-2 h-4 w-4" /> Logout
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </header>
 
@@ -271,71 +256,5 @@ export function MechanicLayout() {
         </main>
       </div>
     </div>
-  );
-}
-
-function UserMenu() {
-  const [open, setOpen] = useState(false);
-  const dispatch = useDispatch();
-  const navigate = useNavigate();
-  const { user } = useSelector((s) => s.auth);
-
-  const handleLogout = async () => {
-    try {
-      await dispatch(logout()).unwrap();
-    } catch (err) {
-      console.warn('Logout thunk failed:', err);
-    } finally {
-      try {
-        localStorage.removeItem('token');
-        localStorage.removeItem('name');
-        localStorage.removeItem('email');
-        localStorage.removeItem('avatar');
-      } catch (e) {}
-      navigate('/auth/login');
-    }
-  };
-
-  const getUserInitials = () => {
-    const name = user?.name || localStorage.getItem('name');
-    if (!name) return 'U';
-    const parts = name.trim().split(' ');
-    if (parts.length >= 2) return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
-    return name.substring(0, 2).toUpperCase();
-  };
-
-  const handleProfile = () => navigate('/mechanic/profile');
-
-  return (
-    <DropdownMenu open={open} onOpenChange={setOpen}>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="relative h-10 w-10 rounded-full p-0">
-          <Avatar className="h-10 w-10">
-            <AvatarImage src={user?.profilePicture || user?.avatar || localStorage.getItem('avatar') || ''} alt={user?.name || 'User'} />
-            <AvatarFallback className="bg-linear-to-br from-blue-500 to-purple-600 text-white font-semibold">
-              {getUserInitials()}
-            </AvatarFallback>
-          </Avatar>
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-56">
-        <DropdownMenuLabel className="flex flex-col space-y-1">
-          <p className="text-sm font-medium leading-none">{user?.name || localStorage.getItem('name') || 'User'}</p>
-          <p className="text-xs leading-none text-muted-foreground">{user?.email || localStorage.getItem('email') || ''}</p>
-          { (user?.role || 'mechanic') && (
-            <p className="text-xs leading-none text-primary font-medium capitalize">{user?.role || 'mechanic'}</p>
-          )}
-        </DropdownMenuLabel>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={handleProfile}>
-          <UserIcon className="mr-2 h-4 w-4" /> Profile
-        </DropdownMenuItem>
-        {/* Settings removed as per request */}
-        <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={handleLogout} className="text-red-600 dark:text-red-400">
-          <LogOut className="mr-2 h-4 w-4" /> Logout
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
   );
 }

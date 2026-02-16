@@ -4,7 +4,7 @@ let socketInstance = null;
 
 export const getSocket = () => {
   if (!socketInstance) {
-    socketInstance = io("http://localhost:3000", {
+    socketInstance = io(import.meta.env.VITE_API_BASE_URL || "http://localhost:3001", {
       transports: ["websocket"],
       autoConnect: true,
     });
