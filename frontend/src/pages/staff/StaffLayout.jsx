@@ -7,13 +7,13 @@ import {
     Users,
     UserCog,
     BarChart3,
-    BookCheck,
-    Bell,
+    AlertTriangle,
+    CreditCard,
     Shield,
 } from "lucide-react"
-import { useState, useEffect } from "react"
+import { useState } from "react"
 
-export default function AdminLayout() {
+export default function StaffLayout() {
     const [activeTab, setActiveTab] = useState("dashboard")
 
     return (
@@ -25,14 +25,11 @@ export default function AdminLayout() {
             <div className="flex flex-1 overflow-hidden">
                 <SidebarNav
                     tabs={[
-                        { id: "dashboard", label: "Dashboard", url: "/admin/dashboard", icon: BarChart3 },
-                        { id: "booking_details", label: "Users", url: "/admin/users", icon: Users },
-                        { id: "booking_form", label: "Mechanics", url: "/admin/mechanics", icon:UserCog  },
-                        { id: "emergency", label: "Bookings", url: "/admin/bookings", icon: BookCheck },
-                        { id: "history", label: "Payments", url: "/admin/payments", icon: BarChart3 },
-                        { id: "maintenance", label: "Subscriptions", url: "/admin/subscriptions", icon: Settings },
-                        { id: "staff", label: "Staff", url: "/admin/staff", icon: Shield },
-                        { id: "profile", label: "Profile", url: "/admin/profile", icon: Users },
+                        { id: "dashboard", label: "Dashboard", url: "/staff/dashboard", icon: BarChart3 },
+                        { id: "mechanics", label: "Mechanic Applications", url: "/staff/mechanics", icon: UserCog },
+                        { id: "disputes", label: "Disputes", url: "/staff/disputes", icon: AlertTriangle },
+                        { id: "payments", label: "Payments", url: "/staff/payments", icon: CreditCard },
+                        { id: "profile", label: "Profile", url: "/staff/profile", icon: Users },
                     ]}
                     defaultActiveId="dashboard"
                     onTabChange={setActiveTab}

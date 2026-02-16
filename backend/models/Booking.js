@@ -95,6 +95,29 @@ const BookingSchema = new mongoose.Schema({
       enum: ["monthly", "yearly"],
     },
   },
+  dispute: {
+    isDisputed: {
+      type: Boolean,
+      default: false,
+    },
+    reason: String,
+    raisedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
+    raisedAt: Date,
+    resolution: String,
+    resolvedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
+    resolvedAt: Date,
+    status: {
+      type: String,
+      enum: ["open", "under_review", "resolved", "closed"],
+      default: "open",
+    },
+  },
   createdAt: {
     type: Date,
     default: Date.now,

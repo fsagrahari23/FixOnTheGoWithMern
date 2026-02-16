@@ -1575,5 +1575,299 @@ router.post("/api/change-password", isAdmin, async (req, res) => {
   }
 });
 
+// ==================== STAFF MANAGEMENT ====================
+
+// Get all staff members (API)
+router.get("/api/staff", async (req, res) => {
+  try {
+    const staff = await User.find({ role: "staff" })
+      .select("-password")
+      .sort({ createdAt: -1 });
+
+    res.json({
+      success: true,
+      staff,
+    });
+  } catch (error) {
+    console.error("Get staff error:", error);
+    res.status(500).json({ error: "Failed to fetch staff members" });
+  }
+});
+
+// Get single staff member details
+router.get("/api/staff/:id", async (req, res) => {
+  try {
+    const staff = await User.findOne({ _id: req.params.id, role: "staff" })
+      .select("-password");
+
+    if (!staff) {
+      return res.status(404).json({ error: "Staff member not found" });
+    }
+
+    res.json({
+      success: true,
+      staff,
+    });
+  } catch (error) {
+    console.error("Get staff details error:", error);
+    res.status(500).json({ error: "Failed to fetch staff details" });
+  }
+});
+
+// Create new staff member
+router.post("/api/staff/create", async (req, res) => {
+  try {
+    const {
+      name,
+      email,
+      password,
+      phone,
+      aadhaarNumber,
+      aadhaarDocument,
+      panNumber,
+      panDocument,
+      address,
+      dateOfBirth,
+      emergencyContact,
+      notes,
+    } = req.body;
+
+    // Validate required fields
+    if (!name || !email || !password) {
+      return res.status(400).json({
+        error: "Name, email, and password are required",
+      });
+    }
+
+    // Check if email already exists
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({
+        error: "Email is already registered",
+      });
+    }
+
+    // Validate password length
+    if (password.length < 6) {
+      return res.status(400).json({
+        error: "Password must be at least 6 characters long",
+      });
+    }
+
+    // Create staff user
+    const staffUser = new User({
+      name,
+      email,
+      password,
+      phone: phone || "",
+      role: "staff",
+      mustChangePassword: true,
+      isVerified: true,
+      isApproved: true,
+      isActive: true,
+      createdBy: req.user._id,
+      staffCredentials: {
+        aadhaarNumber: aadhaarNumber || "",
+        aadhaarDocument: aadhaarDocument || "",
+        panNumber: panNumber || "",
+        panDocument: panDocument || "",
+        address: address || "",
+        dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : null,
+        joiningDate: new Date(),
+        emergencyContact: emergencyContact || "",
+        notes: notes || "",
+      },
+    });
+
+    await staffUser.save();
+
+    // Return the created staff without password
+    const createdStaff = await User.findById(staffUser._id).select("-password");
+
+    res.status(201).json({
+      success: true,
+      message: "Staff member created successfully",
+      staff: createdStaff,
+      credentials: {
+        userId: staffUser._id,
+        email: staffUser.email,
+        // Password is returned only once for admin to provide to staff
+        tempPassword: password,
+      },
+    });
+  } catch (error) {
+    console.error("Create staff error:", error);
+    if (error.code === 11000) {
+      return res.status(400).json({ error: "Email is already registered" });
+    }
+    res.status(500).json({ error: "Failed to create staff member" });
+  }
+});
+
+// Update staff member
+router.put("/api/staff/:id", async (req, res) => {
+  try {
+    const {
+      name,
+      phone,
+      aadhaarNumber,
+      aadhaarDocument,
+      panNumber,
+      panDocument,
+      address,
+      dateOfBirth,
+      emergencyContact,
+      notes,
+      isActive,
+    } = req.body;
+
+    const staff = await User.findOne({ _id: req.params.id, role: "staff" });
+    if (!staff) {
+      return res.status(404).json({ error: "Staff member not found" });
+    }
+
+    // Update basic info
+    if (name) staff.name = name;
+    if (phone !== undefined) staff.phone = phone;
+    if (isActive !== undefined) staff.isActive = isActive;
+
+    // Update staff credentials
+    if (aadhaarNumber !== undefined)
+      staff.staffCredentials.aadhaarNumber = aadhaarNumber;
+    if (aadhaarDocument !== undefined)
+      staff.staffCredentials.aadhaarDocument = aadhaarDocument;
+    if (panNumber !== undefined) staff.staffCredentials.panNumber = panNumber;
+    if (panDocument !== undefined)
+      staff.staffCredentials.panDocument = panDocument;
+    if (address !== undefined) staff.staffCredentials.address = address;
+    if (dateOfBirth !== undefined)
+      staff.staffCredentials.dateOfBirth = dateOfBirth
+        ? new Date(dateOfBirth)
+        : null;
+    if (emergencyContact !== undefined)
+      staff.staffCredentials.emergencyContact = emergencyContact;
+    if (notes !== undefined) staff.staffCredentials.notes = notes;
+
+    staff.updatedAt = new Date();
+    await staff.save();
+
+    const updatedStaff = await User.findById(staff._id).select("-password");
+
+    res.json({
+      success: true,
+      message: "Staff member updated successfully",
+      staff: updatedStaff,
+    });
+  } catch (error) {
+    console.error("Update staff error:", error);
+    res.status(500).json({ error: "Failed to update staff member" });
+  }
+});
+
+// Reset staff password
+router.post("/api/staff/:id/reset-password", async (req, res) => {
+  try {
+    const { newPassword } = req.body;
+
+    if (!newPassword || newPassword.length < 6) {
+      return res.status(400).json({
+        error: "Password must be at least 6 characters long",
+      });
+    }
+
+    const staff = await User.findOne({ _id: req.params.id, role: "staff" });
+    if (!staff) {
+      return res.status(404).json({ error: "Staff member not found" });
+    }
+
+    staff.password = newPassword;
+    staff.mustChangePassword = true;
+    await staff.save();
+
+    res.json({
+      success: true,
+      message: "Password reset successfully. Staff must change password on next login.",
+      credentials: {
+        email: staff.email,
+        tempPassword: newPassword,
+      },
+    });
+  } catch (error) {
+    console.error("Reset staff password error:", error);
+    res.status(500).json({ error: "Failed to reset password" });
+  }
+});
+
+// Deactivate/Activate staff member
+router.post("/api/staff/:id/toggle-status", async (req, res) => {
+  try {
+    const staff = await User.findOne({ _id: req.params.id, role: "staff" });
+    if (!staff) {
+      return res.status(404).json({ error: "Staff member not found" });
+    }
+
+    staff.isActive = !staff.isActive;
+    staff.updatedAt = new Date();
+    await staff.save();
+
+    res.json({
+      success: true,
+      message: `Staff member ${staff.isActive ? "activated" : "deactivated"} successfully`,
+      isActive: staff.isActive,
+    });
+  } catch (error) {
+    console.error("Toggle staff status error:", error);
+    res.status(500).json({ error: "Failed to update staff status" });
+  }
+});
+
+// Delete staff member
+router.delete("/api/staff/:id", async (req, res) => {
+  try {
+    const staff = await User.findOne({ _id: req.params.id, role: "staff" });
+    if (!staff) {
+      return res.status(404).json({ error: "Staff member not found" });
+    }
+
+    await User.findByIdAndDelete(req.params.id);
+
+    res.json({
+      success: true,
+      message: "Staff member deleted successfully",
+    });
+  } catch (error) {
+    console.error("Delete staff error:", error);
+    res.status(500).json({ error: "Failed to delete staff member" });
+  }
+});
+
+// Get dashboard stats including staff count
+router.get("/api/dashboard-stats", async (req, res) => {
+  try {
+    const [userCount, mechanicCount, staffCount, bookingCount, premiumCount] =
+      await Promise.all([
+        User.countDocuments({ role: "user" }),
+        User.countDocuments({ role: "mechanic", isApproved: true }),
+        User.countDocuments({ role: "staff" }),
+        Booking.countDocuments(),
+        User.countDocuments({ isPremium: true }),
+      ]);
+
+    res.json({
+      success: true,
+      stats: {
+        userCount,
+        mechanicCount,
+        staffCount,
+        bookingCount,
+        premiumCount,
+      },
+    });
+  } catch (error) {
+    console.error("Dashboard stats error:", error);
+    res.status(500).json({ error: "Failed to fetch dashboard stats" });
+  }
+});
+
 module.exports = router
 

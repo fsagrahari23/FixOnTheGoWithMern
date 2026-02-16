@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useSelector } from 'react-redux';
 import { apiPost } from '../../lib/api';
 import { MapPin, Upload, Wrench, Crown, Info, AlertCircle, ArrowLeft, Send } from 'lucide-react';
 import MapPicker from '../../components/MapPicker';
@@ -219,6 +220,10 @@ const TowingDetails = ({ showTowing, formData, handleInputChange, errors }) => {
 // Main Booking Form Component
 const BookingForm = () => {
   const navigate = useNavigate();
+  
+  // Connect to Redux
+  const locationFromRedux = useSelector((state) => state.location);
+  
   const [isPremium, setIsPremium] = useState(false);
   const [discount, setDiscount] = useState(10);
   const [showTowing, setShowTowing] = useState(false);
@@ -240,32 +245,33 @@ const BookingForm = () => {
   });
 
   useEffect(() => {
-    // Simulate API call
+    // Load location from Redux if available
+    if (locationFromRedux?.coordinates && Array.isArray(locationFromRedux.coordinates) && locationFromRedux.coordinates.length === 2) {
+      const [lng, lat] = locationFromRedux.coordinates;
+      setFormData(prev => ({
+        ...prev,
+        address: locationFromRedux.address || '',
+        latitude: lat || '',
+        longitude: lng || '',
+        pickupLatitude: lat || '',
+        pickupLongitude: lng || '',
+      }));
+    }
+
+    // Simulate API call for user data
     const loadUserData = async () => {
       // Mock data - replace with actual API call
       const mockData = {
-        user: {
-          address: '123 Main St, City',
-          location: {
-            coordinates: [78.9629, 20.5937]
-          }
-        },
         isPremium: false,
         plan: 'monthly'
       };
 
       setIsPremium(mockData.isPremium);
       setDiscount(mockData.plan === 'monthly' ? 10 : 15);
-      setFormData(prev => ({
-        ...prev,
-        address: mockData.user.address || '',
-        latitude: mockData.user.location?.coordinates?.[1] || '',
-        longitude: mockData.user.location?.coordinates?.[0] || '',
-      }));
     };
 
     loadUserData();
-  }, []);
+  }, [locationFromRedux]);
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -392,7 +398,7 @@ const BookingForm = () => {
 
       // Use fetch directly for FormData
       // Prefer Vite env var, otherwise default to backend port 3001 in dev
-      const API_PREFIX = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL : (import.meta.env.DEV ? 'http://localhost:3001' : '');
+      const API_PREFIX = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL : (import.meta.env.DEV ? 'http://localhost:3000' : '');
       const response = await fetch(`${API_PREFIX}/user/book`, {
         method: 'POST',
         credentials: 'include',
