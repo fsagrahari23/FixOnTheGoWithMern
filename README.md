@@ -126,8 +126,7 @@ Add the following environment variables to `backend/.env`:
 PORT=3000
 NODE_ENV=development
 
-# Database Configuration
-MONGODB_URI=mongodb+srv://YOUR_USERNAME:YOUR_PASSWORD@YOUR_CLUSTER.mongodb.net/fixonthego?retryWrites=true&w=majority
+
 
 # Session Configuration
 SESSION_SECRET=your-super-secret-session-key-change-this-in-production
