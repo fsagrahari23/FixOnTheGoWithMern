@@ -95,7 +95,7 @@ export default function MechanicBookingDetails() {
               <div className="space-y-2">
                 <p><span className="font-medium">Category:</span> {booking.problemCategory}</p>
                 <p><span className="font-medium">Description:</span> {booking.description}</p>
-                <p><span className="font-medium">Type:</span> {booking.serviceType}</p>
+                {/* <p><span className="font-medium">Type:</span> {booking.serviceType}</p> */}
                 <p><span className="font-medium">Status:</span> {booking.status}</p>
                 <p><span className="font-medium">Created:</span> {new Date(booking.createdAt).toLocaleString()}</p>
                 {booking.notes && (

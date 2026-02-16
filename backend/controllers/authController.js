@@ -195,6 +195,7 @@ exports.login = async (req, res) => {
       email: user.email,
       role: user.role,
       isApproved: user.isApproved,
+      mustChangePassword: user.mustChangePassword || false,
     };
 
     // Determine redirect based on role
@@ -205,9 +206,21 @@ exports.login = async (req, res) => {
       redirectUrl = "/mechanic/profile";
     } else if (user.role === "admin") {
       redirectUrl = "/admin/users";
+    } else if (user.role === "staff") {
+      // Check if staff needs to change password
+      if (user.mustChangePassword) {
+        redirectUrl = "/staff/change-password";
+      } else {
+        redirectUrl = "/staff/dashboard";
+      }
     }
 
-    res.json({ message: "Login successful!", user: req.session.user, redirectUrl });
+    res.json({ 
+      message: "Login successful!", 
+      user: req.session.user, 
+      redirectUrl,
+      mustChangePassword: user.mustChangePassword || false
+    });
   } catch (error) {
     console.error("Login error:", error);
     res.status(500).json({ message: "Login failed. Please try again." });

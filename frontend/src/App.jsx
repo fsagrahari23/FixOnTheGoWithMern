@@ -46,6 +46,16 @@ import Mechanic from "./pages/admin/Mechanic";
 import Payment from "./pages/admin/Payment";
 import Subscription from "./pages/admin/Subscription";
 import AdminProfile from "./pages/admin/AdminProfile";
+import StaffManagement from "./pages/admin/StaffManagement";
+
+// Staff imports
+import StaffLayout from "./pages/staff/StaffLayout";
+import StaffDashboard from "./pages/staff/Dashboard";
+import StaffChangePassword from "./pages/staff/ChangePassword";
+import StaffMechanicApplications from "./pages/staff/MechanicApplications";
+import StaffDisputes from "./pages/staff/Disputes";
+import StaffPayments from "./pages/staff/Payments";
+import StaffProfile from "./pages/staff/Profile";
 
 export const userRoutes = {
   dashboard: Dashboard,
@@ -69,6 +79,7 @@ export const adminRoutes = {
   subscriptions: Subscription,
   "mechanic/:id": AdminMechanicProfile,
   "profile": AdminProfile,
+  "staff": StaffManagement,
 }
 
 export const mechanicRoutes = {
@@ -76,6 +87,14 @@ export const mechanicRoutes = {
   'booking/:id': MechanicBookingDetails,
   history: MechanicHistory,
   profile: MechanicProfile,
+}
+
+export const staffRoutes = {
+  dashboard: StaffDashboard,
+  mechanics: StaffMechanicApplications,
+  disputes: StaffDisputes,
+  payments: StaffPayments,
+  profile: StaffProfile,
 }
 
 function AppContent() {
@@ -145,6 +164,29 @@ function AppContent() {
             </ProtectedRoute>
           }>
           {Object.entries(mechanicRoutes).map(([key, Component]) => (
+            <Route key={key} path={key} element={<Component />} />
+          ))}
+        </Route>
+
+        {/* Staff Routes */}
+        <Route
+          path="/staff/change-password"
+          element={
+            <ProtectedRoute allowedRoles={["staff"]} skipPasswordCheck={true}>
+              <StaffChangePassword />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/staff/*"
+          element={
+            <ProtectedRoute allowedRoles={["staff"]}>
+              <LocationProvider>
+                <StaffLayout />
+              </LocationProvider>
+            </ProtectedRoute>
+          }>
+          {Object.entries(staffRoutes).map(([key, Component]) => (
             <Route key={key} path={key} element={<Component />} />
           ))}
         </Route>
