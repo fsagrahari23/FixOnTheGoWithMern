@@ -5,6 +5,7 @@ const MechanicProfile = require("../models/MechanicProfile")
 const Booking = require("../models/Booking")
 const Subscription = require("../models/Subscription")
 const Chat = require("../models/Chat")
+const bcrypt = require("bcryptjs")
 const { isAdmin } = require("../middleware/auth")
 
 // Admin dashboard
@@ -400,6 +401,21 @@ router.post("/mechanic/:id/approve", async (req, res) => {
 
     mechanic.isApproved = true
     await mechanic.save()
+
+    // Notify the mechanic about approval
+    const io = req.app.get('io');
+    if (io && io.createNotification) {
+      await io.createNotification({
+        recipient: mechanic._id,
+        type: "mechanic-approval",
+        title: "🎉 Congratulations! You're Approved!",
+        message: "Your mechanic profile has been approved. You can now start accepting service requests!",
+        data: {
+          link: "/mechanic/dashboard",
+        },
+        priority: "high",
+      });
+    }
 
     req.flash("success_msg", "Mechanic approved successfully")
     res.redirect("/admin/mechanics")
@@ -1507,6 +1523,55 @@ router.get("/api/subscriptions/revenue", isAdmin, async (req, res) => {
   } catch (error) {
     console.error("Subscriptions revenue API error:", error);
     res.status(500).json({ error: "Failed to load subscription revenue data" });
+  }
+});
+
+// Admin profile update
+router.post("/api/profile", isAdmin, async (req, res) => {
+  try {
+    const { name, phone, address, latitude, longitude } = req.body;
+    if (!name || !phone || !address) {
+      return res.status(400).json({ error: "Please fill in all required fields (name, phone, address)" });
+    }
+    
+    await User.findByIdAndUpdate(req.user._id, {
+      name, phone, address,
+      location: { type: "Point", coordinates: [longitude || 0, latitude || 0] }
+    });
+    
+    res.json({ message: "Profile updated successfully" });
+  } catch (error) {
+    console.error("Admin profile update error:", error);
+    res.status(500).json({ error: "Failed to update profile. Please try again." });
+  }
+});
+
+// Admin change password
+router.post("/api/change-password", isAdmin, async (req, res) => {
+  try {
+    const { newPassword, currentPassword, confirmPassword } = req.body;
+    if (!newPassword || !currentPassword || !confirmPassword) {
+      return res.status(400).json({ error: "Please fill in all password fields" });
+    }
+    if (newPassword !== confirmPassword) {
+      return res.status(400).json({ error: "New passwords don't match" });
+    }
+    if (newPassword.length < 6) {
+      return res.status(400).json({ error: "New password must be at least 6 characters long" });
+    }
+    
+    const user = await User.findById(req.user._id);
+    if (!(await user.comparePassword(currentPassword))) {
+      return res.status(400).json({ error: "Current password is incorrect" });
+    }
+    
+    user.password = await bcrypt.hash(newPassword, 10);
+    await user.save();
+    
+    res.json({ message: "Password changed successfully" });
+  } catch (error) {
+    console.error("Admin password change error:", error);
+    res.status(500).json({ error: "Failed to change password. Please try again." });
   }
 });
 

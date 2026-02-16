@@ -6,6 +6,7 @@ import adminReducer from './slices/adminSlice';
 import bookingReducer from './slices/bookingSlice';
 import chatReducer from "./slices/chatSlice";
 import mechanicReducer from './slices/mechanicSlice';
+import notificationReducer from './slices/notificationSlice';
 
 
 const store = configureStore({
@@ -17,6 +18,7 @@ const store = configureStore({
         booking: bookingReducer,
         chat: chatReducer,
         mechanic: mechanicReducer,
+        notifications: notificationReducer,
     },
 });
 

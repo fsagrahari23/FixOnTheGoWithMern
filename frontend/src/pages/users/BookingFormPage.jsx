@@ -391,7 +391,8 @@ const BookingForm = () => {
       }
 
       // Use fetch directly for FormData
-      const API_PREFIX = import.meta.env.DEV ? 'http://localhost:3000' : '';
+      // Prefer Vite env var, otherwise default to backend port 3001 in dev
+      const API_PREFIX = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL : (import.meta.env.DEV ? 'http://localhost:3001' : '');
       const response = await fetch(`${API_PREFIX}/user/book`, {
         method: 'POST',
         credentials: 'include',

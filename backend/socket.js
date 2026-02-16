@@ -1,10 +1,116 @@
 const Chat = require("./models/Chat");
 const User = require("./models/User");
 const Booking = require("./models/Booking");
+const Notification = require("./models/Notification");
+
+// Helper function to create and emit notification
+const createNotification = async (io, notificationData) => {
+  try {
+    return await Notification.createAndEmit(io, notificationData);
+  } catch (error) {
+    console.error("Error creating notification:", error);
+    return null;
+  }
+};
+
+// Helper to notify nearby mechanics about new service request
+const notifyNearbyMechanics = async (io, booking, onlineUsers) => {
+  try {
+    // Find mechanics within 10km radius
+    const nearbyMechanics = await User.aggregate([
+      {
+        $geoNear: {
+          near: {
+            type: "Point",
+            coordinates: booking.location.coordinates,
+          },
+          distanceField: "distance",
+          maxDistance: 10000, // 10km
+          spherical: true,
+        },
+      },
+      {
+        $match: {
+          role: "mechanic",
+          isApproved: true,
+          isActive: true,
+        },
+      },
+      {
+        $limit: 20,
+      },
+    ]);
+
+    const bookingUser = await User.findById(booking.user).select("name");
+    
+    // Create notification for each nearby mechanic
+    for (const mechanic of nearbyMechanics) {
+      const notification = await createNotification(io, {
+        recipient: mechanic._id,
+        type: "service-request",
+        title: "🔔 New Service Request!",
+        message: `${bookingUser?.name || "A user"} needs help with ${booking.problemCategory}. Distance: ${(mechanic.distance / 1000).toFixed(1)}km`,
+        data: {
+          bookingId: booking._id,
+          userId: booking.user,
+          link: `/mechanic/booking/${booking._id}`,
+          meta: {
+            problemCategory: booking.problemCategory,
+            distance: mechanic.distance,
+            isPriority: booking.isPriority,
+            requiresTowing: booking.requiresTowing,
+          },
+        },
+        priority: booking.isPriority ? "urgent" : "high",
+      });
+
+      // Also emit a popup notification event for immediate display
+      if (onlineUsers[mechanic._id.toString()]) {
+        io.to(mechanic._id.toString()).emit("service-request-popup", {
+          _id: notification?._id,
+          bookingId: booking._id,
+          title: "🔔 New Service Request!",
+          message: `${bookingUser?.name || "A user"} needs help with ${booking.problemCategory}`,
+          distance: (mechanic.distance / 1000).toFixed(1),
+          isPriority: booking.isPriority,
+          problemCategory: booking.problemCategory,
+          address: booking.location.address,
+          createdAt: new Date(),
+        });
+      }
+    }
+    
+    console.log(`Notified ${nearbyMechanics.length} mechanics about new booking`);
+  } catch (error) {
+    console.error("Error notifying nearby mechanics:", error);
+  }
+};
+
+// Helper to notify admins about important events
+const notifyAdmins = async (io, notificationData, onlineUsers) => {
+  try {
+    const admins = await User.find({ role: "admin", isActive: true }).select("_id");
+    
+    for (const admin of admins) {
+      await createNotification(io, {
+        ...notificationData,
+        recipient: admin._id,
+      });
+    }
+  } catch (error) {
+    console.error("Error notifying admins:", error);
+  }
+};
 
 module.exports = (io) => {
   // Store online users
   const onlineUsers = {};
+  
+  // Make helper functions available via io for use in routes
+  io.notifyNearbyMechanics = (booking) => notifyNearbyMechanics(io, booking, onlineUsers);
+  io.notifyAdmins = (notificationData) => notifyAdmins(io, notificationData, onlineUsers);
+  io.createNotification = (notificationData) => createNotification(io, notificationData);
+  io.getOnlineUsers = () => onlineUsers;
 
   io.on("connection", (socket) => {
     console.log("Backend: New client connected");

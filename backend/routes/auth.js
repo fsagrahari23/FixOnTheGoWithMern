@@ -10,6 +10,12 @@ router.post("/register-mechanic", authController.registerMechanic);
 router.post("/login", authController.login);
 router.get("/logout", authController.logout);
 router.get("/me", authMiddleware.isAuthenticated, authController.getMe);
+
+// Forgot Password routes
+router.post("/forgot-password/send-otp", authController.sendForgotPasswordOtp);
+router.post("/forgot-password/verify-otp", authController.verifyForgotPasswordOtp);
+router.post("/forgot-password/reset", authController.resetPassword);
+
 // Example protected routes
 router.get("/dashboard", authMiddleware.isAuthenticated, (req, res) => {
     res.json({ message: "Welcome to the dashboard!", user: req.session.user });

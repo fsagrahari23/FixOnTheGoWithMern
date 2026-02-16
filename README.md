@@ -64,37 +64,276 @@ The Bike Assistance System is a web application that connects bike owners with m
 
 ## Installation
 
-1. **Clone the repository**
+### Prerequisites
+
+Before you begin, ensure you have the following installed on your system:
+
+- **Node.js** (v16 or higher) - [Download here](https://nodejs.org/)
+- **MongoDB** (v5.0 or higher) - [Download here](https://www.mongodb.com/try/download/community) or use MongoDB Atlas
+- **npm** or **yarn** - Package manager (comes with Node.js)
+- **Git** - For cloning the repository
+
+### Step 1: Clone the Repository
+
+```bash
+git clone <repository-url>
+cd FixOnTheGoWithMern
+```
+
+### Step 2: Install Backend Dependencies
+
+```bash
+cd backend
+npm install
+```
+
+This will install all backend dependencies including:
+- Express.js, Mongoose, Socket.io
+- Passport.js for authentication
+- Cloudinary for file uploads
+- Stripe for payments
+- And other required packages
+
+### Step 3: Install Frontend Dependencies
+
+```bash
+cd ../frontend
+npm install
+```
+
+This will install all frontend dependencies including:
+- React, Redux Toolkit
+- React Router DOM
+- Tailwind CSS
+- Lucide React icons
+- And other required packages
+
+### Step 4: Configure Environment Variables
+
+#### Backend Configuration
+
+Create a `.env` file in the `backend` directory:
+
+```bash
+cd backend
+touch .env  # On Windows: type nul > .env
+```
+
+Add the following environment variables to `backend/.env`:
+
+```env
+# Server Configuration
+PORT=3000
+NODE_ENV=development
+
+# Database Configuration
+MONGODB_URI=mongodb+srv://YOUR_USERNAME:YOUR_PASSWORD@YOUR_CLUSTER.mongodb.net/fixonthego?retryWrites=true&w=majority
+
+# Session Configuration
+SESSION_SECRET=your-super-secret-session-key-change-this-in-production
+
+# Cloudinary Configuration (for file uploads)
+CLOUDINARY_CLOUD_NAME=your-cloudinary-cloud-name
+CLOUDINARY_API_KEY=your-cloudinary-api-key
+CLOUDINARY_API_SECRET=your-cloudinary-api-secret
+
+# Stripe Configuration (for payments)
+STRIPE_SECRET_KEY=sk_test_your-stripe-secret-key
+STRIPE_PUBLISHABLE_KEY=pk_test_your-stripe-publishable-key
+
+# Twilio Configuration (for SMS/OTP)
+TWILIO_ACCOUNT_SID=your-twilio-account-sid
+TWILIO_AUTH_TOKEN=your-twilio-auth-token
+
+# Email Configuration (for OTP)
+EMAIL_USER=your-email@gmail.com
+EMAIL_PASS=your-app-specific-password
+```
+
+#### Frontend Configuration (Optional)
+
+If you need to configure API endpoints, create `frontend/.env`:
+
+```env
+VITE_API_URL=http://localhost:3000
+```
+
+### Step 5: Set Up Third-Party Services
+
+#### MongoDB Setup
+
+**Option 1: Local MongoDB**
+1. Install MongoDB Community Edition
+2. Start MongoDB service:
    ```bash
-   git clone <repository-url>
-   cd bike-assistance-system
+   # Windows
+   net start MongoDB
+   
+   # macOS/Linux
+   sudo systemctl start mongod
    ```
+3. Use connection string: `mongodb://localhost:27017/fixonthego`
 
-2. **Install dependencies**
-   ```bash
-   npm install
-   ```
+**Option 2: MongoDB Atlas (Recommended)**
+1. Create account at [MongoDB Atlas](https://www.mongodb.com/cloud/atlas)
+2. Create a new cluster (free tier available)
+3. Create database user with password
+4. Whitelist your IP address (or use 0.0.0.0/0 for development)
+5. Get connection string and add to `.env`
 
-3. **Set up environment variables**
-   Create a `.env` file in the root directory with the following variables:
-   ```env
-   MONGODB_URI=mongodb://localhost:27017/bike-assistance
-   SESSION_SECRET=your-session-secret
-   CLOUDINARY_CLOUD_NAME=your-cloudinary-cloud-name
-   CLOUDINARY_API_KEY=your-cloudinary-api-key
-   CLOUDINARY_API_SECRET=your-cloudinary-api-secret
-   STRIPE_SECRET_KEY=your-stripe-secret-key
-   STRIPE_PUBLISHABLE_KEY=your-stripe-publishable-key
-   PORT=3000
-   ```
+#### Cloudinary Setup
 
-4. **Start MongoDB**
-   Make sure MongoDB is running on your system.
+1. Create account at [Cloudinary](https://cloudinary.com/)
+2. Go to Dashboard
+3. Copy Cloud Name, API Key, and API Secret
+4. Add to `.env` file
 
-5. **Run the application**
-   ```bash
-   npm start
-   ```
+#### Stripe Setup
+
+1. Create account at [Stripe](https://stripe.com/)
+2. Go to Developers → API Keys
+3. Copy Secret Key and Publishable Key (use test keys for development)
+4. Add to `.env` file
+
+#### Email Setup (Gmail)
+
+1. Enable 2-Factor Authentication on your Gmail account
+2. Generate App Password:
+   - Go to Google Account → Security → 2-Step Verification
+   - Scroll to "App passwords"
+   - Generate password for "Mail"
+3. Add email and app password to `.env`
+
+## How to Run the Application
+
+### Development Mode
+
+#### Method 1: Run Backend and Frontend Separately (Recommended)
+
+**Terminal 1 - Backend Server:**
+```bash
+cd backend
+npm start
+# Or for development with auto-restart:
+npm run dev
+```
+
+The backend server will start on `http://localhost:3000`
+
+**Terminal 2 - Frontend Development Server:**
+```bash
+cd frontend
+npm run dev
+```
+
+The frontend will start on `http://localhost:5173` (or another port if 5173 is busy)
+
+#### Method 2: Run Both Concurrently
+
+From the root directory:
+```bash
+# Install concurrently if not already installed
+npm install -g concurrently
+
+# Run both servers
+npm run dev
+```
+
+### Production Mode
+
+#### Build Frontend
+
+```bash
+cd frontend
+npm run build
+```
+
+This creates an optimized production build in `frontend/dist`
+
+#### Serve Production Build
+
+**Option 1: Serve from Backend**
+```bash
+cd backend
+# Copy frontend build to backend public folder
+cp -r ../frontend/dist ./public/dist
+
+# Start backend server
+npm start
+```
+
+**Option 2: Deploy Separately**
+- Deploy backend to services like Heroku, Railway, or DigitalOcean
+- Deploy frontend to Vercel, Netlify, or AWS S3
+
+### Accessing the Application
+
+Once both servers are running:
+
+1. **Frontend Application**: Open browser and navigate to `http://localhost:5173`
+2. **Backend API**: Available at `http://localhost:3000`
+
+### Default Routes
+
+- **Home Page**: `http://localhost:5173/`
+- **User Login**: `http://localhost:5173/auth/login`
+- **User Registration**: `http://localhost:5173/auth/register`
+- **Mechanic Registration**: `http://localhost:5173/auth/register-mechanic`
+- **User Dashboard**: `http://localhost:5173/user/dashboard`
+- **Mechanic Dashboard**: `http://localhost:5173/mechanic/dashboard`
+- **Admin Dashboard**: `http://localhost:5173/admin/dashboard`
+
+### Initial Setup & Testing
+
+#### 1. Create Admin Account
+
+First user registered as admin needs to be created manually in database:
+
+```javascript
+// Connect to MongoDB and run:
+db.users.updateOne(
+  { email: "admin@fixonthego.com" },
+  { 
+    $set: { 
+      role: "admin",
+      isApproved: true,
+      isActive: true
+    }
+  }
+)
+```
+
+Or register normally and update via MongoDB Compass/Shell.
+
+#### 2. Register Test Accounts
+
+- **User Account**: Register at `/auth/register`
+- **Mechanic Account**: Register at `/auth/register-mechanic` (requires admin approval)
+
+#### 3. Test Features
+
+1. **User Flow**:
+   - Register/Login as user
+   - Create a booking request
+   - Select nearby mechanic
+   - Track booking status
+   - Make payment
+   - Rate service
+
+2. **Mechanic Flow**:
+   - Register as mechanic
+   - Wait for admin approval
+   - Login and view service requests
+   - Accept booking
+   - Update booking status
+   - Complete service
+
+3. **Admin Flow**:
+   - Login as admin
+   - Approve/reject mechanic registrations
+   - View all bookings
+   - Manage users
+   - View payments and subscriptions
 
 ## Configuration
 
@@ -486,6 +725,276 @@ app.use(session({
 3. Uploaded to Cloudinary for storage
 4. URLs stored in MongoDB
 5. Admin reviews and approves mechanic account
+
+## Available NPM Scripts
+
+### Backend Scripts
+
+```bash
+# Start the server (production)
+npm start
+
+# Start with nodemon (development - auto-restart on changes)
+npm run dev
+
+# Run tests
+npm test
+
+# Lint code
+npm run lint
+```
+
+### Frontend Scripts
+
+```bash
+# Start development server with hot reload
+npm run dev
+
+# Build for production
+npm run build
+
+# Preview production build locally
+npm run preview
+
+# Lint code
+npm run lint
+```
+
+## Troubleshooting
+
+### Common Issues and Solutions
+
+#### 1. MongoDB Connection Issues
+
+**Error**: `MongooseServerSelectionError: connect ECONNREFUSED`
+
+**Solutions**:
+- Check if MongoDB service is running
+- Verify `MONGODB_URI` in `.env` file
+- For MongoDB Atlas: Check IP whitelist and network access
+- Ensure correct username/password in connection string
+
+```bash
+# Test MongoDB connection
+mongosh "your-connection-string"
+```
+
+#### 2. Port Already in Use
+
+**Error**: `Error: listen EADDRINUSE: address already in use :::3000`
+
+**Solutions**:
+```bash
+# Find process using the port
+# Windows
+netstat -ano | findstr :3000
+taskkill /PID <PID> /F
+
+# macOS/Linux
+lsof -ti:3000 | xargs kill -9
+
+# Or change port in backend/.env
+PORT=3001
+```
+
+#### 3. Environment Variables Not Loading
+
+**Solutions**:
+- Check `.env` file is in correct directory (`backend/.env`)
+- Verify `.env` file has no syntax errors
+- Restart the server after changing `.env`
+- Check for spaces around `=` sign (should be `KEY=value` not `KEY = value`)
+
+#### 4. CORS Issues
+
+**Error**: `Access to XMLHttpRequest has been blocked by CORS policy`
+
+**Solutions**:
+- Ensure backend CORS is configured properly
+- Check frontend is making requests to correct API URL
+- Verify `withCredentials: true` is set in axios requests
+
+#### 5. Cloudinary Upload Fails
+
+**Solutions**:
+- Verify Cloudinary credentials in `.env`
+- Check file size limits (default: 10MB)
+- Ensure API key has upload permissions
+- Check internet connection
+
+#### 6. Stripe Payment Errors
+
+**Solutions**:
+- Verify using test keys in development (prefix: `sk_test_`, `pk_test_`)
+- Check Stripe API version compatibility
+- Ensure webhook endpoints are configured (for production)
+- Test with Stripe test card: `4242 4242 4242 4242`
+
+#### 7. Socket.io Connection Issues
+
+**Solutions**:
+- Check backend Socket.io server is running
+- Verify correct Socket.io URL in frontend
+- Check for CORS configuration in Socket.io setup
+- Clear browser cache and cookies
+
+#### 8. OTP Email Not Sending
+
+**Solutions**:
+- Verify Gmail app password (not regular password)
+- Check 2FA is enabled on Gmail account
+- Ensure less secure app access is enabled (if using old Gmail)
+- Check spam folder for test emails
+- Verify `EMAIL_USER` and `EMAIL_PASS` in `.env`
+
+#### 9. Build Errors
+
+**Frontend Build Errors**:
+```bash
+# Clear node_modules and reinstall
+rm -rf node_modules package-lock.json
+npm install
+
+# Clear Vite cache
+rm -rf .vite
+npm run dev
+```
+
+**Backend Build Errors**:
+```bash
+# Clear node_modules and reinstall
+rm -rf node_modules package-lock.json
+npm install
+```
+
+#### 10. Session Issues / Auto Logout
+
+**Solutions**:
+- Check MongoDB connection (sessions stored in DB)
+- Verify `SESSION_SECRET` is set in `.env`
+- Clear browser cookies
+- Check session expiry settings in backend
+
+### Getting Help
+
+If you encounter issues not covered here:
+
+1. Check the console logs (both browser and terminal)
+2. Verify all environment variables are set correctly
+3. Ensure all dependencies are installed (`npm install`)
+4. Check MongoDB and other services are running
+5. Review the [Issues](https://github.com/your-repo/issues) page
+6. Contact the development team
+
+## Performance Optimization Tips
+
+### Backend Optimization
+
+1. **Enable Compression**:
+```javascript
+const compression = require('compression');
+app.use(compression());
+```
+
+2. **Database Indexing**:
+```javascript
+// Add indexes for frequently queried fields
+UserSchema.index({ email: 1 });
+BookingSchema.index({ status: 1, createdAt: -1 });
+```
+
+3. **Caching**:
+```javascript
+// Use Redis for session storage in production
+const RedisStore = require('connect-redis')(session);
+```
+
+### Frontend Optimization
+
+1. **Code Splitting**: Lazy load routes
+```javascript
+const Dashboard = lazy(() => import('./pages/Dashboard'));
+```
+
+2. **Image Optimization**: Use Cloudinary transformations
+```javascript
+// Add to image URLs
+?w=400&h=300&c=fill&q_auto&f_auto
+```
+
+3. **Bundle Analysis**:
+```bash
+npm run build -- --analyze
+```
+
+## Security Best Practices
+
+### Environment Variables
+- Never commit `.env` files to version control
+- Use different keys for development and production
+- Rotate secrets regularly in production
+
+### Password Security
+- Minimum 6 characters enforced
+- Passwords hashed with bcrypt (10 salt rounds)
+- Never log or display passwords
+
+### Session Security
+- Secure cookies in production (HTTPS only)
+- HTTP-only cookies to prevent XSS
+- Session timeout after inactivity
+
+### API Security
+- Rate limiting on authentication routes
+- Input validation and sanitization
+- SQL injection prevention via Mongoose
+- XSS protection with proper encoding
+
+## Deployment Guide
+
+### Backend Deployment (Heroku Example)
+
+```bash
+# Login to Heroku
+heroku login
+
+# Create app
+heroku create fixonthego-api
+
+# Set environment variables
+heroku config:set MONGODB_URI=your-mongodb-uri
+heroku config:set SESSION_SECRET=your-secret
+# ... set all other env variables
+
+# Deploy
+git push heroku main
+
+# View logs
+heroku logs --tail
+```
+
+### Frontend Deployment (Vercel Example)
+
+```bash
+# Install Vercel CLI
+npm i -g vercel
+
+# Login
+vercel login
+
+# Deploy
+cd frontend
+vercel --prod
+
+# Set environment variables in Vercel dashboard
+```
+
+### Database Deployment
+
+- Use MongoDB Atlas for production database
+- Enable authentication and IP whitelisting
+- Regular backups enabled
+- Monitor database performance
 
 ## Conclusion
 

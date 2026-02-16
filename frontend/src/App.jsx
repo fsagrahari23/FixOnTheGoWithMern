@@ -5,7 +5,9 @@ import { useDispatch, useSelector } from "react-redux";
 import { getMe } from "../src/store/slices/authThunks";
 import store from "./store/store";
 import { LocationProvider } from "./contexts/LocationContext";
+import { NotificationProvider } from "./contexts/NotificationContext";
 import ProtectedRoute from "../src/components/ProtectedRoute";
+import { NotificationPopup, ServiceRequestPopup } from "./components/notifications";
 
 import Dashboard from "./pages/users/Dashboard";
 import HomePage from "./pages/common/HomePage";
@@ -21,6 +23,7 @@ import Loader from "./components/HomeComponents/loader";
 import UserRegister from "./pages/auth/UserRegister";
 import MechanicRegister from "./pages/auth/MechaicRegisterPage";
 import Login from "./pages/auth/Login";
+import ForgotPassword from "./pages/auth/ForgotPassword";
 import PendingApproval from "./components/auth/PendingApproval";
 import AdminMechanicProfile from "./pages/admin/MechanicProfile";
 
@@ -41,6 +44,7 @@ import UserProfile from "./pages/admin/UserProfile";
 import Mechanic from "./pages/admin/Mechanic";
 import Payment from "./pages/admin/Payment";
 import Subscription from "./pages/admin/Subscription";
+import AdminProfile from "./pages/admin/AdminProfile";
 
 export const userRoutes = {
   dashboard: Dashboard,
@@ -63,6 +67,7 @@ export const adminRoutes = {
   payments: Payment,
   subscriptions: Subscription,
   "mechanic/:id": AdminMechanicProfile,
+  "profile": AdminProfile,
 }
 
 export const mechanicRoutes = {
@@ -88,34 +93,40 @@ function AppContent() {
 
   return (
     <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<HomePage />} />
-        <Route path="/auth/login" element={<Login />} />
-        <Route path="/auth/register" element={<UserRegister />} />
-        <Route path="/auth/register-mechanic" element={<MechanicRegister />} />
-        <Route
-          path="/user/*"
-          element={
-            <ProtectedRoute allowedRoles={["user"]}>
-              <LocationProvider>
-                <UserLayout />
-              </LocationProvider>
-            </ProtectedRoute>
-          }
-        >
-          {Object.entries(userRoutes).map(([key, Component]) => (
-            <Route key={key} path={key} element={<Component />} />
-          ))}
-        </Route>
+      <NotificationProvider>
+        {/* Global notification popups */}
+        <NotificationPopup />
+        <ServiceRequestPopup />
+        
+        <Routes>
+          <Route path="/" element={<HomePage />} />
+          <Route path="/auth/login" element={<Login />} />
+          <Route path="/auth/register" element={<UserRegister />} />
+          <Route path="/auth/register-mechanic" element={<MechanicRegister />} />
+          <Route path="/auth/forgot-password" element={<ForgotPassword />} />
+          <Route
+            path="/user/*"
+            element={
+              <ProtectedRoute allowedRoles={["user"]}>
+                <LocationProvider>
+                  <UserLayout />
+                </LocationProvider>
+              </ProtectedRoute>
+            }
+          >
+            {Object.entries(userRoutes).map(([key, Component]) => (
+              <Route key={key} path={key} element={<Component />} />
+            ))}
+          </Route>
 
-        <Route
-          path="/admin/*"
-          element={
-            <ProtectedRoute allowedRoles={["admin"]}>
-              <LocationProvider>
-                <AdminLayout />
-              </LocationProvider>
-            </ProtectedRoute>
+          <Route
+            path="/admin/*"
+            element={
+              <ProtectedRoute allowedRoles={["admin"]}>
+                <LocationProvider>
+                  <AdminLayout />
+                </LocationProvider>
+              </ProtectedRoute>
           }>
           {Object.entries(adminRoutes).map(([key, Component]) => (
             <Route key={key} path={key} element={<Component />} />
@@ -138,7 +149,8 @@ function AppContent() {
         </Route>
 
         <Route path="/auth/pending-approval" element={<PendingApproval />} />
-      </Routes>
+        </Routes>
+      </NotificationProvider>
     </BrowserRouter>
   );
 }
@@ -148,6 +160,7 @@ export default function App() {
   return (
     <Provider store={store}>
       <AppContent />
+      <Toaster />
     </Provider>
   );
 }

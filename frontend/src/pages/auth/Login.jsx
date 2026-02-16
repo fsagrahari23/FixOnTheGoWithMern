@@ -122,6 +122,15 @@ export default function Login() {
                                     )}
                                 />
 
+                                <div className="mt-2 text-right">
+                                    <a 
+                                        href="/auth/forgot-password" 
+                                        className="text-sm text-emerald-600 hover:text-emerald-700 hover:underline"
+                                    >
+                                        Forgot Password?
+                                    </a>
+                                </div>
+
                                 <Button
                                     type="submit"
                                     className="mt-6 w-full bg-emerald-600 hover:bg-emerald-700"
