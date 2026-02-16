@@ -1,3 +1,5 @@
+'use strict';
+
 const express = require("express");
 const mongoose = require("mongoose");
 const session = require("express-session");
@@ -87,9 +89,7 @@ app.use((req, res, next) => {
 });
 
 app.use(express.static(path.join(__dirname, "public")));
-
 app.use(express.static(path.join(__dirname, "uploads")));
-app.set("views", path.join(__dirname, "views"));
 app.use(flash());
 
 app.use(expressLayouts);
@@ -98,6 +98,61 @@ app.use((req, res, next) => {
   next();
 });
 
+const logger = winston.createLogger({
+  level: isProduction ? 'info' : 'debug', // More verbose in dev
+  format: winston.format.combine(
+    winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
+    winston.format.errors({ stack: true }), // Handle stack traces
+    winston.format.splat(),
+    isProduction
+      ? winston.format.json() // JSON for prod (easier for log aggregators like ELK)
+      : winston.format.simple() // Human-readable for dev
+  ),
+  transports: [
+    new winston.transports.Console({
+      format: isProduction ? winston.format.json() : winston.format.colorize({ all: true }), // Colorize in dev console
+    }),
+    // Add file transport for production (optional: use daily-rotate-file for rotation)
+    ...(isProduction
+      ? [
+          new winston.transports.File({
+            filename: 'error.log',
+            level: 'error', // Only errors to this file
+          }),
+          new winston.transports.File({
+            filename: 'combined.log', // All logs
+          }),
+        ]
+      : []),
+  ],
+  // Handle uncaught exceptions and rejections
+  exceptionHandlers: [
+    new winston.transports.Console(),
+    ...(isProduction ? [new winston.transports.File({ filename: 'exceptions.log' })] : []),
+  ],
+  rejectionHandlers: [
+    new winston.transports.Console(),
+    ...(isProduction ? [new winston.transports.File({ filename: 'rejections.log' })] : []),
+  ],
+});
+
+// Pipe Morgan to Winston
+// Create a stream for Morgan to write to Winston at 'http' level
+const morgan = require('morgan');
+morgan.token('message', (req, res) => res.statusMessage || ''); // Optional custom token
+app.use(
+  morgan(isProduction ? 'combined' : 'dev', {
+    stream: {
+      write: (message) => logger.http(message.trim()), // Log HTTP requests at 'http' level
+    },
+    skip: (req, res) => {
+      if (isProduction && req.path === '/health') {
+        return true;
+      }
+      return false; // Log all in dev; customize as needed
+    },
+  })
+);
 app.set("layout", "layout");
 app.use(metricsMiddleware);
 
@@ -221,6 +276,7 @@ app.use((err, req, res, next) => {
 });
 
 // Start server
+
 const PORT = process.env.PORT || 3002;
 server.listen(PORT, () => {
   logger.info(`Server running on http://localhost:${PORT} in ${isProduction ? 'production' : 'development'} mode`);
