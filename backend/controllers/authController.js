@@ -1,12 +1,8 @@
 const otpService = require("../services/otpService");
 const cloudinary = require("../config/cloudinary");
-const multer = require("multer");
 const User = require("../models/User");
 const MechanicProfile = require("../models/MechanicProfile");
 const AppError = require("../utils/AppError");
-
-const storage = multer.memoryStorage();
-const upload = multer({ storage: storage });
 
 exports.sendOtp = async (req, res, next) => {
   try {
@@ -95,78 +91,79 @@ exports.registerUser = async (req, res) => {
   }
 };
 
-exports.registerMechanic = [
-  upload.array("documents", 10),
-  async (req, res) => {
-    console.log("Mechanic registration request body:", req.body);
-    try {
-      const { name, email, password, phone, address, specialization, experience, hourlyRate, latitude, longitude, notes } = req.body;
+exports.registerMechanic = async (req, res) => {
+  console.log("Mechanic registration request body:", req.body);
+  try {
+    const { name, email, password, phone, address, specialization, experience, hourlyRate, latitude, longitude, notes } = req.body;
 
-      if (!name || !email || !password || !phone || !address || !specialization || !experience || !hourlyRate) {
-        return res.status(400).json({ message: "All required fields must be provided." });
-      }
-
-      if (email !== req.session.email) {
-        return res.status(400).json({ message: "Email does not match the OTP-verified email." });
-      }
-
-      let documentUrls = [];
-      if (req.files && req.files.length > 0) {
-        for (const file of req.files) {
-          const result = await new Promise((resolve, reject) => {
-            const uploadStream = cloudinary.uploader.upload_stream(
-              { resource_type: "auto", folder: "mechanic-documents" },
-              (error, result) => {
-                if (error) reject(error);
-                else resolve(result);
-              }
-            );
-            uploadStream.end(file.buffer);
-          });
-          documentUrls.push(result.secure_url);
-        }
-      }
-
-      const userData = {
-        name,
-        email,
-        password,
-        phone,
-        role: "mechanic",
-        location: {
-          coordinates: [parseFloat(longitude) || 77.209, parseFloat(latitude) || 28.6139],
-          address,
-        },
-        isVerified: true,
-        isApproved: false,
-      };
-      const newUser = new User(userData);
-      await newUser.save();
-
-      const mechanicData = {
-        user: newUser._id,
-        specialization: Array.isArray(specialization) ? specialization : [specialization],
-        experience: parseInt(experience),
-        hourlyRate: parseFloat(hourlyRate),
-        documents: documentUrls,
-        notes: notes || "",
-      };
-      const newMechanic = new MechanicProfile(mechanicData);
-      await newMechanic.save();
-
-      delete req.session.otp;
-      delete req.session.email;
-
-      res.json({ message: "Mechanic registration successful! Please wait for approval." });
-    } catch (error) {
-      console.error("Mechanic registration error:", error);
-      if (error.code === 11000) {
-        return res.status(400).json({ message: "Email is already registered." });
-      }
-      res.status(500).json({ message: "Registration failed. Please try again." });
+    if (!name || !email || !password || !phone || !address || !specialization || !experience || !hourlyRate) {
+      return res.status(400).json({ message: "All required fields must be provided." });
     }
-  },
-];
+
+    if (email !== req.session.email) {
+      return res.status(400).json({ message: "Email does not match the OTP-verified email." });
+    }
+
+    let documentUrls = [];
+    // Handle files uploaded via express-fileupload
+    if (req.files && req.files.documents) {
+      // Normalize to array (single file comes as object, multiple as array)
+      const files = Array.isArray(req.files.documents) ? req.files.documents : [req.files.documents];
+      
+      for (const file of files) {
+        const result = await new Promise((resolve, reject) => {
+          cloudinary.uploader.upload(
+            file.tempFilePath,
+            { resource_type: "auto", folder: "mechanic-documents" },
+            (error, result) => {
+              if (error) reject(error);
+              else resolve(result);
+            }
+          );
+        });
+        documentUrls.push(result.secure_url);
+      }
+    }
+
+    const userData = {
+      name,
+      email,
+      password,
+      phone,
+      role: "mechanic",
+      location: {
+        coordinates: [parseFloat(longitude) || 77.209, parseFloat(latitude) || 28.6139],
+        address,
+      },
+      isVerified: true,
+      isApproved: false,
+    };
+    const newUser = new User(userData);
+    await newUser.save();
+
+    const mechanicData = {
+      user: newUser._id,
+      specialization: Array.isArray(specialization) ? specialization : [specialization],
+      experience: parseInt(experience),
+      hourlyRate: parseFloat(hourlyRate),
+      documents: documentUrls,
+      notes: notes || "",
+    };
+    const newMechanic = new MechanicProfile(mechanicData);
+    await newMechanic.save();
+
+    delete req.session.otp;
+    delete req.session.email;
+
+    res.json({ message: "Mechanic registration successful! Please wait for approval." });
+  } catch (error) {
+    console.error("Mechanic registration error:", error);
+    if (error.code === 11000) {
+      return res.status(400).json({ message: "Email is already registered." });
+    }
+    res.status(500).json({ message: "Registration failed. Please try again." });
+  }
+};
 
 exports.login = async (req, res) => {
   try {
