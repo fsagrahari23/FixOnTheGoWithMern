@@ -7,6 +7,7 @@ import store from "./store/store";
 import { LocationProvider } from "./contexts/LocationContext";
 import { NotificationProvider } from "./contexts/NotificationContext";
 import ProtectedRoute from "../src/components/ProtectedRoute";
+import { Toaster } from "./components/ui/sonner";
 import { NotificationPopup, ServiceRequestPopup } from "./components/notifications";
 
 import Dashboard from "./pages/users/Dashboard";
