@@ -24,6 +24,12 @@ const NotificationSchema = new mongoose.Schema({
       "system",               // System notifications
       "mechanic-nearby",      // Mechanic is nearby (for user)
       "towing-update",        // Towing status update
+      "staff-message",        // Staff received a message from user
+      "user-message",         // User received a message from staff
+      "email-received",       // Email notification
+      "dispute-update",       // Dispute status update
+      "dispute-assigned",     // Dispute assigned to staff
+      "support-request",      // New support request for staff
     ],
     required: true,
   },

@@ -46,7 +46,16 @@ const {
 // Initialize Express app
 const app = express();
 const server = http.createServer(app);
-const io = socketIo(server);
+const io = socketIo(server, {
+  cors: {
+    origin: [
+      process.env.FRONTEND_URL,
+      "http://localhost:5173",
+      "http://127.0.0.1:5173",
+    ].filter(Boolean),
+    credentials: true,
+  },
+});
 // Make io available to routes via app.get('io')
 app.set('io', io);
 
@@ -229,7 +238,7 @@ app.use((err, req, res, next) => {
 
 // Start server
 
-const PORT = process.env.PORT || 3002;
+const PORT = 3001;
 server.listen(PORT, () => {
   logger.info(`Server running on http://localhost:${PORT} in ${isProduction ? 'production' : 'development'} mode`);
   logger.info(`Swagger Docs at http://localhost:${PORT}/api-docs`)
