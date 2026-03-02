@@ -8,7 +8,7 @@ import { Label } from '../../components/ui/label'
 import { Alert, AlertDescription } from '../../components/ui/alert'
 import { Lock, AlertCircle, CheckCircle } from 'lucide-react'
 import { toast } from 'sonner'
-import { logout } from '../../store/slices/authThunks'
+import { resetAuthState } from '../../store/slices/authSlice'
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:3001"
 
@@ -80,10 +80,10 @@ export default function ChangePassword() {
             setSuccess(true)
             toast.success('Password changed successfully! Please login with your new password.')
             
-            // Logout and redirect to login page after successful password change
+            // Clear local auth state and redirect to login page after successful password change
             setTimeout(() => {
-                dispatch(logout())
-                navigate('/login')
+                dispatch(resetAuthState())
+                navigate(data.redirectUrl || '/auth/login', { replace: true })
             }, 2000)
         } catch (err) {
             setError(err.message)

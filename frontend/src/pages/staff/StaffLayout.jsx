@@ -10,6 +10,7 @@ import {
     AlertTriangle,
     CreditCard,
     Shield,
+    MessageCircle,
 } from "lucide-react"
 import { useState } from "react"
 
@@ -26,6 +27,7 @@ export default function StaffLayout() {
                 <SidebarNav
                     tabs={[
                         { id: "dashboard", label: "Dashboard", url: "/staff/dashboard", icon: BarChart3 },
+                        { id: "chats", label: "Support Chats", url: "/staff/chats", icon: MessageCircle },
                         { id: "mechanics", label: "Mechanic Applications", url: "/staff/mechanics", icon: UserCog },
                         { id: "disputes", label: "Disputes", url: "/staff/disputes", icon: AlertTriangle },
                         { id: "payments", label: "Payments", url: "/staff/payments", icon: CreditCard },

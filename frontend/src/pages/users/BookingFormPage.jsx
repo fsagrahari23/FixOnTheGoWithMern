@@ -2,8 +2,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { apiPost } from '../../lib/api';
-import { MapPin, Upload, Wrench, Crown, Info, AlertCircle, ArrowLeft, Send } from 'lucide-react';
+import { MapPin, Upload, Wrench, Crown, Info, AlertCircle, ArrowLeft, Send, Users } from 'lucide-react';
 import MapPicker from '../../components/MapPicker';
+import { NearbyMechanicsMap } from '../../components/users/dashboard/nearby-mechanics-map';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -228,6 +229,7 @@ const BookingForm = () => {
   const [discount, setDiscount] = useState(10);
   const [showTowing, setShowTowing] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState(null);
+  const [selectedMechanic, setSelectedMechanic] = useState(null);
   const [errors, setErrors] = useState({});
   const [formData, setFormData] = useState({
     problemCategory: '',
@@ -235,6 +237,7 @@ const BookingForm = () => {
     address: '',
     latitude: '',
     longitude: '',
+    preferredMechanic: '',
     requiresTowing: false,
     pickupAddress: '',
     pickupLatitude: '',
@@ -299,6 +302,11 @@ const BookingForm = () => {
   const handleTowingToggle = (checked) => {
     setShowTowing(checked);
     setFormData(prev => ({ ...prev, requiresTowing: checked }));
+  };
+
+  const handleMechanicSelect = (mechanicId) => {
+    setSelectedMechanic(mechanicId);
+    setFormData(prev => ({ ...prev, preferredMechanic: mechanicId }));
   };
 
   const getCurrentLocation = () => {
@@ -573,6 +581,41 @@ const BookingForm = () => {
                   }}
                   className="w-full h-80"
                 />
+              </div>
+
+              {/* Nearby Mechanics Selection - Uber/Rapido style */}
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <Users className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                  <Label className="dark:text-gray-200 text-base font-medium">
+                    Select a Nearby Mechanic (Optional)
+                  </Label>
+                </div>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
+                  Choose a specific mechanic near you, or leave unselected for auto-assignment.
+                </p>
+                <NearbyMechanicsMap
+                  showSelection={true}
+                  selectedMechanic={selectedMechanic}
+                  onMechanicSelect={handleMechanicSelect}
+                  height={300}
+                />
+                {selectedMechanic && (
+                  <div className="mt-2 flex items-center justify-between p-2 rounded-md bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
+                    <span className="text-sm text-blue-700 dark:text-blue-300">
+                      Mechanic selected
+                    </span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleMechanicSelect(null)}
+                      className="text-blue-600 hover:text-blue-800 dark:text-blue-400"
+                    >
+                      Clear Selection
+                    </Button>
+                  </div>
+                )}
               </div>
 
               {/* Towing Service */}
