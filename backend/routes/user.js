@@ -1407,7 +1407,6 @@ router.get("/api/maintenance", async (req, res) => {
   }
 })
 
-<<<<<<< Updated upstream
 // ==================== STAFF CONTACT API ====================
 // Get list of staff members that users can contact for support/disputes/emergency
 router.get("/api/staff/contacts", async (req, res) => {
@@ -1937,7 +1936,6 @@ router.get("/api/dispute/categories", async (req, res) => {
     })),
   });
 });
-=======
 // ==================== USER ANALYTICS ENDPOINT ====================
 const analyticsService = require("../services/analyticsService")
 
@@ -1951,6 +1949,5 @@ router.get("/api/analytics", async (req, res) => {
     res.status(500).json({ error: "Failed to fetch analytics data" })
   }
 })
->>>>>>> Stashed changes
 
 module.exports = router
