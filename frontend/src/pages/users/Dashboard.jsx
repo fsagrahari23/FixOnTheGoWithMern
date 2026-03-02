@@ -5,6 +5,9 @@ import { ProfileSummary } from "../../components/users/dashboard/profile-summary
 import { QuickActions } from "../../components/users/dashboard/quick-actions";
 import { RecentBookings } from "../../components/users/dashboard/recent-bookings";
 import { StatsCards } from "../../components/users/dashboard/stats-cards";
+import { NearbyMechanicsMap } from "../../components/users/dashboard/nearby-mechanics-map";
+import { StaffContacts } from "../../components/users/dashboard/staff-contacts";
+import { MyDisputes } from "../../components/users/dashboard/dispute-form";
 
 export default function Dashboard() {
   return (
@@ -15,13 +18,19 @@ export default function Dashboard() {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-8">
           <div className="lg:col-span-2 space-y-6">
+            {/* Real-time nearby mechanics map - Uber/Rapido style */}
+            <NearbyMechanicsMap height={350} />
             <RecentBookings />
             <LocationMap />
           </div>
           <div className="space-y-6">
+            {/* Staff contacts for emergency/disputes */}
+            <StaffContacts />
             <CategoryBreakdown />
             <ProfileSummary />
             <QuickActions />
+            {/* User disputes tracking */}
+            <MyDisputes />
           </div>
         </div>
       </div>

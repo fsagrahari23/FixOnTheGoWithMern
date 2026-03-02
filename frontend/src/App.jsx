@@ -56,6 +56,10 @@ import StaffMechanicApplications from "./pages/staff/MechanicApplications";
 import StaffDisputes from "./pages/staff/Disputes";
 import StaffPayments from "./pages/staff/Payments";
 import StaffProfile from "./pages/staff/Profile";
+import StaffChatPage, { StaffChatList } from "./pages/staff/SupportChats";
+
+// Support Chat
+import SupportChat from "./pages/users/SupportChat";
 
 export const userRoutes = {
   dashboard: Dashboard,
@@ -66,6 +70,7 @@ export const userRoutes = {
   maintenance: Maintainance,
   premium: Premium,
   profile: Profile,
+  "chat/:chatId": SupportChat,
 };
 
 export const adminRoutes = {
@@ -95,6 +100,8 @@ export const staffRoutes = {
   disputes: StaffDisputes,
   payments: StaffPayments,
   profile: StaffProfile,
+  chats: StaffChatList,
+  "chat/:chatId": StaffChatPage,
 }
 
 function AppContent() {

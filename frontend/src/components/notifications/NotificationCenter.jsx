@@ -14,6 +14,8 @@ import {
   MessageSquare,
   Wrench,
   X,
+  Mail,
+  User,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -49,7 +51,19 @@ const getNotificationIcon = (type) => {
     case "payment-received":
       return <CreditCard className="w-4 h-4 text-emerald-500" />;
     case "new-message":
+    case "chat-message":
       return <MessageSquare className="w-4 h-4 text-blue-500" />;
+    case "staff-message":
+      return <MessageSquare className="w-4 h-4 text-purple-500" />;
+    case "user-message":
+      return <MessageSquare className="w-4 h-4 text-blue-500" />;
+    case "email-received":
+      return <Mail className="w-4 h-4 text-orange-500" />;
+    case "dispute-update":
+    case "dispute-assigned":
+      return <AlertTriangle className="w-4 h-4 text-yellow-500" />;
+    case "support-request":
+      return <User className="w-4 h-4 text-blue-500" />;
     case "mechanic-nearby":
       return <MapPin className="w-4 h-4 text-purple-500" />;
     default:
