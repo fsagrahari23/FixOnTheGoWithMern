@@ -1,6 +1,7 @@
 import { createSlice } from "@reduxjs/toolkit";
 import {
     fetchAdminDashboard,
+    fetchAdminAnalytics,
     fetchAllUsers,
     fetchAllMechanics,
     approveMechanic,
@@ -43,6 +44,14 @@ const adminSlice = createSlice({
             recentSubscriptions: [],
             monthlyRevenueStats: [],
         },
+
+        // Analytics
+        analytics: {
+            topProblems: [],
+            topMechanics: [],
+            repeatUsers: [],
+            performance: {},
+        },
         
         // Users
         users: [],
@@ -63,6 +72,7 @@ const adminSlice = createSlice({
         // Loading states
         loading: {
             dashboard: false,
+            analytics: false,
             users: false,
             mechanics: false,
             bookings: false,
@@ -94,6 +104,21 @@ const adminSlice = createSlice({
             })
             .addCase(fetchAdminDashboard.rejected, (state, action) => {
                 state.loading.dashboard = false;
+                state.error = action.payload;
+            });
+
+        // Fetch Admin Analytics
+        builder
+            .addCase(fetchAdminAnalytics.pending, (state) => {
+                state.loading.analytics = true;
+                state.error = null;
+            })
+            .addCase(fetchAdminAnalytics.fulfilled, (state, action) => {
+                state.loading.analytics = false;
+                state.analytics = action.payload;
+            })
+            .addCase(fetchAdminAnalytics.rejected, (state, action) => {
+                state.loading.analytics = false;
                 state.error = action.payload;
             });
 

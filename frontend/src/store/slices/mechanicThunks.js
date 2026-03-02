@@ -14,6 +14,19 @@ export const fetchMechanicDashboard = createAsyncThunk(
     }
 );
 
+// Fetch mechanic analytics data
+export const fetchMechanicAnalytics = createAsyncThunk(
+    'mechanic/fetchAnalytics',
+    async (_, { rejectWithValue }) => {
+        try {
+            const response = await apiGet('/mechanic/api/analytics');
+            return response.data;
+        } catch (error) {
+            return rejectWithValue(error.message || 'Failed to fetch analytics data');
+        }
+    }
+);
+
 // Fetch specific booking details
 export const fetchMechanicBooking = createAsyncThunk(
     'mechanic/fetchBooking',

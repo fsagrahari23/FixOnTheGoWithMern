@@ -47,6 +47,7 @@ import Payment from "./pages/admin/Payment";
 import Subscription from "./pages/admin/Subscription";
 import AdminProfile from "./pages/admin/AdminProfile";
 import StaffManagement from "./pages/admin/StaffManagement";
+import AnalyticsSearch from "./pages/admin/AnalyticsSearch";
 
 // Staff imports
 import StaffLayout from "./pages/staff/StaffLayout";
@@ -85,6 +86,7 @@ export const adminRoutes = {
   "mechanic/:id": AdminMechanicProfile,
   "profile": AdminProfile,
   "staff": StaffManagement,
+  "analytics-search": AnalyticsSearch,
 }
 
 export const mechanicRoutes = {
