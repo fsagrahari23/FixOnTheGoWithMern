@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { StatsCards } from "../../components/mechanic/dashboard/stats-cards";
 import { ProfileSummary } from "../../components/mechanic/dashboard/profile-summary";
 import { RecentBookings } from "../../components/mechanic/dashboard/recent-bookings";
@@ -5,14 +6,22 @@ import { NearbyRequests } from "../../components/mechanic/dashboard/nearby-reque
 import { EarningsChart } from "../../components/mechanic/dashboard/earnings-chart";
 import { PerformanceStats } from "../../components/mechanic/dashboard/performance-stats";
 import { QuickActions } from "../../components/mechanic/dashboard/quick-actions";
+import { EarningsBreakdown, MonthlyTrend, RepeatCustomers, PerformanceSummary } from "../../components/mechanic/analytics";
 import MapPicker from "../../components/MapPicker";
 import { useDispatch, useSelector } from 'react-redux';
 import { setCoordinates, setAddress } from '../../store/slices/locationSlice';
+import { fetchMechanicAnalytics } from '../../store/slices/mechanicThunks';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/card';
+import { BarChart3 } from 'lucide-react';
 
 export default function MechanicDashboard() {
   const dispatch = useDispatch();
   const address = useSelector((s) => s.location?.address);
+  const { analytics, analyticsLoading } = useSelector((s) => s.mechanic);
+
+  useEffect(() => {
+    dispatch(fetchMechanicAnalytics());
+  }, [dispatch]);
 
   const reverseGeocode = async (lat, lng) => {
     try {
@@ -79,6 +88,29 @@ export default function MechanicDashboard() {
             <ProfileSummary />
             <QuickActions />
           </div>
+        </div>
+
+        {/* Analytics Section */}
+        <div className="mt-8">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="p-2 rounded-lg bg-green-500/10">
+              <BarChart3 className="w-6 h-6 text-green-600" />
+            </div>
+            <h2 className="text-xl font-bold">Your Analytics</h2>
+          </div>
+
+          {analyticsLoading ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <PerformanceSummary data={analytics?.performance} />
+              <EarningsBreakdown data={analytics?.earningsByCategory} />
+              <MonthlyTrend data={analytics?.monthlyEarnings} />
+              <RepeatCustomers data={analytics?.repeatCustomers} />
+            </div>
+          )}
         </div>
       </div>
     </main>

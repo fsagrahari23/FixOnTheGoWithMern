@@ -492,4 +492,18 @@ router.post("/toggle-availability", async (req, res) => {
   }
 });
 
+// ==================== ANALYTICS ENDPOINT ====================
+const analyticsService = require("../services/analyticsService");
+
+// Get mechanic's analytics data
+router.get("/api/analytics", async (req, res) => {
+  try {
+    const data = await analyticsService.getMechanicAnalytics(req.user._id);
+    res.json({ success: true, data });
+  } catch (error) {
+    console.error("Mechanic analytics error:", error);
+    res.status(500).json({ error: "Failed to fetch analytics data" });
+  }
+});
+
 module.exports = router;

@@ -25,6 +25,29 @@ export const fetchAdminDashboard = createAsyncThunk(
     }
 );
 
+// Fetch Admin Analytics Overview
+export const fetchAdminAnalytics = createAsyncThunk(
+    "admin/fetchAnalytics",
+    async (_, { rejectWithValue }) => {
+        try {
+            const response = await fetch(`${API_BASE_URL}/admin/api/analytics/overview`, {
+                method: "GET",
+                credentials: "include",
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.message || "Failed to fetch analytics data");
+            }
+
+            return data.data;
+        } catch (error) {
+            return rejectWithValue(error.message);
+        }
+    }
+);
+
 // Fetch All Users
 export const fetchAllUsers = createAsyncThunk(
     "admin/fetchAllUsers",
