@@ -1869,5 +1869,261 @@ router.get("/api/dashboard-stats", async (req, res) => {
   }
 });
 
+// ==================== ANALYTICS ENDPOINTS ====================
+const analyticsService = require("../services/analyticsService");
+
+// Get top problems by count and revenue
+router.get("/api/analytics/problems", isAdmin, async (req, res) => {
+  try {
+    const limit = Math.min(Math.max(parseInt(req.query.limit) || 10, 1), 50);
+    const data = await analyticsService.getTopProblems(limit);
+    res.json({ success: true, data });
+  } catch (error) {
+    console.error("Top problems analytics error:", error);
+    res.status(500).json({ error: "Failed to fetch problems analytics" });
+  }
+});
+
+// Get top mechanics leaderboard
+router.get("/api/analytics/mechanics", isAdmin, async (req, res) => {
+  try {
+    const limit = Math.min(Math.max(parseInt(req.query.limit) || 10, 1), 50);
+    const data = await analyticsService.getTopMechanics(limit);
+    res.json({ success: true, data });
+  } catch (error) {
+    console.error("Top mechanics analytics error:", error);
+    res.status(500).json({ error: "Failed to fetch mechanics analytics" });
+  }
+});
+
+// Get repeat users analysis
+router.get("/api/analytics/users", isAdmin, async (req, res) => {
+  try {
+    const limit = Math.min(Math.max(parseInt(req.query.limit) || 10, 1), 50);
+    const data = await analyticsService.getRepeatUsers(limit);
+    res.json({ success: true, data });
+  } catch (error) {
+    console.error("Repeat users analytics error:", error);
+    res.status(500).json({ error: "Failed to fetch users analytics" });
+  }
+});
+
+// Get booking trends over time
+router.get("/api/analytics/trends", isAdmin, async (req, res) => {
+  try {
+    const days = Math.min(Math.max(parseInt(req.query.days) || 30, 7), 90);
+    const data = await analyticsService.getBookingTrends(days);
+    res.json({ success: true, data });
+  } catch (error) {
+    console.error("Booking trends analytics error:", error);
+    res.status(500).json({ error: "Failed to fetch trends analytics" });
+  }
+});
+
+// Get performance metrics
+router.get("/api/analytics/performance", isAdmin, async (req, res) => {
+  try {
+    const data = await analyticsService.getPerformanceMetrics();
+    res.json({ success: true, data });
+  } catch (error) {
+    console.error("Performance analytics error:", error);
+    res.status(500).json({ error: "Failed to fetch performance analytics" });
+  }
+});
+
+// Get all analytics in one call (for dashboard)
+router.get("/api/analytics/overview", isAdmin, async (req, res) => {
+  try {
+    const [topProblems, topMechanics, repeatUsers, performance] = await Promise.all([
+      analyticsService.getTopProblems(5),
+      analyticsService.getTopMechanics(5),
+      analyticsService.getRepeatUsers(5),
+      analyticsService.getPerformanceMetrics()
+    ]);
+
+    res.json({
+      success: true,
+      data: {
+        topProblems,
+        topMechanics,
+        repeatUsers,
+        performance
+      }
+    });
+  } catch (error) {
+    console.error("Analytics overview error:", error);
+    res.status(500).json({ error: "Failed to fetch analytics overview" });
+  }
+});
+
+// Search mechanic by email and get full analytics
+router.get("/api/analytics/mechanic/search", isAdmin, async (req, res) => {
+  try {
+    const { email } = req.query;
+    
+    if (!email) {
+      return res.status(400).json({ error: "Email is required" });
+    }
+
+    // Find mechanic by email
+    const mechanic = await User.findOne({ 
+      email: email.toLowerCase().trim(),
+      role: "mechanic"
+    });
+
+    if (!mechanic) {
+      return res.status(404).json({ error: "Mechanic not found with this email" });
+    }
+
+    // Get mechanic profile
+    const profile = await MechanicProfile.findOne({ user: mechanic._id });
+
+    // Get detailed analytics for this mechanic
+    const analytics = await analyticsService.getMechanicAnalytics(mechanic._id);
+
+    // Get additional info
+    const totalBookings = await Booking.countDocuments({ mechanic: mechanic._id });
+    const completedBookings = await Booking.countDocuments({ 
+      mechanic: mechanic._id, 
+      status: "completed" 
+    });
+    const cancelledBookings = await Booking.countDocuments({ 
+      mechanic: mechanic._id, 
+      status: "cancelled" 
+    });
+    const pendingBookings = await Booking.countDocuments({ 
+      mechanic: mechanic._id, 
+      status: { $in: ["pending", "accepted", "in-progress"] }
+    });
+
+    // Recent bookings
+    const recentBookings = await Booking.find({ mechanic: mechanic._id })
+      .populate("user", "name email phone")
+      .sort({ createdAt: -1 })
+      .limit(10)
+      .lean();
+
+    res.json({
+      success: true,
+      data: {
+        mechanic: {
+          _id: mechanic._id,
+          name: mechanic.name,
+          email: mechanic.email,
+          phone: mechanic.phone,
+          isApproved: mechanic.isApproved,
+          createdAt: mechanic.createdAt,
+          avatar: mechanic.avatar
+        },
+        profile: profile ? {
+          specialization: profile.specialization,
+          experience: profile.experience,
+          hourlyRate: profile.hourlyRate,
+          rating: profile.rating,
+          totalReviews: profile.totalReviews,
+          isAvailable: profile.isAvailable
+        } : null,
+        stats: {
+          totalBookings,
+          completedBookings,
+          cancelledBookings,
+          pendingBookings,
+          completionRate: totalBookings > 0 
+            ? ((completedBookings / totalBookings) * 100).toFixed(1)
+            : 0
+        },
+        analytics,
+        recentBookings: recentBookings.map(b => ({
+          _id: b._id,
+          problemCategory: b.problemCategory,
+          problemDescription: b.problemDescription,
+          status: b.status,
+          payment: b.payment,
+          createdAt: b.createdAt,
+          completedAt: b.completedAt,
+          user: b.user
+        }))
+      }
+    });
+  } catch (error) {
+    console.error("Mechanic search analytics error:", error);
+    res.status(500).json({ error: "Failed to fetch mechanic analytics" });
+  }
+});
+
+// Search user by email and get full analytics
+router.get("/api/analytics/user/search", isAdmin, async (req, res) => {
+  try {
+    const { email } = req.query;
+    
+    if (!email) {
+      return res.status(400).json({ error: "Email is required" });
+    }
+
+    // Find user by email
+    const user = await User.findOne({ 
+      email: email.toLowerCase().trim(),
+      role: "user"
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found with this email" });
+    }
+
+    // Get analytics
+    const analytics = await analyticsService.getUserAnalytics(user._id);
+
+    // Get subscription info
+    const subscription = await Subscription.findOne({ 
+      user: user._id, 
+      status: "active",
+      expiresAt: { $gt: new Date() }
+    });
+
+    // Recent bookings
+    const recentBookings = await Booking.find({ user: user._id })
+      .populate("mechanic", "name email phone")
+      .sort({ createdAt: -1 })
+      .limit(10)
+      .lean();
+
+    res.json({
+      success: true,
+      data: {
+        user: {
+          _id: user._id,
+          name: user.name,
+          email: user.email,
+          phone: user.phone,
+          isPremium: user.isPremium,
+          createdAt: user.createdAt,
+          avatar: user.avatar
+        },
+        subscription: subscription ? {
+          plan: subscription.plan,
+          amount: subscription.amount,
+          status: subscription.status,
+          startDate: subscription.startDate,
+          expiresAt: subscription.expiresAt
+        } : null,
+        analytics,
+        recentBookings: recentBookings.map(b => ({
+          _id: b._id,
+          problemCategory: b.problemCategory,
+          problemDescription: b.problemDescription,
+          status: b.status,
+          payment: b.payment,
+          createdAt: b.createdAt,
+          completedAt: b.completedAt,
+          mechanic: b.mechanic
+        }))
+      }
+    });
+  } catch (error) {
+    console.error("User search analytics error:", error);
+    res.status(500).json({ error: "Failed to fetch user analytics" });
+  }
+});
+
 module.exports = router
 

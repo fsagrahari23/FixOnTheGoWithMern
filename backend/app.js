@@ -238,7 +238,7 @@ app.use((err, req, res, next) => {
 
 // Start server
 
-const PORT = 3001;
+const PORT = 3000;
 server.listen(PORT, () => {
   logger.info(`Server running on http://localhost:${PORT} in ${isProduction ? 'production' : 'development'} mode`);
   logger.info(`Swagger Docs at http://localhost:${PORT}/api-docs`)

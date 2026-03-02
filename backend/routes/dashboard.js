@@ -115,4 +115,18 @@ router.get("/api/dashboard", async (req, res) => {
     }
 })
 
+// ==================== USER ANALYTICS ENDPOINT ====================
+const analyticsService = require("../services/analyticsService")
+
+// Get user's analytics data
+router.get("/api/analytics", async (req, res) => {
+    try {
+        const data = await analyticsService.getUserAnalytics(req.user._id)
+        res.json({ success: true, data })
+    } catch (error) {
+        console.error("User analytics error:", error)
+        res.status(500).json({ error: "Failed to fetch analytics data" })
+    }
+})
+
 module.exports = router
