@@ -425,49 +425,307 @@ module.exports = (io) => {
       }
     });
 
-    // User location updates (for all users)
-    // socket.on("update-location", async (data) => {
-    //   try {
-    //     const { coordinates } = data;
-    //     if (socket.userId) {
-    //       const user = await User.findById(socket.userId);
-    //       if (user) {
-    //         user.location.coordinates = coordinates;
-    //         await user.save();
-    //         console.log(`User ${socket.userId} location updated:`, coordinates);
+    // ==================== MECHANIC LOCATION UPDATES ====================
+    // Real-time mechanic location update for nearby users (Uber/Rapido style)
+    socket.on("mechanic-location-update", async (data) => {
+      try {
+        const { coordinates } = data; // [longitude, latitude]
+        
+        if (!socket.userId || !coordinates || coordinates.length !== 2) {
+          return;
+        }
 
-    //         // If mechanic, notify users about mechanic location update
-    //         if (user.role === "mechanic") {
-    //           // Find all active bookings for this mechanic
-    //           const bookings = await Booking.find({
-    //             mechanic: socket.userId,
-    //             status: "in-progress",
-    //           });
+        const user = await User.findById(socket.userId);
+        if (!user || user.role !== "mechanic") {
+          return;
+        }
 
-    //           // Notify users about mechanic location update
-    //           bookings.forEach((booking) => {
-    //             if (onlineUsers[booking.user.toString()]) {
-    //               io.to(onlineUsers[booking.user.toString()]).emit(
-    //                 "mechanic-location",
-    //                 {
-    //                   bookingId: booking._id,
-    //                   mechanicId: socket.userId,
-    //                   coordinates,
-    //                 }
-    //               );
-    //             }
-    //           });
-    //         }
-    //       }
-    //     }
-    //   } catch (error) {
-    //     console.error("Location update error:", error);
-    //   }
-    // });
+        // Update mechanic's location in database
+        user.location.coordinates = coordinates;
+        user.lastSeen = new Date();
+        await user.save();
+
+        console.log(`Mechanic ${socket.userId} location updated:`, coordinates);
+
+        // Broadcast to all connected users watching nearby mechanics
+        // Users subscribe to "watch-nearby-mechanics" room
+        io.to("nearby-mechanics-watchers").emit("mechanic-location-changed", {
+          mechanicId: socket.userId,
+          name: user.name,
+          coordinates,
+          lastSeen: user.lastSeen,
+        });
+
+        // Also notify users with active bookings with this mechanic
+        const activeBookings = await Booking.find({
+          mechanic: socket.userId,
+          status: { $in: ["accepted", "in-progress"] },
+        });
+
+        activeBookings.forEach((booking) => {
+          const userId = booking.user.toString();
+          if (onlineUsers[userId]) {
+            io.to(onlineUsers[userId]).emit("assigned-mechanic-location", {
+              bookingId: booking._id,
+              mechanicId: socket.userId,
+              mechanicName: user.name,
+              coordinates,
+              lastSeen: user.lastSeen,
+            });
+          }
+        });
+      } catch (error) {
+        console.error("Mechanic location update error:", error);
+      }
+    });
+
+    // User subscribes to watch nearby mechanics (for dashboard/booking)
+    socket.on("watch-nearby-mechanics", async (data) => {
+      try {
+        socket.join("nearby-mechanics-watchers");
+        console.log(`User ${socket.userId || 'anonymous'} started watching nearby mechanics`);
+        
+        // Send initial list of online mechanics
+        const { lat, lng, radius = 10000 } = data || {};
+        
+        if (lat && lng) {
+          const nearbyMechanics = await User.aggregate([
+            {
+              $geoNear: {
+                near: {
+                  type: "Point",
+                  coordinates: [parseFloat(lng), parseFloat(lat)],
+                },
+                distanceField: "distance",
+                maxDistance: parseInt(radius),
+                spherical: true,
+              },
+            },
+            {
+              $match: {
+                role: "mechanic",
+                isApproved: true,
+                isActive: true,
+              },
+            },
+            {
+              $project: {
+                _id: 1,
+                name: 1,
+                location: 1,
+                lastSeen: 1,
+              },
+            },
+            { $limit: 50 },
+          ]);
+
+          const mechanicsWithStatus = nearbyMechanics.map(m => ({
+            mechanicId: m._id,
+            name: m.name,
+            coordinates: m.location.coordinates,
+            isOnline: !!onlineUsers[m._id.toString()],
+            distance: m.distance,
+            lastSeen: m.lastSeen,
+          }));
+
+          socket.emit("nearby-mechanics-list", {
+            mechanics: mechanicsWithStatus,
+          });
+        }
+      } catch (error) {
+        console.error("Watch nearby mechanics error:", error);
+      }
+    });
+
+    // Stop watching nearby mechanics
+    socket.on("stop-watching-mechanics", () => {
+      socket.leave("nearby-mechanics-watchers");
+      console.log(`User ${socket.userId || 'anonymous'} stopped watching nearby mechanics`);
+    });
+
+    // Request mechanic's current location (for users with active bookings)
+    socket.on("request-mechanic-location", async (data) => {
+      try {
+        const { bookingId } = data;
+        
+        if (!bookingId) return;
+
+        const booking = await Booking.findById(bookingId).populate("mechanic", "name location lastSeen");
+        
+        if (!booking || booking.user.toString() !== socket.userId) {
+          return;
+        }
+
+        if (booking.mechanic) {
+          socket.emit("mechanic-current-location", {
+            bookingId,
+            mechanicId: booking.mechanic._id,
+            mechanicName: booking.mechanic.name,
+            coordinates: booking.mechanic.location?.coordinates,
+            isOnline: !!onlineUsers[booking.mechanic._id.toString()],
+            lastSeen: booking.mechanic.lastSeen,
+          });
+        }
+      } catch (error) {
+        console.error("Request mechanic location error:", error);
+      }
+    });
+
+    // ==================== STAFF CHAT EVENTS ====================
+    // Join a staff support chat room
+    socket.on("join-staff-chat", async (chatId) => {
+      try {
+        const GeneralChat = require("./models/GeneralChat");
+        const chat = await GeneralChat.findById(chatId);
+        
+        if (chat && chat.participants.some(p => p.toString() === socket.userId)) {
+          socket.join(`staff-chat-${chatId}`);
+          console.log(`User ${socket.userId} joined staff chat ${chatId}`);
+        }
+      } catch (error) {
+        console.error("Join staff chat error:", error);
+      }
+    });
+
+    // Leave staff chat room
+    socket.on("leave-staff-chat", (chatId) => {
+      socket.leave(`staff-chat-${chatId}`);
+      console.log(`User ${socket.userId} left staff chat ${chatId}`);
+    });
+
+    // Send message in staff chat (real-time)
+    socket.on("send-staff-message", async (data) => {
+      try {
+        const { chatId, content, attachments } = data;
+        const GeneralChat = require("./models/GeneralChat");
+
+        const chat = await GeneralChat.findById(chatId);
+        if (!chat || !chat.participants.some(p => p.toString() === socket.userId)) {
+          return;
+        }
+
+        const newMessage = {
+          sender: socket.userId,
+          content,
+          timestamp: new Date(),
+          read: false,
+          attachments: attachments || [],
+        };
+
+        chat.messages.push(newMessage);
+        chat.lastActivity = new Date();
+        chat.updatedAt = new Date();
+        await chat.save();
+
+        // Get sender info
+        const sender = await User.findById(socket.userId).select("name role profileImage");
+
+        // Broadcast to all users in this chat room
+        io.to(`staff-chat-${chatId}`).emit("new-staff-message", {
+          chatId,
+          message: {
+            ...newMessage,
+            sender: {
+              _id: socket.userId,
+              name: sender.name,
+              role: sender.role,
+              profileImage: sender.profileImage,
+            },
+          },
+        });
+
+        // Send notification to other participant
+        const recipientId = chat.participants.find(p => p.toString() !== socket.userId);
+        if (recipientId) {
+          const recipient = await User.findById(recipientId);
+          const notificationType = sender.role === "staff" ? "user-message" : "staff-message";
+          
+          await createNotification(io, {
+            recipient: recipientId,
+            type: notificationType,
+            title: sender.role === "staff" ? "📩 Support Response" : "📩 New Support Message",
+            message: `${sender.name}: ${content.substring(0, 50)}${content.length > 50 ? '...' : ''}`,
+            data: {
+              chatId: chat._id,
+              senderId: socket.userId,
+              link: sender.role === "staff" ? `/user/support` : `/staff/chat/${chatId}`,
+            },
+            priority: "normal",
+          });
+
+          // Also emit directly to recipient if online
+          if (onlineUsers[recipientId.toString()]) {
+            io.to(recipientId.toString()).emit("new-staff-message", {
+              chatId,
+              message: {
+                ...newMessage,
+                sender: {
+                  _id: socket.userId,
+                  name: sender.name,
+                  role: sender.role,
+                  profileImage: sender.profileImage,
+                },
+              },
+            });
+          }
+        }
+      } catch (error) {
+        console.error("Send staff message error:", error);
+      }
+    });
+
+    // Mark staff chat message as read
+    socket.on("mark-staff-message-read", async (data) => {
+      try {
+        const { chatId, messageId } = data;
+        const GeneralChat = require("./models/GeneralChat");
+
+        const chat = await GeneralChat.findById(chatId);
+        if (!chat || !chat.participants.some(p => p.toString() === socket.userId)) {
+          return;
+        }
+
+        const message = chat.messages.id(messageId);
+        if (message && message.sender.toString() !== socket.userId && !message.read) {
+          message.read = true;
+          await chat.save();
+
+          // Notify sender that message was read
+          const senderId = message.sender.toString();
+          if (onlineUsers[senderId]) {
+            io.to(onlineUsers[senderId]).emit("staff-message-read", {
+              chatId,
+              messageId,
+            });
+          }
+        }
+      } catch (error) {
+        console.error("Mark staff message read error:", error);
+      }
+    });
+
+    // Typing indicator for staff chat
+    socket.on("staff-chat-typing", (data) => {
+      const { chatId, isTyping } = data;
+      socket.to(`staff-chat-${chatId}`).emit("staff-chat-user-typing", {
+        chatId,
+        userId: socket.userId,
+        isTyping,
+      });
+    });
 
     // Disconnect
     socket.on("disconnect", () => {
       if (socket.userId) {
+        // Notify watchers that this mechanic went offline
+        User.findById(socket.userId).then(user => {
+          if (user && user.role === "mechanic") {
+            io.to("nearby-mechanics-watchers").emit("mechanic-offline", {
+              mechanicId: socket.userId,
+            });
+          }
+        }).catch(() => {});
+
         delete onlineUsers[socket.userId];
         console.log(`User ${socket.userId} disconnected`);
       }

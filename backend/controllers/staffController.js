@@ -395,6 +395,8 @@ exports.changePassword = async (req, res, next) => {
       return next(new AppError("User not found", 404));
     }
 
+    const wasFirstTimePasswordChange = user.mustChangePassword;
+
     const isMatch = await user.comparePassword(currentPassword);
     if (!isMatch) {
       return next(new AppError("Current password is incorrect", 400));
@@ -404,12 +406,30 @@ exports.changePassword = async (req, res, next) => {
     user.mustChangePassword = false;
     await user.save();
 
+    if (wasFirstTimePasswordChange) {
+      return req.session.destroy((err) => {
+        if (err) {
+          console.error("Session destroy error after password change:", err);
+          return next(new AppError("Password changed, but failed to end session", 500));
+        }
+
+        return res.json({
+          success: true,
+          message: "Password changed successfully. Please log in again.",
+          redirectUrl: "/auth/login",
+          forceRelogin: true,
+        });
+      });
+    }
+
     // Update session
     req.session.user.mustChangePassword = false;
 
     res.json({
       success: true,
       message: "Password changed successfully",
+      redirectUrl: "/staff/profile",
+      forceRelogin: false,
     });
   } catch (error) {
     console.error("Change password error:", error);
