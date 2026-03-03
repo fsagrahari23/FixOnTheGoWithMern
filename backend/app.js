@@ -28,7 +28,6 @@ const userRoutes = require("./routes/user");
 const emergencyRoutes = require("./routes/emergency");
 const mechanicRoutes = require("./routes/mechanic");
 const adminRoutes = require("./routes/admin");
-const staffRoutes = require("./routes/staff");
 const chatRoutes = require("./routes/chat");
 const paymentRoutes = require("./routes/payment");
 const bookingRoutes = require("./routes/booking");
@@ -40,22 +39,12 @@ const {
   isUser,
   isMechanic,
   isAdmin,
-  isStaff,
 } = require("./middleware/auth");
 
 // Initialize Express app
 const app = express();
 const server = http.createServer(app);
-const io = socketIo(server, {
-  cors: {
-    origin: [
-      process.env.FRONTEND_URL,
-      "http://localhost:5173",
-      "http://127.0.0.1:5173",
-    ].filter(Boolean),
-    credentials: true,
-  },
-});
+const io = socketIo(server);
 // Make io available to routes via app.get('io')
 app.set('io', io);
 
@@ -180,7 +169,6 @@ app.use("/user", isAuthenticated, isUser, bookingRoutes);
 app.use("/user", isAuthenticated, isUser, emergencyRoutes);
 app.use("/mechanic", isAuthenticated, isMechanic, mechanicRoutes);
 app.use("/admin", isAuthenticated, isAdmin, adminRoutes);
-app.use("/staff", isAuthenticated, isStaff, staffRoutes);
 app.use("/chat", isAuthenticated, chatRoutes);
 app.use("/payment", isAuthenticated, paymentRoutes);
 app.use("/api/notifications", isAuthenticated, notificationRoutes);
@@ -238,7 +226,7 @@ app.use((err, req, res, next) => {
 
 // Start server
 
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   logger.info(`Server running on http://localhost:${PORT} in ${isProduction ? 'production' : 'development'} mode`);
   logger.info(`Swagger Docs at http://localhost:${PORT}/api-docs`)
