@@ -32,6 +32,7 @@ const chatRoutes = require("./routes/chat");
 const paymentRoutes = require("./routes/payment");
 const bookingRoutes = require("./routes/booking");
 const notificationRoutes = require("./routes/notification");
+const staffRoutes = require("./routes/staff");
 
 // Import middleware
 const {
@@ -39,6 +40,7 @@ const {
   isUser,
   isMechanic,
   isAdmin,
+  isStaff,
 } = require("./middleware/auth");
 
 // Initialize Express app
@@ -162,6 +164,9 @@ app.use((req, res, next) => {
 app.set("view engine", "ejs");
 app.set("views", path.join(__dirname, "views"));
 
+// Swagger docs
+setupSwagger(app);
+
 // Routes
 app.use("/auth", authRoutes);
 app.use("/user", isAuthenticated, isUser, userRoutes);
@@ -169,6 +174,7 @@ app.use("/user", isAuthenticated, isUser, bookingRoutes);
 app.use("/user", isAuthenticated, isUser, emergencyRoutes);
 app.use("/mechanic", isAuthenticated, isMechanic, mechanicRoutes);
 app.use("/admin", isAuthenticated, isAdmin, adminRoutes);
+app.use("/staff", isAuthenticated, isStaff, staffRoutes);
 app.use("/chat", isAuthenticated, chatRoutes);
 app.use("/payment", isAuthenticated, paymentRoutes);
 app.use("/api/notifications", isAuthenticated, notificationRoutes);
