@@ -337,7 +337,7 @@ function MechanicResults({ data }) {
             <CardHeader>
               <CardTitle>Problems Solved</CardTitle>
               <CardDescription>
-                {analytics.performance?.totalJobs || 0} total jobs
+                {analytics?.performance?.totalJobs || stats?.totalBookings || 0} total jobs
               </CardDescription>
             </CardHeader>
             <CardContent>
