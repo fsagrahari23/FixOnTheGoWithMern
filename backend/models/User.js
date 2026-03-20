@@ -20,8 +20,46 @@ const UserSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ["user", "mechanic", "admin"],
+    enum: ["user", "mechanic", "admin", "staff"],
     default: "user",
+  },
+  // Staff specific fields
+  mustChangePassword: {
+    type: Boolean,
+    default: false,
+  },
+  staffCredentials: {
+    aadhaarNumber: {
+      type: String,
+    },
+    aadhaarDocument: {
+      type: String,
+    },
+    panNumber: {
+      type: String,
+    },
+    panDocument: {
+      type: String,
+    },
+    address: {
+      type: String,
+    },
+    dateOfBirth: {
+      type: Date,
+    },
+    joiningDate: {
+      type: Date,
+    },
+    emergencyContact: {
+      type: String,
+    },
+    notes: {
+      type: String,
+    },
+  },
+  createdBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
   },
   profileImage: {
     type: String,

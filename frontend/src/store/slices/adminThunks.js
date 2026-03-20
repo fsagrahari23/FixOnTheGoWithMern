@@ -1,6 +1,6 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:3001";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:3000";
 
 // Fetch Admin Dashboard Data
 export const fetchAdminDashboard = createAsyncThunk(
@@ -19,6 +19,29 @@ export const fetchAdminDashboard = createAsyncThunk(
             }
 
             return data;
+        } catch (error) {
+            return rejectWithValue(error.message);
+        }
+    }
+);
+
+// Fetch Admin Analytics Overview
+export const fetchAdminAnalytics = createAsyncThunk(
+    "admin/fetchAnalytics",
+    async (_, { rejectWithValue }) => {
+        try {
+            const response = await fetch(`${API_BASE_URL}/admin/api/analytics/overview`, {
+                method: "GET",
+                credentials: "include",
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.message || "Failed to fetch analytics data");
+            }
+
+            return data.data;
         } catch (error) {
             return rejectWithValue(error.message);
         }

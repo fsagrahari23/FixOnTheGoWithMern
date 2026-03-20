@@ -1,6 +1,7 @@
 import { createSlice } from '@reduxjs/toolkit';
 import {
     fetchMechanicDashboard,
+    fetchMechanicAnalytics,
     fetchMechanicBooking,
     acceptBooking,
     updateBookingStatus
@@ -23,12 +24,21 @@ const initialState = {
     },
     nearbyBookings: [],
     userRequestedJob: [],
+
+    // Analytics data
+    analytics: {
+        earningsByCategory: [],
+        monthlyEarnings: [],
+        repeatCustomers: [],
+        performance: {}
+    },
     
     // Current booking details
     currentBooking: null,
     
     // Loading states
     loading: false,
+    analyticsLoading: false,
     bookingLoading: false,
     
     // Error states
@@ -70,6 +80,19 @@ const mechanicSlice = createSlice({
             .addCase(fetchMechanicDashboard.rejected, (state, action) => {
                 state.loading = false;
                 state.error = action.payload || 'Failed to load dashboard';
+            })
+
+            // Fetch Analytics
+            .addCase(fetchMechanicAnalytics.pending, (state) => {
+                state.analyticsLoading = true;
+            })
+            .addCase(fetchMechanicAnalytics.fulfilled, (state, action) => {
+                state.analyticsLoading = false;
+                state.analytics = action.payload || initialState.analytics;
+            })
+            .addCase(fetchMechanicAnalytics.rejected, (state, action) => {
+                state.analyticsLoading = false;
+                state.error = action.payload || 'Failed to load analytics';
             })
             
             // Fetch Booking Details

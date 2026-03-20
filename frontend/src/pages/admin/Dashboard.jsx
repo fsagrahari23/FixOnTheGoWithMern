@@ -1,7 +1,7 @@
 import { useEffect } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { Link } from 'react-router-dom'
-import { Crown, Wrench, Users } from 'lucide-react'
+import { Crown, Wrench, Users, BarChart3 } from 'lucide-react'
 import { Button } from '../../components/ui/button'
 import { StatsOverview } from '../../components/admin/dashboard/stats-overview'
 import { PremiumStats } from '../../components/admin/dashboard/premium-stats'
@@ -11,14 +11,16 @@ import { PaymentOverview } from '../../components/admin/dashboard/payment-overvi
 import { BookingChart } from '../../components/admin/dashboard/booking-chart'
 import { PaymentChart } from '../../components/admin/dashboard/payment-chart'
 import { RevenueChart } from '../../components/admin/dashboard/revenue-chart'
-import { fetchAdminDashboard } from '../../store/slices/adminThunks'
+import { TopProblems, TopMechanics, RepeatUsers, PerformanceMetrics } from '../../components/admin/analytics'
+import { fetchAdminDashboard, fetchAdminAnalytics } from '../../store/slices/adminThunks'
 
 export default function Dashboard() {
     const dispatch = useDispatch()
-    const { dashboard, loading } = useSelector((state) => state.admin)
+    const { dashboard, analytics, loading } = useSelector((state) => state.admin)
 
     useEffect(() => {
         dispatch(fetchAdminDashboard())
+        dispatch(fetchAdminAnalytics())
     }, [dispatch])
 
     if (loading.dashboard) {
@@ -87,6 +89,35 @@ export default function Dashboard() {
                     </div>
                 </div>
 
+                {/* Analytics Section */}
+                <div className="mt-8">
+                    <div className="flex items-center gap-3 mb-6">
+                        <div className="p-2 rounded-lg bg-purple-500/10">
+                            <BarChart3 className="w-6 h-6 text-purple-600" />
+                        </div>
+                        <h2 className="text-xl font-bold">Analytics & Insights</h2>
+                    </div>
+
+                    {loading.analytics ? (
+                        <div className="flex items-center justify-center py-12">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                        </div>
+                    ) : (
+                        <div className="space-y-6">
+                            {/* Performance Metrics - Full Width */}
+                            <PerformanceMetrics data={analytics.performance} />
+
+                            {/* Analytics Grid */}
+                            <div className="grid gap-6 grid-cols-1 lg:grid-cols-2">
+                                <TopProblems data={analytics.topProblems} />
+                                <TopMechanics data={analytics.topMechanics} />
+                            </div>
+
+                            {/* Repeat Users - Full Width */}
+                            <RepeatUsers data={analytics.repeatUsers} />
+                        </div>
+                    )}
+                </div>
                
             </div>
         </main>

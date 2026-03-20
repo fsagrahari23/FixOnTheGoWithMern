@@ -9,6 +9,8 @@ import {
     BarChart3,
     BookCheck,
     Bell,
+    Shield,
+    Search,
 } from "lucide-react"
 import { useState, useEffect } from "react"
 
@@ -30,6 +32,8 @@ export default function AdminLayout() {
                         { id: "emergency", label: "Bookings", url: "/admin/bookings", icon: BookCheck },
                         { id: "history", label: "Payments", url: "/admin/payments", icon: BarChart3 },
                         { id: "maintenance", label: "Subscriptions", url: "/admin/subscriptions", icon: Settings },
+                        { id: "staff", label: "Staff", url: "/admin/staff", icon: Shield },
+                        { id: "analytics-search", label: "Analytics Search", url: "/admin/analytics-search", icon: Search },
                         { id: "profile", label: "Profile", url: "/admin/profile", icon: Users },
                     ]}
                     defaultActiveId="dashboard"

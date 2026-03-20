@@ -10,9 +10,11 @@ import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "../../comp
 import { Input } from "../../components/ui/input"
 import { Button } from "../../components/ui/button"
 import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "../../components/ui/form"
+import { Checkbox } from "../../components/ui/checkbox"
 import { sendOtp, verifyOtp } from "../../store/slices/authThunks"
 import { registerMechanic } from "../../store/slices/authThunks"
 import MapPicker from "../../components/MapPicker"
+import { CheckCircle } from "lucide-react"
 
 /**
  * Zod schemas
@@ -267,10 +269,21 @@ export default function RegisterMechanic() {
                                             name="email"
                                             render={({ field }) => (
                                                 <FormItem>
-                                                    <FormLabel>Email Address</FormLabel>
+                                                    <FormLabel className="flex items-center gap-2">
+                                                        Email Address
+                                                        <span className="flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400">
+                                                            <CheckCircle className="w-3 h-3" /> Verified
+                                                        </span>
+                                                    </FormLabel>
                                                     <FormControl>
-                                                        {/* email is filled from OTP step; allow editing but it's okay to keep */}
-                                                        <Input {...field} type="email" placeholder="you@example.com" />
+                                                        <Input 
+                                                            {...field} 
+                                                            type="email" 
+                                                            placeholder="you@example.com" 
+                                                            readOnly 
+                                                            disabled
+                                                            className="bg-slate-100 dark:bg-slate-700 cursor-not-allowed"
+                                                        />
                                                     </FormControl>
                                                     <FormMessage />
                                                 </FormItem>
@@ -333,31 +346,42 @@ export default function RegisterMechanic() {
                                             )}
                                         />
 
-                                        {/* Specialization (multi-select) */}
+                                        {/* Specialization (checkbox-based multi-select) */}
                                         <FormField
                                             control={registrationForm.control}
                                             name="specialization"
                                             render={({ field }) => (
                                                 <FormItem className="md:col-span-2">
-                                                    <FormLabel>Specialization</FormLabel>
-                                                    <FormControl>
-                                                        <select
-                                                            multiple
-                                                            className="w-full border rounded-lg px-3 py-2 bg-white dark:bg-slate-800"
-                                                            value={field.value || []}
-                                                            onChange={(e) => {
-                                                                const values = Array.from(e.target.selectedOptions).map((o) => o.value)
-                                                                field.onChange(values)
-                                                            }}
-                                                        >
-                                                            {specializationOptions.map((s) => (
-                                                                <option key={s} value={s}>
-                                                                    {s}
-                                                                </option>
-                                                            ))}
-                                                        </select>
-                                                    </FormControl>
-                                                    <p className="text-sm text-muted-foreground mt-1">Hold Ctrl/Cmd to select multiple</p>
+                                                    <FormLabel>Specialization (Select all that apply)</FormLabel>
+                                                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-2">
+                                                        {specializationOptions.map((option) => {
+                                                            const isChecked = field.value?.includes(option) || false
+                                                            return (
+                                                                <label
+                                                                    key={option}
+                                                                    className={`flex items-center gap-2 p-3 border rounded-lg cursor-pointer transition-all ${
+                                                                        isChecked
+                                                                            ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20"
+                                                                            : "border-slate-200 dark:border-slate-700 hover:border-emerald-300"
+                                                                    }`}
+                                                                >
+                                                                    <Checkbox
+                                                                        checked={isChecked}
+                                                                        onCheckedChange={(checked) => {
+                                                                            const currentValues = field.value || []
+                                                                            if (checked) {
+                                                                                field.onChange([...currentValues, option])
+                                                                            } else {
+                                                                                field.onChange(currentValues.filter((v) => v !== option))
+                                                                            }
+                                                                        }}
+                                                                        className="data-[state=checked]:bg-emerald-600 data-[state=checked]:border-emerald-600"
+                                                                    />
+                                                                    <span className="text-sm">{option}</span>
+                                                                </label>
+                                                            )
+                                                        })}
+                                                    </div>
                                                     <FormMessage />
                                                 </FormItem>
                                             )}

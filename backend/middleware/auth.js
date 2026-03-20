@@ -33,4 +33,32 @@ module.exports = {
     }
     return res.status(403).json({ message: "Not authorized as an admin" });
   },
+
+  isStaff: (req, res, next) => {
+    if (req.session.user && req.session.user.role === "staff") {
+      req.user = req.session.user;
+      return next();
+    }
+    return res.status(403).json({ message: "Not authorized as staff" });
+  },
+
+  isAdminOrStaff: (req, res, next) => {
+    if (req.session.user && (req.session.user.role === "admin" || req.session.user.role === "staff")) {
+      req.user = req.session.user;
+      return next();
+    }
+    return res.status(403).json({ message: "Not authorized. Admin or staff access required." });
+  },
+
+  // Middleware to check if staff needs to change password
+  checkPasswordChange: (req, res, next) => {
+    if (req.session.user && req.session.user.mustChangePassword) {
+      return res.status(403).json({ 
+        message: "You must change your password before accessing this resource",
+        mustChangePassword: true 
+      });
+    }
+    return next();
+  },
 };
+

@@ -95,6 +95,51 @@ const BookingSchema = new mongoose.Schema({
       enum: ["monthly", "yearly"],
     },
   },
+  dispute: {
+    isDisputed: {
+      type: Boolean,
+      default: false,
+    },
+    category: {
+      type: String,
+      enum: [
+        "poor_service_quality",
+        "fake_parts_used",
+        "overcharging",
+        "incomplete_work",
+        "damage_to_vehicle",
+        "unprofessional_behavior",
+        "delayed_service",
+        "wrong_diagnosis",
+        "other"
+      ],
+    },
+    reason: String,
+    evidence: [{
+      type: String, // URLs to uploaded images/documents
+    }],
+    raisedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
+    raisedAt: Date,
+    resolution: String,
+    resolvedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
+    resolvedAt: Date,
+    status: {
+      type: String,
+      enum: ["open", "under_review", "resolved", "closed"],
+      default: "open",
+    },
+    staffNotes: String,
+    assignedTo: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User", // Staff member
+    },
+  },
   createdAt: {
     type: Date,
     default: Date.now,

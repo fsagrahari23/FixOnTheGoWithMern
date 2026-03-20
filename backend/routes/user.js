@@ -1407,4 +1407,548 @@ router.get("/api/maintenance", async (req, res) => {
   }
 })
 
+// ==================== STAFF CONTACT API ====================
+// Get list of staff members that users can contact for support/disputes/emergency
+router.get("/api/staff/contacts", async (req, res) => {
+  try {
+    const staffMembers = await User.find({
+      role: "staff",
+      isActive: true,
+      mustChangePassword: false, // Only show staff who have completed their setup
+    }).select("name email phone profileImage staffCredentials.address");
+
+    const formattedStaff = staffMembers.map(staff => ({
+      _id: staff._id,
+      name: staff.name,
+      email: staff.email,
+      phone: staff.phone,
+      profileImage: staff.profileImage,
+      address: staff.staffCredentials?.address || "N/A",
+    }));
+
+    res.json({
+      success: true,
+      staff: formattedStaff,
+    });
+  } catch (error) {
+    console.error("Staff contacts API error:", error);
+    res.status(500).json({ success: false, error: "Failed to load staff contacts" });
+  }
+});
+
+// Create or get chat with staff member
+router.post("/api/staff/chat", async (req, res) => {
+  try {
+    const { staffId } = req.body;
+
+    if (!staffId) {
+      return res.status(400).json({ success: false, message: "Staff ID is required" });
+    }
+
+    // Check if staff exists
+    const staff = await User.findById(staffId);
+    if (!staff || staff.role !== "staff" || !staff.isActive) {
+      return res.status(404).json({ success: false, message: "Staff not found or not available" });
+    }
+
+    // Check if chat already exists
+    let chat = await GeneralChat.findOne({
+      participants: { $all: [req.user._id, staffId] },
+    });
+
+    if (!chat) {
+      // Create new chat
+      chat = new GeneralChat({
+        participants: [req.user._id, staffId],
+        chatType: "support",
+      });
+      await chat.save();
+
+      // Notify staff about new support request
+      const io = req.app.get("io");
+      if (io) {
+        const Notification = require("../models/Notification");
+        await Notification.createAndEmit(io, {
+          recipient: staffId,
+          type: "support-request",
+          title: "🆕 New Support Request",
+          message: `${req.user.name} wants to chat with you`,
+          data: {
+            chatId: chat._id,
+            userId: req.user._id,
+            link: `/staff/chat/${chat._id}`,
+          },
+          priority: "high",
+        });
+      }
+    }
+
+    await chat.populate("participants", "name role email phone");
+
+    res.json({ success: true, chat });
+  } catch (error) {
+    console.error("Staff chat API error:", error);
+    res.status(500).json({ success: false, error: "Failed to create/get staff chat" });
+  }
+});
+
+// Get messages from staff chat
+router.get("/api/staff/chat/:chatId/messages", async (req, res) => {
+  try {
+    const chat = await GeneralChat.findById(req.params.chatId)
+      .populate("participants", "name role email phone profileImage")
+      .populate("messages.sender", "name role profileImage");
+
+    if (!chat) {
+      return res.status(404).json({ success: false, message: "Chat not found" });
+    }
+
+    // Check if user is a participant
+    if (!chat.participants.some(p => p._id.toString() === req.user._id.toString())) {
+      return res.status(403).json({ success: false, message: "Not authorized" });
+    }
+
+    // Mark unread messages as read
+    let updated = false;
+    chat.messages.forEach((msg) => {
+      if (msg.sender._id.toString() !== req.user._id.toString() && !msg.read) {
+        msg.read = true;
+        updated = true;
+      }
+    });
+    if (updated) await chat.save();
+
+    res.json({ 
+      success: true, 
+      chat,
+      messages: chat.messages,
+    });
+  } catch (error) {
+    console.error("Get staff chat messages error:", error);
+    res.status(500).json({ success: false, error: "Failed to get messages" });
+  }
+});
+
+// Send message in staff chat
+router.post("/api/staff/chat/:chatId/send", async (req, res) => {
+  try {
+    const { message, attachments } = req.body;
+    
+    if (!message && (!attachments || attachments.length === 0)) {
+      return res.status(400).json({ success: false, message: "Message is required" });
+    }
+
+    const chat = await GeneralChat.findById(req.params.chatId);
+    if (!chat) {
+      return res.status(404).json({ success: false, message: "Chat not found" });
+    }
+
+    // Check if user is a participant
+    if (!chat.participants.some(p => p.toString() === req.user._id.toString())) {
+      return res.status(403).json({ success: false, message: "Not authorized" });
+    }
+
+    // Add message
+    const newMessage = {
+      sender: req.user._id,
+      content: message,
+      timestamp: new Date(),
+      read: false,
+      attachments: attachments || [],
+    };
+
+    chat.messages.push(newMessage);
+    chat.lastActivity = new Date();
+    chat.updatedAt = new Date();
+    await chat.save();
+
+    // Get the recipient (other participant)
+    const recipientId = chat.participants.find(p => p.toString() !== req.user._id.toString());
+    const recipient = await User.findById(recipientId);
+
+    // Emit socket event for real-time message
+    const io = req.app.get("io");
+    if (io) {
+      // Emit to the chat room
+      io.to(`staff-chat-${chat._id}`).emit("new-staff-message", {
+        chatId: chat._id,
+        message: {
+          ...newMessage,
+          sender: {
+            _id: req.user._id,
+            name: req.user.name,
+            role: req.user.role,
+          },
+        },
+      });
+
+      // Create notification for recipient
+      const Notification = require("../models/Notification");
+      const notificationType = req.user.role === "staff" ? "user-message" : "staff-message";
+      await Notification.createAndEmit(io, {
+        recipient: recipientId,
+        type: notificationType,
+        title: req.user.role === "staff" ? "📩 Support Response" : "📩 New Message",
+        message: `${req.user.name}: ${message.substring(0, 50)}${message.length > 50 ? '...' : ''}`,
+        data: {
+          chatId: chat._id,
+          userId: req.user._id,
+          link: req.user.role === "staff" ? `/user/support/${chat._id}` : `/staff/chat/${chat._id}`,
+        },
+        priority: "normal",
+      });
+    }
+
+    res.json({ success: true, message: "Message sent", newMessage });
+  } catch (error) {
+    console.error("Send staff chat message error:", error);
+    res.status(500).json({ success: false, error: "Failed to send message" });
+  }
+});
+
+// Send email to staff
+router.post("/api/staff/email", async (req, res) => {
+  try {
+    const { staffId, subject, message } = req.body;
+    
+    if (!staffId || !message) {
+      return res.status(400).json({ success: false, message: "Staff ID and message are required" });
+    }
+
+    const staff = await User.findById(staffId);
+    if (!staff || staff.role !== "staff") {
+      return res.status(404).json({ success: false, message: "Staff not found" });
+    }
+
+    // Send email
+    const { sendSupportEmailToStaff } = require("../services/emailService");
+    const emailResult = await sendSupportEmailToStaff(
+      staff.email,
+      staff.name,
+      req.user.name,
+      req.user.email,
+      message
+    );
+
+    // Create notification for staff
+    const io = req.app.get("io");
+    if (io) {
+      const Notification = require("../models/Notification");
+      await Notification.createAndEmit(io, {
+        recipient: staffId,
+        type: "email-received",
+        title: "📧 New Email Received",
+        message: `${req.user.name} sent you an email: ${subject || 'Support Request'}`,
+        data: {
+          userId: req.user._id,
+          userEmail: req.user.email,
+          subject: subject || "Support Request",
+          link: `/staff/emails`,
+        },
+        priority: "high",
+      });
+    }
+
+    res.json({ 
+      success: true, 
+      message: "Email sent successfully",
+      emailResult,
+    });
+  } catch (error) {
+    console.error("Send email to staff error:", error);
+    res.status(500).json({ success: false, error: "Failed to send email" });
+  }
+});
+
+// Get user's support chats
+router.get("/api/support/chats", async (req, res) => {
+  try {
+    const chats = await GeneralChat.find({
+      participants: req.user._id,
+    })
+      .populate("participants", "name role email phone profileImage")
+      .sort({ lastActivity: -1 });
+
+    // Filter to only include chats with staff
+    const supportChats = chats.filter(chat => 
+      chat.participants.some(p => p.role === "staff")
+    );
+
+    res.json({ success: true, chats: supportChats });
+  } catch (error) {
+    console.error("Get support chats error:", error);
+    res.status(500).json({ success: false, error: "Failed to get support chats" });
+  }
+});
+
+// ==================== NEARBY MECHANICS API ====================
+// Get nearby mechanics within specified radius (default 10km)
+router.get("/api/mechanics/nearby", async (req, res) => {
+  try {
+    const { lat, lng, radius = 10000 } = req.query; // radius in meters
+
+    if (!lat || !lng) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Latitude and longitude are required" 
+      });
+    }
+
+    const latitude = parseFloat(lat);
+    const longitude = parseFloat(lng);
+    const maxDistance = parseInt(radius);
+
+    // Find nearby mechanics using geospatial query
+    const nearbyMechanics = await User.aggregate([
+      {
+        $geoNear: {
+          near: {
+            type: "Point",
+            coordinates: [longitude, latitude],
+          },
+          distanceField: "distance",
+          maxDistance: maxDistance, // 10km default
+          spherical: true,
+        },
+      },
+      {
+        $match: {
+          role: "mechanic",
+          isApproved: true,
+          isActive: true,
+        },
+      },
+      {
+        $lookup: {
+          from: "mechanicprofiles",
+          localField: "_id",
+          foreignField: "user",
+          as: "profile",
+        },
+      },
+      {
+        $unwind: {
+          path: "$profile",
+          preserveNullAndEmptyArrays: true,
+        },
+      },
+      {
+        $project: {
+          _id: 1,
+          name: 1,
+          phone: 1,
+          email: 1,
+          profileImage: 1,
+          distance: 1,
+          location: 1,
+          isOnline: 1,
+          lastSeen: 1,
+          "profile.specialization": 1,
+          "profile.experience": 1,
+          "profile.rating": 1,
+          "profile.hourlyRate": 1,
+          "profile.availability": 1,
+        },
+      },
+      {
+        $limit: 50,
+      },
+    ]);
+
+    // Get online status from socket
+    const io = req.app.get('io');
+    const onlineUsers = io?.getOnlineUsers?.() || {};
+
+    const mechanicsWithStatus = nearbyMechanics.map(mechanic => ({
+      ...mechanic,
+      isOnline: !!onlineUsers[mechanic._id.toString()],
+      distanceKm: (mechanic.distance / 1000).toFixed(2),
+    }));
+
+    res.json({
+      success: true,
+      mechanics: mechanicsWithStatus,
+      count: mechanicsWithStatus.length,
+    });
+  } catch (error) {
+    console.error("Nearby mechanics API error:", error);
+    res.status(500).json({ success: false, error: "Failed to load nearby mechanics" });
+  }
+});
+
+// ==================== DISPUTE API ====================
+// Dispute categories
+const DISPUTE_CATEGORIES = [
+  "poor_service_quality",
+  "fake_parts_used",
+  "overcharging",
+  "incomplete_work",
+  "damage_to_vehicle",
+  "unprofessional_behavior",
+  "delayed_service",
+  "wrong_diagnosis",
+  "other"
+];
+
+// Raise a dispute for a booking
+router.post("/api/dispute/:bookingId", async (req, res) => {
+  try {
+    const { bookingId } = req.params;
+    const { category, reason, evidence } = req.body;
+
+    if (!reason || !reason.trim()) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Dispute reason is required" 
+      });
+    }
+
+    const booking = await Booking.findById(bookingId);
+    
+    if (!booking) {
+      return res.status(404).json({ success: false, message: "Booking not found" });
+    }
+
+    // Check if user owns this booking
+    if (booking.user.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ 
+        success: false, 
+        message: "Not authorized to raise dispute for this booking" 
+      });
+    }
+
+    // Check if booking is completed or in-progress (can't dispute pending or cancelled)
+    if (!["completed", "in-progress"].includes(booking.status)) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Can only raise dispute for completed or in-progress bookings" 
+      });
+    }
+
+    // Check if already disputed
+    if (booking.dispute && booking.dispute.isDisputed) {
+      return res.status(400).json({ 
+        success: false, 
+        message: "A dispute has already been raised for this booking" 
+      });
+    }
+
+    // Update booking with dispute
+    booking.dispute = {
+      isDisputed: true,
+      category: category || "other",
+      reason: reason.trim(),
+      evidence: evidence || [],
+      raisedBy: req.user._id,
+      raisedAt: new Date(),
+      status: "open",
+    };
+    booking.updatedAt = new Date();
+    await booking.save();
+
+    // Notify staff and admin about the dispute
+    const io = req.app.get('io');
+    if (io && io.notifyAdmins) {
+      await io.notifyAdmins({
+        type: "dispute",
+        title: "🚨 New Dispute Raised",
+        message: `User ${req.user.name || req.user.email} raised a dispute: ${category || 'other'}`,
+        data: {
+          bookingId: booking._id,
+          disputeCategory: category,
+          link: `/staff/disputes`,
+        },
+        priority: "high",
+      });
+    }
+
+    // Notify mechanic
+    if (booking.mechanic && io && io.createNotification) {
+      await io.createNotification({
+        recipient: booking.mechanic,
+        type: "dispute",
+        title: "⚠️ Dispute Raised",
+        message: `A dispute has been raised for booking #${booking._id.toString().slice(-6)}`,
+        data: {
+          bookingId: booking._id,
+          link: `/mechanic/booking/${booking._id}`,
+        },
+        priority: "high",
+      });
+    }
+
+    res.json({
+      success: true,
+      message: "Dispute raised successfully. Our staff will review and contact you shortly.",
+      dispute: booking.dispute,
+    });
+  } catch (error) {
+    console.error("Raise dispute API error:", error);
+    res.status(500).json({ success: false, error: "Failed to raise dispute" });
+  }
+});
+
+// Get user's disputes
+router.get("/api/disputes", async (req, res) => {
+  try {
+    const bookingsWithDisputes = await Booking.find({
+      user: req.user._id,
+      "dispute.isDisputed": true,
+    })
+      .populate("mechanic", "name email phone profileImage")
+      .sort({ "dispute.raisedAt": -1 });
+
+    const disputes = bookingsWithDisputes.map(booking => ({
+      bookingId: booking._id,
+      problemCategory: booking.problemCategory,
+      mechanic: booking.mechanic,
+      dispute: booking.dispute,
+      bookingStatus: booking.status,
+      createdAt: booking.createdAt,
+    }));
+
+    res.json({ success: true, disputes });
+  } catch (error) {
+    console.error("Get disputes API error:", error);
+    res.status(500).json({ success: false, error: "Failed to load disputes" });
+  }
+});
+
+// Get dispute categories
+router.get("/api/dispute/categories", async (req, res) => {
+  const categoryLabels = {
+    poor_service_quality: "Poor Service Quality",
+    fake_parts_used: "Fake/Non-genuine Parts Used",
+    overcharging: "Overcharging/Hidden Fees",
+    incomplete_work: "Incomplete Work",
+    damage_to_vehicle: "Damage to Vehicle",
+    unprofessional_behavior: "Unprofessional Behavior",
+    delayed_service: "Delayed Service",
+    wrong_diagnosis: "Wrong Diagnosis",
+    other: "Other Issue",
+  };
+
+  res.json({
+    success: true,
+    categories: DISPUTE_CATEGORIES.map(cat => ({
+      value: cat,
+      label: categoryLabels[cat] || cat,
+    })),
+  });
+});
+
+// ==================== USER ANALYTICS ENDPOINT ====================
+const analyticsService = require("../services/analyticsService")
+
+// Get user's analytics data (problems, spending)
+router.get("/api/analytics", async (req, res) => {
+  try {
+    const data = await analyticsService.getUserAnalytics(req.user._id)
+    res.json({ success: true, data })
+  } catch (error) {
+    console.error("User analytics error:", error)
+    res.status(500).json({ error: "Failed to fetch analytics data" })
+  }
+})
+
 module.exports = router

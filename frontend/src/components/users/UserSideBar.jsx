@@ -22,7 +22,13 @@ export function SidebarNav({
     const [mobileOpen, setMobileOpen] = useState(false)
     const { user } = useSelector((state) => state.auth)
     const isAdmin = user?.role === "admin"
+    const isStaff = user?.role === "staff"
 
+    const getSidebarTitle = () => {
+        if (isAdmin) return 'Admin'
+        if (isStaff) return 'Staff'
+        return 'User'
+    }
 
     useEffect(() => {
         const matched = tabs.find((t) => t.url && pathname.startsWith(t.url))
@@ -62,7 +68,7 @@ export function SidebarNav({
             >
                 {/* Header */}
                 <div className="flex items-center justify-between px-3 py-4 border-b border-border">
-                  {!isCollapsed && <h2 className="text-lg font-semibold">{isAdmin?'Admin':'User'}</h2>}
+                  {!isCollapsed && <h2 className="text-lg font-semibold">{getSidebarTitle()}</h2>}
 
                     <Button
                         variant="ghost"

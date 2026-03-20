@@ -12,6 +12,7 @@ import { Button } from "../../components/ui/button"
 import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "../../components/ui/form"
 import { sendOtp, verifyOtp, registerUser } from "../../store/slices/authThunks"
 import MapPicker from "../../components/MapPicker"
+import { CheckCircle } from "lucide-react"
 
 const emailSchema = z.object({
     email: z.string().email("Invalid email"),
@@ -242,9 +243,21 @@ export default function Register() {
                                             name="email"
                                             render={({ field }) => (
                                                 <FormItem>
-                                                    <FormLabel>Email Address</FormLabel>
+                                                    <FormLabel className="flex items-center gap-2">
+                                                        Email Address
+                                                        <span className="flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400">
+                                                            <CheckCircle className="w-3 h-3" /> Verified
+                                                        </span>
+                                                    </FormLabel>
                                                     <FormControl>
-                                                        <Input {...field} type="email" placeholder="you@example.com" />
+                                                        <Input 
+                                                            {...field} 
+                                                            type="email" 
+                                                            placeholder="you@example.com" 
+                                                            readOnly 
+                                                            disabled
+                                                            className="bg-slate-100 dark:bg-slate-700 cursor-not-allowed"
+                                                        />
                                                     </FormControl>
                                                     <FormMessage />
                                                 </FormItem>

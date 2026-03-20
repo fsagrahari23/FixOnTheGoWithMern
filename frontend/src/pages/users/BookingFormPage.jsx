@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useSelector } from 'react-redux';
 import { apiPost } from '../../lib/api';
-import { MapPin, Upload, Wrench, Crown, Info, AlertCircle, ArrowLeft, Send } from 'lucide-react';
+import { MapPin, Upload, Wrench, Crown, Info, AlertCircle, ArrowLeft, Send, Users } from 'lucide-react';
 import MapPicker from '../../components/MapPicker';
+import { NearbyMechanicsMap } from '../../components/users/dashboard/nearby-mechanics-map';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -219,10 +221,15 @@ const TowingDetails = ({ showTowing, formData, handleInputChange, errors }) => {
 // Main Booking Form Component
 const BookingForm = () => {
   const navigate = useNavigate();
+  
+  // Connect to Redux
+  const locationFromRedux = useSelector((state) => state.location);
+  
   const [isPremium, setIsPremium] = useState(false);
   const [discount, setDiscount] = useState(10);
   const [showTowing, setShowTowing] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState(null);
+  const [selectedMechanic, setSelectedMechanic] = useState(null);
   const [errors, setErrors] = useState({});
   const [formData, setFormData] = useState({
     problemCategory: '',
@@ -230,6 +237,7 @@ const BookingForm = () => {
     address: '',
     latitude: '',
     longitude: '',
+    preferredMechanic: '',
     requiresTowing: false,
     pickupAddress: '',
     pickupLatitude: '',
@@ -240,32 +248,33 @@ const BookingForm = () => {
   });
 
   useEffect(() => {
-    // Simulate API call
+    // Load location from Redux if available
+    if (locationFromRedux?.coordinates && Array.isArray(locationFromRedux.coordinates) && locationFromRedux.coordinates.length === 2) {
+      const [lng, lat] = locationFromRedux.coordinates;
+      setFormData(prev => ({
+        ...prev,
+        address: locationFromRedux.address || '',
+        latitude: lat || '',
+        longitude: lng || '',
+        pickupLatitude: lat || '',
+        pickupLongitude: lng || '',
+      }));
+    }
+
+    // Simulate API call for user data
     const loadUserData = async () => {
       // Mock data - replace with actual API call
       const mockData = {
-        user: {
-          address: '123 Main St, City',
-          location: {
-            coordinates: [78.9629, 20.5937]
-          }
-        },
         isPremium: false,
         plan: 'monthly'
       };
 
       setIsPremium(mockData.isPremium);
       setDiscount(mockData.plan === 'monthly' ? 10 : 15);
-      setFormData(prev => ({
-        ...prev,
-        address: mockData.user.address || '',
-        latitude: mockData.user.location?.coordinates?.[1] || '',
-        longitude: mockData.user.location?.coordinates?.[0] || '',
-      }));
     };
 
     loadUserData();
-  }, []);
+  }, [locationFromRedux]);
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -293,6 +302,11 @@ const BookingForm = () => {
   const handleTowingToggle = (checked) => {
     setShowTowing(checked);
     setFormData(prev => ({ ...prev, requiresTowing: checked }));
+  };
+
+  const handleMechanicSelect = (mechanicId) => {
+    setSelectedMechanic(mechanicId);
+    setFormData(prev => ({ ...prev, preferredMechanic: mechanicId }));
   };
 
   const getCurrentLocation = () => {
@@ -392,7 +406,7 @@ const BookingForm = () => {
 
       // Use fetch directly for FormData
       // Prefer Vite env var, otherwise default to backend port 3001 in dev
-      const API_PREFIX = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL : (import.meta.env.DEV ? 'http://localhost:3001' : '');
+      const API_PREFIX = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL : (import.meta.env.DEV ? 'http://localhost:3000' : '');
       const response = await fetch(`${API_PREFIX}/user/book`, {
         method: 'POST',
         credentials: 'include',
@@ -567,6 +581,41 @@ const BookingForm = () => {
                   }}
                   className="w-full h-80"
                 />
+              </div>
+
+              {/* Nearby Mechanics Selection - Uber/Rapido style */}
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <Users className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                  <Label className="dark:text-gray-200 text-base font-medium">
+                    Select a Nearby Mechanic (Optional)
+                  </Label>
+                </div>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-3">
+                  Choose a specific mechanic near you, or leave unselected for auto-assignment.
+                </p>
+                <NearbyMechanicsMap
+                  showSelection={true}
+                  selectedMechanic={selectedMechanic}
+                  onMechanicSelect={handleMechanicSelect}
+                  height={300}
+                />
+                {selectedMechanic && (
+                  <div className="mt-2 flex items-center justify-between p-2 rounded-md bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800">
+                    <span className="text-sm text-blue-700 dark:text-blue-300">
+                      Mechanic selected
+                    </span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleMechanicSelect(null)}
+                      className="text-blue-600 hover:text-blue-800 dark:text-blue-400"
+                    >
+                      Clear Selection
+                    </Button>
+                  </div>
+                )}
               </div>
 
               {/* Towing Service */}

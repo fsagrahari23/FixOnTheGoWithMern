@@ -26,7 +26,7 @@ if (!swaggerSpec) {
       },
       servers: [
         {
-          url: "http://localhost:3005",
+          url: `http://localhost:${process.env.PORT || 3005}`,
         },
       ],
       components: {

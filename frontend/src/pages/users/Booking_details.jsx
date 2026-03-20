@@ -20,7 +20,8 @@ import {
   FileText,
   DollarSign,
   AlertCircle,
-  Mail
+  Mail,
+  AlertTriangle
 } from 'lucide-react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
@@ -33,6 +34,7 @@ import {
 } from '../../store/slices/bookingThunks';
 import ChatModal from '../../components/users/ChatModal';
 import PaymentModal from '../../components/users/PaymentModal';
+import { RaiseDisputeDialog } from '../../components/users/dashboard/dispute-form';
 // import { setCurrentBooking, clearError } from '../../store/slices/bookingSlice';
 
 const InfoItem = ({ icon, label, value, highlight }) => {
@@ -587,6 +589,7 @@ const BookingDetails = () => {
             <div className="flex flex-col sm:flex-row justify-between gap-4 pt-8 border-t border-slate-200 dark:border-slate-700">
               <Button
                 variant="outline"
+                onClick={() => navigate('/user/dashboard')}
                 className="py-6 px-8 text-base font-semibold transition-all duration-300 hover:scale-105 border-slate-300 text-slate-700 hover:bg-slate-100 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700"
               >
                 <ArrowLeft className="w-5 h-5 mr-2" />
@@ -602,6 +605,31 @@ const BookingDetails = () => {
                     <XCircle className="w-5 h-5 mr-2" />
                     Cancel Booking
                   </Button>
+                )}
+
+                {/* Raise Dispute Button - Available for completed bookings */}
+                {(currentBooking?.status === 'completed' || currentBooking?.status === 'in-progress') && !currentBooking?.dispute?.hasDispute && (
+                  <RaiseDisputeDialog
+                    bookingId={currentBooking?._id}
+                    onSuccess={() => dispatch(fetchBookingDetails(id))}
+                    trigger={
+                      <Button
+                        variant="outline"
+                        className="py-6 px-8 text-base font-semibold border-red-300 text-red-600 hover:bg-red-50 dark:border-red-700 dark:text-red-400 dark:hover:bg-red-900/20 transition-all duration-300 hover:scale-105"
+                      >
+                        <AlertTriangle className="w-5 h-5 mr-2" />
+                        Raise Dispute
+                      </Button>
+                    }
+                  />
+                )}
+
+                {/* Show dispute status if already raised */}
+                {currentBooking?.dispute?.hasDispute && (
+                  <Badge className="py-3 px-6 text-sm bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300 border border-yellow-300">
+                    <AlertTriangle className="w-4 h-4 mr-2" />
+                    Dispute {currentBooking.dispute.status}
+                  </Badge>
                 )}
 
                 {currentBooking?.mechanic && (
