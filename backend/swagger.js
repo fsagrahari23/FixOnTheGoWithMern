@@ -2,9 +2,11 @@ const fs = require("fs");
 const path = require("path");
 const swaggerJsdoc = require("swagger-jsdoc");
 const swaggerUi = require("swagger-ui-express");
+const dotenv = require("dotenv");
+dotenv.config();
 
 const openApiPath = path.join(__dirname, "openapi.json");
-let swaggerSpec;
+let swaggerSpec = null;
 
 if (fs.existsSync(openApiPath) && fs.statSync(openApiPath).size > 0) {
   try {
@@ -22,37 +24,66 @@ if (!swaggerSpec) {
       info: {
         title: "Fixonthego API",
         version: "1.0.0",
-        description: "API documentation for fixonthego",
+        description: "API documentation for Fixonthego",
       },
       servers: [
         {
-          url: `http://localhost:${process.env.PORT || 3005}`,
+          url: `http://localhost:${process.env.PORT || 3000}`,
+          description: "Local development server",
         },
       ],
       components: {
         securitySchemes: {
-          bearerAuth: {
-            type: "http",
-            scheme: "bearer",
-            bearerFormat: "JWT",
+          sessionAuth: {
+            type: "apiKey",
+            in: "cookie",
+            name: "connect.sid",
+            description:
+              "Session cookie used by Passport.js with express-session and MongoStore.",
+          },
+        },
+        responses: {
+          UnauthorizedError: {
+            description: "Authentication is required or session has expired.",
+          },
+          ForbiddenError: {
+            description: "You do not have permission to access this resource.",
           },
         },
       },
-      security: [
+      tags: [
         {
-          bearerAuth: [],
+          name: "Auth",
+          description: "Authentication and registration endpoints",
+        },
+        {
+          name: "Forgot Password",
+          description: "Password reset flow",
+        },
+        {
+          name: "Protected",
+          description: "Authenticated routes protected by session",
         },
       ],
     },
-    apis: ["./routes/*.js"], // scan routes
+    apis: ["./routes/*.js"],
   };
 
   swaggerSpec = swaggerJsdoc(options);
 }
 
 function setupSwagger(app) {
-  app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+  app.use(
+    "/api-docs",
+    swaggerUi.serve,
+    swaggerUi.setup(swaggerSpec, {
+      explorer: true,
+      swaggerOptions: {
+        persistAuthorization: true,
+        displayRequestDuration: true,
+      },
+    })
+  );
 }
 
 module.exports = setupSwagger;
-

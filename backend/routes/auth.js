@@ -3,6 +3,29 @@ const router = express.Router();
 const authController = require("../controllers/authController");
 const authMiddleware = require("../middleware/auth");
 
+/**
+ * @swagger
+ * /auth/send-otp:
+ *   post:
+ *     summary: Send OTP for registration
+ *     tags: [Auth]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [email]
+ *             properties:
+ *               email:
+ *                 type: string
+ *                 example: user@example.com
+ *     responses:
+ *       200:
+ *         description: OTP sent successfully
+ *       400:
+ *         description: Email already exists or invalid input
+ */
 router.post("/send-otp", authController.sendOtp);
 router.post("/verify-otp", authController.verifyOtp);
 router.post("/register-user", authController.registerUser);
