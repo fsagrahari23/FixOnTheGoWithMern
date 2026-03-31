@@ -44,6 +44,7 @@ import User from "./pages/admin/User";
 import UserProfile from "./pages/admin/UserProfile";
 import Mechanic from "./pages/admin/Mechanic";
 import Payment from "./pages/admin/Payment";
+import PaymentDetail from "./pages/admin/PaymentDetail";
 import Subscription from "./pages/admin/Subscription";
 import AdminProfile from "./pages/admin/AdminProfile";
 import StaffManagement from "./pages/admin/StaffManagement";
@@ -82,6 +83,7 @@ export const adminRoutes = {
   "user/:id": UserProfile,
   mechanics: Mechanic,
   payments: Payment,
+  "payment/:id": PaymentDetail,
   subscriptions: Subscription,
   "mechanic/:id": AdminMechanicProfile,
   "profile": AdminProfile,
