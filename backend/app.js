@@ -19,6 +19,9 @@ const isProduction = process.env.NODE_ENV === 'production';
 const AppError = require("./utils/AppError");
 const setupSwagger = require("./swagger");
 const logger = require("./utils/Logger");
+const { graphqlHTTP } = require("express-graphql");
+const mechanicGraphQLSchema = require("./graphql/schema");
+const mechanicResolvers = require("./graphql/resolvers");
 const metricsMiddleware = require("./middleware/metircs.middleware")
 const { register } = require("./metrics/prometheus");
 const globalRateLimiter = require("./middleware/rateLimiter");
@@ -162,12 +165,35 @@ app.use((req, res, next) => {
 app.set("view engine", "ejs");
 app.set("views", path.join(__dirname, "views"));
 
+// Swagger docs
+setupSwagger(app);
+
 // Routes
 app.use("/auth", authRoutes);
 app.use("/user", isAuthenticated, isUser, userRoutes);
 app.use("/user", isAuthenticated, isUser, bookingRoutes);
 app.use("/user", isAuthenticated, isUser, emergencyRoutes);
 app.use("/mechanic", isAuthenticated, isMechanic, mechanicRoutes);
+
+// Mechanic GraphQL endpoint
+app.use(
+  "/mechanic/graphql",
+  isAuthenticated,
+  isMechanic,
+  graphqlHTTP((req) => ({
+    schema: mechanicGraphQLSchema,
+    graphiql: process.env.NODE_ENV !== "production",
+    context: {
+      user: req.user,
+      flash: {
+        success_msg: req.flash ? req.flash("success_msg") || [] : [],
+        error_msg: req.flash ? req.flash("error_msg") || [] : [],
+        error: req.flash ? req.flash("error") || [] : [],
+      },
+      resolvers: mechanicResolvers,
+    },
+  }))
+);
 app.use("/admin", isAuthenticated, isAdmin, adminRoutes);
 app.use("/chat", isAuthenticated, chatRoutes);
 app.use("/payment", isAuthenticated, paymentRoutes);
