@@ -113,8 +113,7 @@ function AppContent() {
 
   useEffect(() => {
     dispatch(getMe()).finally(() => {
-      const timer = setTimeout(() => setIsLoading(false), 2000);
-      return () => clearTimeout(timer);
+      setIsLoading(false);
     });
   }, [dispatch]);
 
