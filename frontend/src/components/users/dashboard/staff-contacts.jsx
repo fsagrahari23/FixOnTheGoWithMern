@@ -120,7 +120,7 @@ export function StaffContacts() {
     >
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
             <div>
               <CardTitle className="flex items-center gap-2">
                 <Headphones className="h-5 w-5 text-blue-500" />
@@ -130,7 +130,7 @@ export function StaffContacts() {
                 Contact our staff for help, disputes, or emergencies
               </CardDescription>
             </div>
-            <Badge variant="secondary" className="flex items-center gap-1">
+            <Badge variant="secondary" className="flex items-center gap-1 self-start sm:self-auto">
               <Users className="h-3 w-3" />
               {staff.length} Available
             </Badge>
@@ -151,31 +151,31 @@ export function StaffContacts() {
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: index * 0.1 }}
-                  className="flex items-center justify-between p-4 rounded-lg border bg-card hover:bg-accent/50 transition-colors"
+                  className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 p-4 rounded-lg border bg-card hover:bg-accent/50 transition-colors"
                 >
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
                     <Avatar className="h-12 w-12">
                       <AvatarImage src={member.profileImage} alt={member.name} />
                       <AvatarFallback className="bg-blue-100 text-blue-600 font-medium">
                         {getInitials(member.name)}
                       </AvatarFallback>
                     </Avatar>
-                    <div>
+                    <div className="min-w-0">
                       <h4 className="font-medium">{member.name}</h4>
-                      <p className="text-sm text-muted-foreground">{member.email}</p>
+                      <p className="text-sm text-muted-foreground wrap-break-word">{member.email}</p>
                       {member.phone && (
                         <p className="text-xs text-muted-foreground">{member.phone}</p>
                       )}
                     </div>
                   </div>
                   
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto sm:justify-end">
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={() => handleCall(member.phone, member.name)}
                       disabled={!member.phone}
-                      className="gap-1"
+                      className="gap-1 flex-1 sm:flex-none justify-center"
                     >
                       <Phone className="h-4 w-4" />
                       <span className="hidden sm:inline">Call</span>
@@ -186,7 +186,7 @@ export function StaffContacts() {
                       size="sm"
                       onClick={() => handleChat(member._id, member.name)}
                       disabled={chattingWith === member._id}
-                      className="gap-1"
+                      className="gap-1 flex-1 sm:flex-none justify-center"
                     >
                       {chattingWith === member._id ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
@@ -200,7 +200,7 @@ export function StaffContacts() {
                       variant="outline"
                       size="sm"
                       onClick={() => handleEmail(member.email, member.name)}
-                      className="gap-1"
+                      className="gap-1 flex-1 sm:flex-none justify-center"
                     >
                       <Mail className="h-4 w-4" />
                       <span className="hidden sm:inline">Email</span>

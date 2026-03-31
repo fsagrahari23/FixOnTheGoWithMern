@@ -1395,6 +1395,58 @@ router.get("/api/mechanic/:id", isAdmin, async (req, res) => {
   }
 })
 
+// Issue Refund API
+router.post("/api/payment/:id/refund", isAdmin, async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id);
+    if (!booking) {
+      return res.status(404).json({ error: "Booking/Payment not found" });
+    }
+
+    if (booking.payment.status !== "completed") {
+      return res.status(400).json({ error: "Payment is not completed" });
+    }
+
+    let stripe = null;
+    if (process.env.STRIPE_SECRET_KEY) {
+      stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
+    }
+
+    if (stripe && booking.payment.transactionId && !booking.payment.transactionId.startsWith("mock_") && !booking.payment.transactionId.startsWith("admin-") && !booking.payment.transactionId.startsWith("cash_")) {
+      try {
+        const refund = await stripe.refunds.create({
+          payment_intent: booking.payment.transactionId,
+        });
+        console.log("Stripe Refund Success:", refund.id);
+      } catch (stripeError) {
+        console.error("Stripe Refund Error:", stripeError.message);
+        // If the error is literally that there is no successful charge to refund (ghost/test payment),
+        // we'll log it but proceed to update our database so the admin isn't permanently stuck.
+        if (stripeError.message.includes("does not have a successful charge to refund") || stripeError.code === "charge_already_refunded") {
+           console.log("Allowing database update despite Stripe 'no charge' error to fix ghost transaction status.");
+        } else {
+           // It's a real hard error we shouldn't skip over
+           return res.status(400).json({ error: "Stripe error: " + stripeError.message });
+        }
+      }
+    } else {
+      console.log("No Stripe Key or Mock Transaction. Proceeding with DB-only fake refund.");
+    }
+
+    booking.payment.status = "refunded";
+    
+    // Check if we need to release mechanic
+    // In a real application, you might want to also cancel the booking here if it isn't completed already.
+    
+    await booking.save();
+
+    res.json({ success: true, message: "Refund processed successfully", booking });
+  } catch (error) {
+    console.error("Refund API error:", error);
+    res.status(500).json({ error: "Failed to process refund" });
+  }
+});
+
 // Payments API
 router.get("/api/payments", isAdmin, async (req, res) => {
   try {

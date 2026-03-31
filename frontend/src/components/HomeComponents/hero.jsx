@@ -33,13 +33,6 @@ export default function Hero() {
         ease: "power3.out",
       })
 
-      gsap.from(".hero-image", {
-        duration: 1.2,
-        x: 100,
-        opacity: 0,
-        delay: 0.3,
-        ease: "power3.out",
-      })
     }, containerRef)
 
     return () => ctx.revert()

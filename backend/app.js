@@ -35,6 +35,7 @@ const chatRoutes = require("./routes/chat");
 const paymentRoutes = require("./routes/payment");
 const bookingRoutes = require("./routes/booking");
 const notificationRoutes = require("./routes/notification");
+const staffRoutes = require("./routes/staff");
 
 // Import middleware
 const {
@@ -42,6 +43,7 @@ const {
   isUser,
   isMechanic,
   isAdmin,
+  isStaff,
 } = require("./middleware/auth");
 
 // Initialize Express app
@@ -195,6 +197,7 @@ app.use(
   }))
 );
 app.use("/admin", isAuthenticated, isAdmin, adminRoutes);
+app.use("/staff", isAuthenticated, isStaff, staffRoutes);
 app.use("/chat", isAuthenticated, chatRoutes);
 app.use("/payment", isAuthenticated, paymentRoutes);
 app.use("/api/notifications", isAuthenticated, notificationRoutes);

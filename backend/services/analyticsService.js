@@ -7,6 +7,19 @@ const Booking = require("../models/Booking")
 const Subscription = require("../models/Subscription")
 const User = require("../models/User")
 const MechanicProfile = require("../models/MechanicProfile")
+const mongoose = require("mongoose")
+
+const toObjectId = (id) => {
+  if (!id) return null
+  if (id instanceof mongoose.Types.ObjectId) return id
+  if (typeof id === "string" && mongoose.Types.ObjectId.isValid(id)) {
+    return new mongoose.Types.ObjectId(id)
+  }
+  if (id?._id && mongoose.Types.ObjectId.isValid(id._id)) {
+    return new mongoose.Types.ObjectId(id._id)
+  }
+  return null
+}
 
 // ==================== ADMIN ANALYTICS ====================
 
@@ -321,6 +334,25 @@ const getPerformanceMetrics = async () => {
  * Get mechanic's analytics data
  */
 const getMechanicAnalytics = async (mechanicId) => {
+  const normalizedMechanicId = toObjectId(mechanicId)
+
+  if (!normalizedMechanicId) {
+    return {
+      earningsByCategory: [],
+      monthlyEarnings: [],
+      repeatCustomers: [],
+      performance: {
+        totalJobs: 0,
+        completedJobs: 0,
+        cancelledJobs: 0,
+        completionRate: 0,
+        avgRating: 0,
+        totalRatings: 0,
+        totalEarnings: 0
+      }
+    }
+  }
+
   const [
     earningsByCategory,
     monthlyEarnings,
@@ -331,7 +363,7 @@ const getMechanicAnalytics = async (mechanicId) => {
     Booking.aggregate([
       {
         $match: {
-          mechanic: mechanicId,
+          mechanic: normalizedMechanicId,
           status: "completed",
           "payment.status": "completed"
         }
@@ -358,7 +390,7 @@ const getMechanicAnalytics = async (mechanicId) => {
     Booking.aggregate([
       {
         $match: {
-          mechanic: mechanicId,
+          mechanic: normalizedMechanicId,
           status: "completed",
           "payment.status": "completed",
           createdAt: {
@@ -401,7 +433,7 @@ const getMechanicAnalytics = async (mechanicId) => {
 
     // Repeat customers
     Booking.aggregate([
-      { $match: { mechanic: mechanicId, status: "completed" } },
+      { $match: { mechanic: normalizedMechanicId, status: "completed" } },
       {
         $group: {
           _id: "$user",
@@ -443,7 +475,7 @@ const getMechanicAnalytics = async (mechanicId) => {
 
     // Performance stats
     Booking.aggregate([
-      { $match: { mechanic: mechanicId } },
+      { $match: { mechanic: normalizedMechanicId } },
       {
         $group: {
           _id: null,
@@ -503,10 +535,26 @@ const getMechanicAnalytics = async (mechanicId) => {
  * Get user's booking analytics
  */
 const getUserAnalytics = async (userId) => {
+  const normalizedUserId = toObjectId(userId)
+
+  if (!normalizedUserId) {
+    return {
+      problemStats: [],
+      spendingByCategory: [],
+      monthlyActivity: [],
+      summary: {
+        totalBookings: 0,
+        totalSpent: 0,
+        mostCommonProblem: "None",
+        highestSpendCategory: "None"
+      }
+    }
+  }
+
   const [problemStats, spendingByCategory, monthlyActivity] = await Promise.all([
     // Problems faced (frequency)
     Booking.aggregate([
-      { $match: { user: userId } },
+      { $match: { user: normalizedUserId } },
       {
         $group: {
           _id: { $ifNull: ["$problemCategory", "Other"] },
@@ -527,7 +575,7 @@ const getUserAnalytics = async (userId) => {
     Booking.aggregate([
       {
         $match: {
-          user: userId,
+          user: normalizedUserId,
           "payment.status": "completed"
         }
       },
@@ -553,7 +601,7 @@ const getUserAnalytics = async (userId) => {
     Booking.aggregate([
       {
         $match: {
-          user: userId,
+          user: normalizedUserId,
           createdAt: {
             $gte: new Date(new Date().setMonth(new Date().getMonth() - 6))
           }
