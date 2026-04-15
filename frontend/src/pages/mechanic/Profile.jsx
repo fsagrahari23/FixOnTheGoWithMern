@@ -205,7 +205,7 @@ export default function MechanicProfile() {
                 <div className="flex justify-between"><span className="text-gray-500">Mobile</span><span className="font-medium">{profile.phone || '-'}</span></div>
                   <div className="flex justify-between"><span className="text-gray-500">Address</span><span className="font-medium text-right truncate max-w-[60%]">{profile.address || (profile.location && profile.location.address) || '-'}</span></div>
                 <div className="flex justify-between"><span className="text-gray-500">Experience</span><span className="font-medium">{profile.experience || 0} years</span></div>
-                <div className="flex justify-between"><span className="text-gray-500">Hourly Rate</span><span className="font-medium">${(profile.hourlyRate ?? 0).toFixed ? Number(profile.hourlyRate).toFixed(2) : profile.hourlyRate}</span></div>
+                <div className="flex justify-between"><span className="text-gray-500">Hourly Rate</span><span className="font-medium">₹{(profile.hourlyRate ?? 0).toFixed ? Number(profile.hourlyRate).toFixed(2) : profile.hourlyRate}</span></div>
                 <div>
                   <div className="text-gray-500">Specialization</div>
                   <div className="mt-1 flex flex-wrap gap-2">
@@ -255,7 +255,7 @@ export default function MechanicProfile() {
                   </div>
                   <div>
                     <div className="text-xs">Hourly Rate</div>
-                    <div className="font-medium text-green-700">${profile.hourlyRate ?? profile.hourlyRate === 0 ? profile.hourlyRate : '0.00'}</div>
+                    <div className="font-medium text-green-700">₹{profile.hourlyRate ?? profile.hourlyRate === 0 ? profile.hourlyRate : '0.00'}</div>
                   </div>
                 </div>
               </div>
@@ -373,7 +373,7 @@ export default function MechanicProfile() {
                 </div>
 
                 <div className="col-span-12 md:col-span-3">
-                  <label className="block text-sm font-medium mb-1">Hourly Rate ($)</label>
+                  <label className="block text-sm font-medium mb-1">Hourly Rate (₹)</label>
                   <input 
                     name="hourlyRate" 
                     value={formData.hourlyRate} 

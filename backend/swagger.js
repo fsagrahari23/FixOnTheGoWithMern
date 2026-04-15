@@ -20,70 +20,45 @@ if (fs.existsSync(openApiPath) && fs.statSync(openApiPath).size > 0) {
 if (!swaggerSpec) {
   const options = {
     definition: {
-      openapi: "3.0.0",
-      info: {
-        title: "Fixonthego API",
-        version: "1.0.0",
-        description: "API documentation for Fixonthego",
-      },
-      servers: [
-        {
-          url: `http://localhost:${process.env.PORT || 3000}`,
-          description: "Local development server",
+        openapi: "3.0.0",
+        info: {
+            title: "FixOnTheGo API",
+            version: "1.0.0",
+            description: "Complete API documentation for FixOnTheGo - On-demand mechanic service platform",
         },
-      ],
-      components: {
-        securitySchemes: {
-          sessionAuth: {
-            type: "apiKey",
-            in: "cookie",
-            name: "connect.sid",
-            description:
-              "Session cookie used by Passport.js with express-session and MongoStore.",
-          },
+        servers: [
+            {
+                url: "http://localhost:3000",
+                description: "Development server",
+            },
+        ],
+        components: {
+            securitySchemes: {
+                sessionAuth: {
+                    type: "apiKey",
+                    in: "cookie",
+                    name: "connect.sid",
+                    description: "Session-based authentication via cookie",
+                },
+            },
         },
-        responses: {
-          UnauthorizedError: {
-            description: "Authentication is required or session has expired.",
-          },
-          ForbiddenError: {
-            description: "You do not have permission to access this resource.",
-          },
-        },
-      },
-      tags: [
-        {
-          name: "Auth",
-          description: "Authentication and registration endpoints",
-        },
-        {
-          name: "Forgot Password",
-          description: "Password reset flow",
-        },
-        {
-          name: "Protected",
-          description: "Authenticated routes protected by session",
-        },
-      ],
+        security: [
+            {
+                sessionAuth: [],
+            },
+        ],
     },
-    apis: ["./routes/*.js"],
-  };
+    apis: ["./routes/*.js", "./swagger-definitions.js"], // scan routes + definitions
+};
 
   swaggerSpec = swaggerJsdoc(options);
 }
 
 function setupSwagger(app) {
-  app.use(
-    "/api-docs",
-    swaggerUi.serve,
-    swaggerUi.setup(swaggerSpec, {
-      explorer: true,
-      swaggerOptions: {
-        persistAuthorization: true,
-        displayRequestDuration: true,
-      },
-    })
-  );
+    app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
+        customCss: '.swagger-ui .topbar { display: none }',
+        customSiteTitle: "FixOnTheGo API Docs",
+    }));
 }
 
 module.exports = setupSwagger;

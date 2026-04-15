@@ -28,7 +28,7 @@ export function PerformanceSummary({ data = {} }) {
               <IndianRupee className="w-5 h-5" />
               <span className="text-sm font-medium">Total Earnings</span>
             </div>
-            <p className="text-2xl font-bold">${totalEarnings.toLocaleString()}</p>
+            <p className="text-2xl font-bold">₹{totalEarnings.toLocaleString()}</p>
           </div>
 
           <div className="p-4 rounded-lg bg-blue-500/10 border border-blue-500/20">

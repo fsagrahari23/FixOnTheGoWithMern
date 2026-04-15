@@ -17,7 +17,7 @@ import {
 import { User, Mail, Phone, Shield, Calendar, Lock, CheckCircle, AlertCircle } from 'lucide-react'
 import { toast } from 'sonner'
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:3001"
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:3000"
 
 export default function StaffProfile() {
     const { user } = useSelector((state) => state.auth)
