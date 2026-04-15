@@ -7,6 +7,8 @@ const Chat = require("../models/Chat");
 const path = require("path");
 const cloudinary = require("../config/cloudinary");
 
+const escapeRegex = (value = "") => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
 // Mechanic dashboard
 router.get("/dashboard", (req, res) => {
   res.render("mechanic/dashboard", { title: "Mechanic Dashboard" });
@@ -123,6 +125,62 @@ router.get('/api/booking/:id', async (req, res) => {
   } catch (error) {
     console.error('Booking API error:', error);
     res.status(500).json({ error: 'Failed to load booking details' });
+  }
+});
+
+// Search users by name/email and return all their booking details
+router.get('/api/bookings/search-user', async (req, res) => {
+  try {
+    const query = String(req.query.q || "").trim();
+
+    if (!query) {
+      return res.status(400).json({ success: false, message: "Search query is required" });
+    }
+
+    const safeQuery = escapeRegex(query);
+    const users = await User.find({
+      role: "user",
+      $or: [
+        { name: { $regex: safeQuery, $options: "i" } },
+        { email: { $regex: safeQuery, $options: "i" } }
+      ]
+    })
+      .select("_id name email phone")
+      .limit(20)
+      .lean();
+
+    if (!users.length) {
+      return res.json({ success: true, query, users: [] });
+    }
+
+    const userIds = users.map((u) => u._id);
+    const bookings = await Booking.find({ user: { $in: userIds } })
+      .populate("user", "name email phone")
+      .populate("mechanic", "name email phone")
+      .sort({ createdAt: -1 })
+      .lean();
+
+    const bookingsByUser = new Map();
+    for (const booking of bookings) {
+      const userId = booking.user?._id?.toString();
+      if (!userId) continue;
+      if (!bookingsByUser.has(userId)) bookingsByUser.set(userId, []);
+      bookingsByUser.get(userId).push(booking);
+    }
+
+    const payload = users.map((user) => {
+      const groupedBookings = bookingsByUser.get(String(user._id)) || [];
+      return {
+        ...user,
+        bookingCount: groupedBookings.length,
+        bookings: groupedBookings
+      };
+    });
+
+    return res.json({ success: true, query, users: payload });
+  } catch (error) {
+    console.error("Search user bookings error:", error);
+    return res.status(500).json({ success: false, message: "Failed to search user bookings" });
   }
 });
 
