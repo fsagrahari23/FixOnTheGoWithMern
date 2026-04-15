@@ -31,11 +31,11 @@ const userRoutes = require("./routes/user");
 const emergencyRoutes = require("./routes/emergency");
 const mechanicRoutes = require("./routes/mechanic");
 const adminRoutes = require("./routes/admin");
+const staffRoutes = require("./routes/staff");
 const chatRoutes = require("./routes/chat");
 const paymentRoutes = require("./routes/payment");
 const bookingRoutes = require("./routes/booking");
 const notificationRoutes = require("./routes/notification");
-const staffRoutes = require("./routes/staff");
 
 // Import middleware
 const {
@@ -176,6 +176,7 @@ app.use("/user", isAuthenticated, isUser, userRoutes);
 app.use("/user", isAuthenticated, isUser, bookingRoutes);
 app.use("/user", isAuthenticated, isUser, emergencyRoutes);
 app.use("/mechanic", isAuthenticated, isMechanic, mechanicRoutes);
+app.use("/staff", isAuthenticated, isStaff, staffRoutes);
 
 // Mechanic GraphQL endpoint
 app.use(

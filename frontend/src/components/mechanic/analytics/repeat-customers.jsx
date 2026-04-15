@@ -80,7 +80,7 @@ export function RepeatCustomers({ data = [] }) {
         <div className="mt-4 p-3 rounded-lg bg-green-500/10 border border-green-500/20">
           <div className="flex items-center justify-between">
             <span className="text-sm text-muted-foreground">Revenue from repeat customers</span>
-            <span className="font-bold text-green-600">${totalFromRepeats.toLocaleString()}</span>
+            <span className="font-bold text-green-600">₹{totalFromRepeats.toLocaleString()}</span>
           </div>
         </div>
       </CardContent>

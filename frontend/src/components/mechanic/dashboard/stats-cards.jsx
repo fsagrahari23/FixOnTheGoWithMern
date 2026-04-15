@@ -11,7 +11,7 @@ export function StatsCards() {
   }, [dispatch]);
 
   const formatCurrency = (value) => {
-    return typeof value === 'number' ? `$${value.toFixed(2)}` : '$0.00';
+    return typeof value === 'number' ? `₹${value.toFixed(2)}` : '₹0.00';
   };
 
   if (loading) {

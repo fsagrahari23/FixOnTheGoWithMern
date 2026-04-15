@@ -38,11 +38,11 @@ export function MonthlyTrend({ data = [] }) {
         <div className="grid grid-cols-3 gap-4 mb-6">
           <div className="text-center p-3 rounded-lg bg-green-500/10">
             <p className="text-xs text-muted-foreground">Total (6 mo)</p>
-            <p className="text-lg font-bold text-green-600">${total.toLocaleString()}</p>
+            <p className="text-lg font-bold text-green-600">₹{total.toLocaleString()}</p>
           </div>
           <div className="text-center p-3 rounded-lg bg-blue-500/10">
             <p className="text-xs text-muted-foreground">Avg/Month</p>
-            <p className="text-lg font-bold text-blue-600">${avgMonthly.toLocaleString()}</p>
+            <p className="text-lg font-bold text-blue-600">₹{avgMonthly.toLocaleString()}</p>
           </div>
           <div className="text-center p-3 rounded-lg bg-purple-500/10">
             <p className="text-xs text-muted-foreground">Total Jobs</p>
@@ -64,7 +64,7 @@ export function MonthlyTrend({ data = [] }) {
               />
               <YAxis 
                 tick={{ fontSize: 11 }}
-                tickFormatter={(value) => `$${value >= 1000 ? (value/1000).toFixed(0) + 'k' : value}`}
+                tickFormatter={(value) => `₹${value >= 1000 ? (value/1000).toFixed(0) + 'k' : value}`}
               />
               <Tooltip
                 contentStyle={{
@@ -74,7 +74,7 @@ export function MonthlyTrend({ data = [] }) {
                   fontSize: "12px"
                 }}
                 formatter={(value, name) => [
-                  name === "earnings" ? `$${value.toLocaleString()}` : value,
+                  name === "earnings" ? `₹${value.toLocaleString()}` : value,
                   name === "earnings" ? "Earnings" : "Jobs"
                 ]}
               />

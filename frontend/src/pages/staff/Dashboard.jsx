@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card'
 import { Button } from '../../components/ui/button'
 import { Badge } from '../../components/ui/badge'
@@ -15,9 +15,10 @@ import {
     Shield,
 } from 'lucide-react'
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:3001"
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:3000"
 
 export default function StaffDashboard() {
+    const navigate = useNavigate()
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState(null)
     const [dashboardData, setDashboardData] = useState(null)
@@ -32,7 +33,20 @@ export default function StaffDashboard() {
                 credentials: 'include',
             })
             if (!response.ok) {
-                throw new Error('Failed to fetch dashboard data')
+                let message = 'Failed to fetch dashboard data'
+                try {
+                    const errorBody = await response.json()
+                    message = errorBody?.message || errorBody?.error || message
+
+                    if (response.status === 403 && errorBody?.mustChangePassword) {
+                        navigate('/staff/change-password', { replace: true })
+                        return
+                    }
+                } catch {
+                    // keep default message if response body is not JSON
+                }
+
+                throw new Error(message)
             }
             const data = await response.json()
             setDashboardData(data.dashboard)

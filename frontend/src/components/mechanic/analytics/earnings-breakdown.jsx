@@ -64,7 +64,7 @@ export function EarningsBreakdown({ data = [] }) {
                   borderRadius: "8px",
                   fontSize: "12px"
                 }}
-                formatter={(value) => [`$${value.toLocaleString()}`, "Earnings"]}
+                formatter={(value) => [`₹${value.toLocaleString()}`, "Earnings"]}
               />
               <Legend 
                 formatter={(value) => <span className="text-xs">{value}</span>}
@@ -86,7 +86,7 @@ export function EarningsBreakdown({ data = [] }) {
               </div>
               <div className="flex items-center gap-3 text-sm">
                 <span className="text-muted-foreground">{item.count} jobs</span>
-                <span className="font-medium text-green-600">${item.earnings.toLocaleString()}</span>
+                <span className="font-medium text-green-600">₹{item.earnings.toLocaleString()}</span>
                 <span className="text-xs text-muted-foreground">
                   ({((item.earnings / total) * 100).toFixed(0)}%)
                 </span>
