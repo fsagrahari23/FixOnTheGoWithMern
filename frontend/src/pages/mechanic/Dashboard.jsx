@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { StatsCards } from "../../components/mechanic/dashboard/stats-cards";
 import { ProfileSummary } from "../../components/mechanic/dashboard/profile-summary";
 import { RecentBookings } from "../../components/mechanic/dashboard/recent-bookings";
+import { UserBookingSearch } from "../../components/mechanic/dashboard/user-booking-search";
 import { NearbyRequests } from "../../components/mechanic/dashboard/nearby-requests";
 import { EarningsChart } from "../../components/mechanic/dashboard/earnings-chart";
 import { PerformanceStats } from "../../components/mechanic/dashboard/performance-stats";
@@ -76,6 +77,7 @@ export default function MechanicDashboard() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-8">
           <div className="lg:col-span-2 space-y-6">
             <RecentBookings />
+            <UserBookingSearch />
 
             <Card>
               <CardHeader>
