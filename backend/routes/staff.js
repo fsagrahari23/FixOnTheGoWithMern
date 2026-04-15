@@ -16,6 +16,7 @@ router.use(checkPasswordChange);
 
 // Dashboard
 router.get("/dashboard", staffController.getDashboardData);
+router.get("/analytics", staffController.getAnalyticsData);
 
 // ==================== SUPPORT CHAT ROUTES ====================
 // Get all support chats for staff

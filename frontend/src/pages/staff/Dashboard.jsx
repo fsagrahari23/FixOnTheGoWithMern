@@ -4,6 +4,21 @@ import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/ca
 import { Button } from '../../components/ui/button'
 import { Badge } from '../../components/ui/badge'
 import {
+    Area,
+    AreaChart,
+    Bar,
+    BarChart,
+    CartesianGrid,
+    Cell,
+    Legend,
+    Pie,
+    PieChart,
+    ResponsiveContainer,
+    Tooltip,
+    XAxis,
+    YAxis,
+} from 'recharts'
+import {
     UserCog,
     AlertTriangle,
     CreditCard,
@@ -13,6 +28,8 @@ import {
     XCircle,
     DollarSign,
     Shield,
+    Activity,
+    ChartNoAxesCombined,
 } from 'lucide-react'
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:3000"
@@ -22,16 +39,40 @@ export default function StaffDashboard() {
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState(null)
     const [dashboardData, setDashboardData] = useState(null)
+    const [analyticsLoading, setAnalyticsLoading] = useState(true)
+    const [analyticsData, setAnalyticsData] = useState(null)
+
+    const STATUS_COLORS = {
+        pending: '#f59e0b',
+        accepted: '#06b6d4',
+        'in-progress': '#3b82f6',
+        completed: '#10b981',
+        cancelled: '#ef4444',
+        unknown: '#64748b',
+    }
+
+    const PAYMENT_COLORS = {
+        pending: '#f59e0b',
+        completed: '#22c55e',
+        refunded: '#a855f7',
+    }
 
     useEffect(() => {
         fetchDashboard()
+        fetchAnalytics()
     }, [])
+
+    const handleAuthErrorRedirect = async (response) => {
+        if (!response.ok) return false
+        return true
+    }
 
     const fetchDashboard = async () => {
         try {
             const response = await fetch(`${API_BASE}/staff/dashboard`, {
                 credentials: 'include',
             })
+            await handleAuthErrorRedirect(response)
             if (!response.ok) {
                 let message = 'Failed to fetch dashboard data'
                 try {
@@ -56,6 +97,44 @@ export default function StaffDashboard() {
         } finally {
             setLoading(false)
         }
+    }
+
+    const fetchAnalytics = async () => {
+        try {
+            const response = await fetch(`${API_BASE}/staff/analytics`, {
+                credentials: 'include',
+            })
+            await handleAuthErrorRedirect(response)
+            if (!response.ok) {
+                let message = 'Failed to fetch analytics data'
+                try {
+                    const errorBody = await response.json()
+                    message = errorBody?.message || errorBody?.error || message
+
+                    if (response.status === 403 && errorBody?.mustChangePassword) {
+                        navigate('/staff/change-password', { replace: true })
+                        return
+                    }
+                } catch {
+                    // keep default
+                }
+                throw new Error(message)
+            }
+
+            const data = await response.json()
+            setAnalyticsData(data.analytics)
+        } catch (err) {
+            console.error('Staff analytics fetch error:', err)
+        } finally {
+            setAnalyticsLoading(false)
+        }
+    }
+
+    const formatMonth = (monthKey) => {
+        if (!monthKey) return ''
+        const [year, month] = monthKey.split('-')
+        const date = new Date(Number(year), Number(month) - 1, 1)
+        return date.toLocaleDateString('en-IN', { month: 'short' })
     }
 
     if (loading) {
@@ -108,7 +187,7 @@ export default function StaffDashboard() {
 
                 {/* Stats Cards */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                    <Card className="bg-gradient-to-r from-orange-500 to-orange-600 text-white border-0">
+                    <Card className="bg-linear-to-r from-orange-500 to-orange-600 text-white border-0">
                         <CardContent className="p-6">
                             <div className="flex justify-between items-center">
                                 <div>
@@ -124,7 +203,7 @@ export default function StaffDashboard() {
                         </CardContent>
                     </Card>
 
-                    <Card className="bg-gradient-to-r from-red-500 to-red-600 text-white border-0">
+                    <Card className="bg-linear-to-r from-red-500 to-red-600 text-white border-0">
                         <CardContent className="p-6">
                             <div className="flex justify-between items-center">
                                 <div>
@@ -140,7 +219,7 @@ export default function StaffDashboard() {
                         </CardContent>
                     </Card>
 
-                    <Card className="bg-gradient-to-r from-green-500 to-green-600 text-white border-0">
+                    <Card className="bg-linear-to-r from-green-500 to-green-600 text-white border-0">
                         <CardContent className="p-6">
                             <div className="flex justify-between items-center">
                                 <div>
@@ -156,7 +235,7 @@ export default function StaffDashboard() {
                         </CardContent>
                     </Card>
 
-                    <Card className="bg-gradient-to-r from-blue-500 to-blue-600 text-white border-0">
+                    <Card className="bg-linear-to-r from-blue-500 to-blue-600 text-white border-0">
                         <CardContent className="p-6">
                             <div className="flex justify-between items-center">
                                 <div>
@@ -317,6 +396,239 @@ export default function StaffDashboard() {
                             )}
                         </CardContent>
                     </Card>
+                </div>
+
+                {/* Analytics Section */}
+                <div className="mt-10">
+                    <div className="mb-5 flex items-center gap-3">
+                        <div className="rounded-lg bg-sky-500/10 p-2">
+                            <ChartNoAxesCombined className="h-6 w-6 text-sky-600" />
+                        </div>
+                        <div>
+                            <h2 className="text-xl font-bold">Staff Analytics Center</h2>
+                            <p className="text-sm text-muted-foreground">
+                                End-to-end visibility across bookings, payments, disputes, and mechanic approvals.
+                            </p>
+                        </div>
+                    </div>
+
+                    {analyticsLoading ? (
+                        <div className="flex items-center justify-center py-10">
+                            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary"></div>
+                        </div>
+                    ) : (
+                        <div className="space-y-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
+                                <Card>
+                                    <CardContent className="p-5">
+                                        <p className="text-xs text-muted-foreground">Completion Rate</p>
+                                        <p className="mt-1 text-2xl font-bold text-emerald-600">
+                                            {analyticsData?.summary?.completionRate || 0}%
+                                        </p>
+                                    </CardContent>
+                                </Card>
+
+                                <Card>
+                                    <CardContent className="p-5">
+                                        <p className="text-xs text-muted-foreground">Open Disputes</p>
+                                        <p className="mt-1 text-2xl font-bold text-rose-600">
+                                            {analyticsData?.summary?.openDisputes || 0}
+                                        </p>
+                                    </CardContent>
+                                </Card>
+
+                                <Card>
+                                    <CardContent className="p-5">
+                                        <p className="text-xs text-muted-foreground">Pending Certifications</p>
+                                        <p className="mt-1 text-2xl font-bold text-amber-600">
+                                            {analyticsData?.summary?.pendingCertifications || 0}
+                                        </p>
+                                    </CardContent>
+                                </Card>
+
+                                <Card>
+                                    <CardContent className="p-5">
+                                        <p className="text-xs text-muted-foreground">Total Revenue</p>
+                                        <p className="mt-1 text-2xl font-bold text-blue-600">
+                                            ₹{(analyticsData?.summary?.totalRevenue || 0).toLocaleString()}
+                                        </p>
+                                    </CardContent>
+                                </Card>
+                            </div>
+
+                            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle className="text-lg flex items-center gap-2">
+                                            <Activity className="w-5 h-5 text-blue-500" />
+                                            Booking Status Distribution
+                                        </CardTitle>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <div className="h-72">
+                                            <ResponsiveContainer width="100%" height="100%">
+                                                <PieChart>
+                                                    <Pie
+                                                        data={analyticsData?.bookingStatusDistribution || []}
+                                                        dataKey="count"
+                                                        nameKey="status"
+                                                        innerRadius={65}
+                                                        outerRadius={100}
+                                                        paddingAngle={2}
+                                                    >
+                                                        {(analyticsData?.bookingStatusDistribution || []).map((entry, index) => (
+                                                            <Cell
+                                                                key={`status-${index}`}
+                                                                fill={STATUS_COLORS[entry.status] || STATUS_COLORS.unknown}
+                                                            />
+                                                        ))}
+                                                    </Pie>
+                                                    <Tooltip formatter={(value) => [`${value} bookings`, 'Count']} />
+                                                    <Legend />
+                                                </PieChart>
+                                            </ResponsiveContainer>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle className="text-lg flex items-center gap-2">
+                                            <CreditCard className="w-5 h-5 text-emerald-500" />
+                                            Payment Status & Revenue
+                                        </CardTitle>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <div className="h-72">
+                                            <ResponsiveContainer width="100%" height="100%">
+                                                <BarChart data={analyticsData?.paymentStatusDistribution || []}>
+                                                    <CartesianGrid strokeDasharray="3 3" />
+                                                    <XAxis dataKey="status" />
+                                                    <YAxis />
+                                                    <Tooltip
+                                                        formatter={(value, name) => {
+                                                            if (name === 'amount') return [`₹${Number(value).toLocaleString()}`, 'Revenue']
+                                                            return [value, 'Count']
+                                                        }}
+                                                    />
+                                                    <Legend />
+                                                    <Bar dataKey="count" name="Transactions" fill="#0ea5e9" radius={[4, 4, 0, 0]} />
+                                                    <Bar dataKey="amount" name="Revenue" radius={[4, 4, 0, 0]}>
+                                                        {(analyticsData?.paymentStatusDistribution || []).map((entry, index) => (
+                                                            <Cell
+                                                                key={`payment-${index}`}
+                                                                fill={PAYMENT_COLORS[entry.status] || '#6366f1'}
+                                                            />
+                                                        ))}
+                                                    </Bar>
+                                                </BarChart>
+                                            </ResponsiveContainer>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            </div>
+
+                            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle className="text-lg flex items-center gap-2">
+                                            <TrendingUp className="w-5 h-5 text-violet-500" />
+                                            Monthly Operations Trend
+                                        </CardTitle>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <div className="h-72">
+                                            <ResponsiveContainer width="100%" height="100%">
+                                                <AreaChart data={(analyticsData?.monthlyTrends || []).map((item) => ({ ...item, label: formatMonth(item.month) }))}>
+                                                    <CartesianGrid strokeDasharray="3 3" />
+                                                    <XAxis dataKey="label" />
+                                                    <YAxis />
+                                                    <Tooltip
+                                                        formatter={(value, name) => {
+                                                            if (name === 'revenue') return [`₹${Number(value).toLocaleString()}`, 'Revenue']
+                                                            if (name === 'disputes') return [value, 'Disputes']
+                                                            return [value, 'Bookings']
+                                                        }}
+                                                    />
+                                                    <Legend />
+                                                    <Area type="monotone" dataKey="bookings" name="Bookings" stroke="#3b82f6" fill="#93c5fd" fillOpacity={0.25} />
+                                                    <Area type="monotone" dataKey="revenue" name="revenue" stroke="#10b981" fill="#6ee7b7" fillOpacity={0.2} />
+                                                    <Area type="monotone" dataKey="disputes" name="disputes" stroke="#ef4444" fill="#fca5a5" fillOpacity={0.2} />
+                                                </AreaChart>
+                                            </ResponsiveContainer>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle className="text-lg flex items-center gap-2">
+                                            <UserCog className="w-5 h-5 text-indigo-500" />
+                                            Mechanic Application vs Approval Trend
+                                        </CardTitle>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <div className="h-72">
+                                            <ResponsiveContainer width="100%" height="100%">
+                                                <BarChart data={(analyticsData?.mechanicApprovalTrend || []).map((item) => ({ ...item, label: formatMonth(item.month) }))}>
+                                                    <CartesianGrid strokeDasharray="3 3" />
+                                                    <XAxis dataKey="label" />
+                                                    <YAxis />
+                                                    <Tooltip />
+                                                    <Legend />
+                                                    <Bar dataKey="applications" fill="#6366f1" radius={[4, 4, 0, 0]} />
+                                                    <Bar dataKey="approved" fill="#22c55e" radius={[4, 4, 0, 0]} />
+                                                </BarChart>
+                                            </ResponsiveContainer>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            </div>
+
+                            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle className="text-lg">Top Problem Categories</CardTitle>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <div className="space-y-3">
+                                            {(analyticsData?.topProblemCategories || []).map((item, index) => (
+                                                <div key={index} className="flex items-center justify-between rounded-lg border border-border p-3">
+                                                    <div>
+                                                        <p className="font-medium">{item.category}</p>
+                                                        <p className="text-xs text-muted-foreground">{item.count} bookings</p>
+                                                    </div>
+                                                    <p className="font-semibold text-emerald-600">₹{(item.revenue || 0).toLocaleString()}</p>
+                                                </div>
+                                            ))}
+                                            {(analyticsData?.topProblemCategories || []).length === 0 && (
+                                                <p className="text-sm text-muted-foreground">No problem category data available</p>
+                                            )}
+                                        </div>
+                                    </CardContent>
+                                </Card>
+
+                                <Card>
+                                    <CardHeader>
+                                        <CardTitle className="text-lg">Dispute Categories</CardTitle>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <div className="space-y-3">
+                                            {(analyticsData?.disputeCategories || []).map((item, index) => (
+                                                <div key={index} className="flex items-center justify-between rounded-lg border border-border p-3">
+                                                    <p className="font-medium capitalize">{String(item.category || 'other').replaceAll('_', ' ')}</p>
+                                                    <Badge variant="destructive">{item.count}</Badge>
+                                                </div>
+                                            ))}
+                                            {(analyticsData?.disputeCategories || []).length === 0 && (
+                                                <p className="text-sm text-muted-foreground">No active dispute category data</p>
+                                            )}
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
         </main>
