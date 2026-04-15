@@ -337,7 +337,10 @@ const getMechanicAnalytics = async (mechanicId) => {
     return {
       earningsByCategory: [],
       monthlyEarnings: [],
+      weeklyPerformance: [],
       repeatCustomers: [],
+      statusDistribution: [],
+      ratingDistribution: [],
       performance: {
         totalJobs: 0,
         completedJobs: 0,
@@ -353,7 +356,10 @@ const getMechanicAnalytics = async (mechanicId) => {
   const [
     earningsByCategory,
     monthlyEarnings,
+    weeklyPerformance,
     repeatCustomers,
+    statusDistribution,
+    ratingDistribution,
     performanceStats
   ] = await Promise.all([
     // Earnings by problem category
@@ -378,6 +384,61 @@ const getMechanicAnalytics = async (mechanicId) => {
           category: "$_id",
           earnings: 1,
           count: 1,
+          _id: 0
+        }
+      }
+    ]),
+
+    // Weekly performance trend (last 8 weeks)
+    Booking.aggregate([
+      {
+        $match: {
+          mechanic: mechanicObjectId,
+          createdAt: {
+            $gte: new Date(new Date().setDate(new Date().getDate() - 56))
+          }
+        }
+      },
+      {
+        $group: {
+          _id: {
+            year: { $isoWeekYear: "$createdAt" },
+            week: { $isoWeek: "$createdAt" }
+          },
+          jobs: { $sum: 1 },
+          completedJobs: {
+            $sum: { $cond: [{ $eq: ["$status", "completed"] }, 1, 0] }
+          },
+          earnings: {
+            $sum: {
+              $cond: [
+                {
+                  $and: [
+                    { $eq: ["$status", "completed"] },
+                    { $eq: ["$payment.status", "completed"] }
+                  ]
+                },
+                "$payment.amount",
+                0
+              ]
+            }
+          }
+        }
+      },
+      { $sort: { "_id.year": 1, "_id.week": 1 } },
+      {
+        $project: {
+          label: {
+            $concat: [
+              "W",
+              { $toString: "$_id.week" },
+              " ",
+              { $toString: "$_id.year" }
+            ]
+          },
+          jobs: 1,
+          completedJobs: 1,
+          earnings: 1,
           _id: 0
         }
       }
@@ -470,6 +531,49 @@ const getMechanicAnalytics = async (mechanicId) => {
       }
     ]),
 
+    // Job status distribution
+    Booking.aggregate([
+      { $match: { mechanic: mechanicObjectId } },
+      {
+        $group: {
+          _id: "$status",
+          count: { $sum: 1 }
+        }
+      },
+      {
+        $project: {
+          status: { $ifNull: ["$_id", "unknown"] },
+          count: 1,
+          _id: 0
+        }
+      },
+      { $sort: { count: -1 } }
+    ]),
+
+    // Rating distribution for this mechanic
+    Booking.aggregate([
+      {
+        $match: {
+          mechanic: mechanicObjectId,
+          "rating.value": { $gte: 1, $lte: 5 }
+        }
+      },
+      {
+        $group: {
+          _id: "$rating.value",
+          count: { $sum: 1 }
+        }
+      },
+      { $sort: { _id: 1 } },
+      {
+        $project: {
+          rating: "$_id",
+          count: 1,
+          _id: 0
+        }
+      }
+    ]),
+
     // Performance stats
     Booking.aggregate([
       { $match: { mechanic: mechanicObjectId } },
@@ -511,7 +615,10 @@ const getMechanicAnalytics = async (mechanicId) => {
   return {
     earningsByCategory,
     monthlyEarnings,
+    weeklyPerformance,
     repeatCustomers,
+    statusDistribution,
+    ratingDistribution,
     performance: {
       totalJobs: stats.totalJobs || 0,
       completedJobs: stats.completedJobs || 0,
