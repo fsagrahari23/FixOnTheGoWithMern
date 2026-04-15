@@ -137,6 +137,105 @@ exports.getMechanicDetails = async (req, res, next) => {
   }
 };
 
+// Get pending certification verification requests
+exports.getPendingCertificationRequests = async (req, res, next) => {
+  try {
+    const profiles = await MechanicProfile.find({
+      "certifications.verificationStatus": "pending",
+    }).populate("user", "name email phone");
+
+    const requests = [];
+    profiles.forEach((profile) => {
+      (profile.certifications || []).forEach((cert, index) => {
+        if ((cert.verificationStatus || "pending") === "pending") {
+          requests.push({
+            mechanicId: profile.user?._id,
+            mechanicName: profile.user?.name,
+            mechanicEmail: profile.user?.email,
+            certificationIndex: index,
+            certification: cert,
+          });
+        }
+      });
+    });
+
+    res.json({
+      success: true,
+      count: requests.length,
+      requests,
+    });
+  } catch (error) {
+    console.error("Get pending certifications error:", error);
+    next(new AppError("Failed to fetch pending certification requests", 500));
+  }
+};
+
+// Approve a specific certification
+exports.approveCertification = async (req, res, next) => {
+  try {
+    const { id, certIndex } = req.params;
+    const index = Number.parseInt(certIndex, 10);
+
+    if (!Number.isInteger(index) || index < 0) {
+      return next(new AppError("Invalid certification index", 400));
+    }
+
+    const profile = await MechanicProfile.findOne({ user: id });
+    if (!profile) {
+      return next(new AppError("Mechanic profile not found", 404));
+    }
+
+    if (!profile.certifications || !profile.certifications[index]) {
+      return next(new AppError("Certification not found", 404));
+    }
+
+    profile.certifications[index].verificationStatus = "verified";
+    await profile.save();
+
+    res.json({
+      success: true,
+      message: "Certification approved successfully",
+      certification: profile.certifications[index],
+    });
+  } catch (error) {
+    console.error("Approve certification error:", error);
+    next(new AppError("Failed to approve certification", 500));
+  }
+};
+
+// Reject a specific certification
+exports.rejectCertification = async (req, res, next) => {
+  try {
+    const { id, certIndex } = req.params;
+    const index = Number.parseInt(certIndex, 10);
+
+    if (!Number.isInteger(index) || index < 0) {
+      return next(new AppError("Invalid certification index", 400));
+    }
+
+    const profile = await MechanicProfile.findOne({ user: id });
+    if (!profile) {
+      return next(new AppError("Mechanic profile not found", 404));
+    }
+
+    if (!profile.certifications || !profile.certifications[index]) {
+      return next(new AppError("Certification not found", 404));
+    }
+
+    profile.certifications[index].verificationStatus = "rejected";
+    await profile.save();
+
+    res.json({
+      success: true,
+      message: "Certification rejected",
+      certification: profile.certifications[index],
+    });
+  } catch (error) {
+    console.error("Reject certification error:", error);
+    next(new AppError("Failed to reject certification", 500));
+  }
+};
+
 // Approve mechanic application
 exports.approveMechanic = async (req, res, next) => {
   try {

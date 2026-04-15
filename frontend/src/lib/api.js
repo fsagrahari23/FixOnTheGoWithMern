@@ -64,7 +64,30 @@ export async function apiPost(path, body = undefined, opts = {}) {
   return parseResponse(res);
 }
 
+export async function apiPostForm(path, formData, opts = {}) {
+  const res = await fetch(`${API_PREFIX}${path}`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: {
+      Accept: 'application/json',
+    },
+    body: formData,
+    ...opts,
+  });
+
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    const err = new Error(`POST ${path} failed with status ${res.status}`);
+    err.status = res.status;
+    err.body = text;
+    throw err;
+  }
+
+  return parseResponse(res);
+}
+
 export default {
   apiGet,
   apiPost,
+  apiPostForm,
 };

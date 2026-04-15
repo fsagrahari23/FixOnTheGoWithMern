@@ -46,6 +46,12 @@ const MechanicProfileSchema = new mongoose.Schema({
       name: String,
       issuer: String,
       year: Number,
+      imageUrl: String,
+      verificationStatus: {
+        type: String,
+        enum: ["pending", "verified", "rejected"],
+        default: "pending",
+      },
     },
   ],
   hourlyRate: {
