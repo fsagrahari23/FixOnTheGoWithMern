@@ -47,6 +47,8 @@ The Bike Assistance System is a web application that connects bike owners with m
 - **Payment Processing**: Secure payments through Stripe
 - **File Uploads**: Document verification for mechanics
 - **Admin Dashboard**: System management and approval workflows
+- **Staff Operations Hub**: Application reviews, dispute handling, certification approvals, support chat
+- **Analytics Dashboards**: Admin, mechanic, and staff analytics with visual insights
 
 ## Technologies Used
 
@@ -54,6 +56,7 @@ The Bike Assistance System is a web application that connects bike owners with m
 - **Database**: MongoDB with Mongoose ODM
 - **Authentication**: Passport.js with Local Strategy
 - **Real-time Communication**: Socket.io
+- **Frontend**: React + Vite + Redux Toolkit + Tailwind CSS + Recharts
 - **File Storage**: Cloudinary
 - **Payment Processing**: Stripe
 - **Templating**: EJS with Express EJS Layouts
@@ -354,13 +357,39 @@ mongoose.connect(process.env.MONGODB_URI, {
 
 ## Key Features
 
-- **Role-based Access Control**: User, Mechanic, and Admin roles
+- **Role-based Access Control**: User, Mechanic, Admin, and Staff roles
 - **Real-time Updates**: Live booking status and chat
 - **Location Tracking**: GPS-based mechanic location updates
 - **Secure Payments**: Stripe integration with discount handling
 - **File Management**: Cloudinary integration for document uploads
 - **Geospatial Search**: Location-based mechanic discovery
 - **Session Persistence**: MongoDB-backed session storage
+- **Mechanic Analytics Hub**: Status distribution, earnings trends, rating distribution, repeat customers
+- **Staff Analytics Center**: Booking/payment/dispute trends, mechanic approval trends, category insights
+- **Mechanic User Search**: Staff-like quick lookup from mechanic dashboard by user name/email with booking details
+- **Certification Verification Workflow**: Mechanics upload certificates, staff verifies/rejects requests
+
+## Latest Product Updates (April 2026)
+
+### Mechanic Features
+- Enhanced mechanic dashboard analytics section with richer chart coverage and periodic refresh
+- Added search by user name/email in mechanic dashboard to fetch and display complete booking history for matched users
+- Redesigned mechanic job history page with summary cards, status/date filters, and full-text search
+- Redesigned mechanic booking details page with improved card hierarchy, action panels, and payment display
+
+### Staff Features
+- Added dedicated staff analytics endpoint and analytics dashboard widgets/charts
+- Added profile update request workflow and certification request approval/rejection tools
+- Added certification verification lifecycle support across mechanic and staff views
+
+### New/Updated Backend Endpoints
+- `GET /mechanic/api/analytics`
+- `GET /mechanic/api/bookings/search-user?q=<name-or-email>`
+- `POST /mechanic/change-password`
+- `GET /staff/analytics`
+- `GET /staff/certifications/pending`
+- `POST /staff/mechanic/:id/certification/:certIndex/approve`
+- `POST /staff/mechanic/:id/certification/:certIndex/reject`
 
 ## Express.js Setup
 
@@ -722,8 +751,15 @@ app.use(session({
 1. Mechanic uploads certification documents
 2. Files processed by express-fileupload
 3. Uploaded to Cloudinary for storage
-4. URLs stored in MongoDB
-5. Admin reviews and approves mechanic account
+4. URLs stored in MongoDB certification records
+5. Certification status set to pending
+6. Staff reviews and approves/rejects certification requests
+
+### Staff Analytics Flow
+1. Staff dashboard fetches `/staff/analytics`
+2. Backend aggregates booking, payment, dispute, and mechanic approval metrics
+3. Chart-friendly datasets are returned for monthly trends/distributions
+4. Staff gets actionable insights for operations and dispute prioritization
 
 ## Available NPM Scripts
 
