@@ -59,6 +59,7 @@ import StaffDisputes from "./pages/staff/Disputes";
 import StaffPayments from "./pages/staff/Payments";
 import StaffProfile from "./pages/staff/Profile";
 import StaffChatPage, { StaffChatList } from "./pages/staff/SupportChats";
+import ProfileUpdateRequests from "./pages/staff/ProfileUpdateRequests";
 
 // Support Chat
 import SupportChat from "./pages/users/SupportChat";
@@ -104,6 +105,7 @@ export const staffRoutes = {
   disputes: StaffDisputes,
   payments: StaffPayments,
   profile: StaffProfile,
+  "profile-updation": ProfileUpdateRequests,
   chats: StaffChatList,
   "chat/:chatId": StaffChatPage,
 }

@@ -126,6 +126,41 @@ export default function MechanicApplications() {
         }
     }
 
+    const handleCertificationAction = async (mechanicUserId, certIndex, action) => {
+        try {
+            const response = await fetch(
+                `${API_BASE}/staff/mechanic/${mechanicUserId}/certification/${certIndex}/${action}`,
+                {
+                    method: 'POST',
+                    credentials: 'include',
+                }
+            )
+
+            if (!response.ok) {
+                let message = `Failed to ${action} certification`
+                try {
+                    const body = await response.json()
+                    message = body?.message || message
+                } catch (_) {
+                    // keep default
+                }
+                throw new Error(message)
+            }
+
+            toast.success(`Certification ${action === 'approve' ? 'approved' : 'rejected'}`)
+
+            const refreshed = await fetch(`${API_BASE}/staff/mechanic/${mechanicUserId}`, {
+                credentials: 'include',
+            })
+            if (refreshed.ok) {
+                const data = await refreshed.json()
+                setSelectedMechanic((prev) => ({ ...prev, ...data.profile, user: data.mechanic }))
+            }
+        } catch (err) {
+            toast.error(err.message)
+        }
+    }
+
     const filteredMechanics = pendingMechanics.filter((mechanic) => {
         const searchLower = search.toLowerCase()
         return (
@@ -356,6 +391,68 @@ export default function MechanicApplications() {
                                                 <FileText className="w-5 h-5 text-blue-500" />
                                                 <span className="text-sm">Document {i + 1}</span>
                                             </a>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {selectedMechanic.certifications?.length > 0 && (
+                                <div>
+                                    <label className="text-sm font-medium text-muted-foreground">Certifications</label>
+                                    <div className="space-y-3 mt-2">
+                                        {selectedMechanic.certifications.map((cert, index) => (
+                                            <div key={index} className="p-3 border rounded-lg">
+                                                <div className="flex items-start justify-between gap-3">
+                                                    <div>
+                                                        <p className="font-medium">{cert.name || 'Certification'}</p>
+                                                        <p className="text-sm text-muted-foreground">
+                                                            {cert.issuer || 'Unknown issuer'} {cert.year ? `(${cert.year})` : ''}
+                                                        </p>
+                                                        <Badge
+                                                            variant={
+                                                                cert.verificationStatus === 'verified'
+                                                                    ? 'default'
+                                                                    : cert.verificationStatus === 'rejected'
+                                                                    ? 'destructive'
+                                                                    : 'secondary'
+                                                            }
+                                                            className="mt-2"
+                                                        >
+                                                            {cert.verificationStatus || 'pending'}
+                                                        </Badge>
+                                                    </div>
+                                                    {cert.imageUrl ? (
+                                                        <a
+                                                            href={cert.imageUrl}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="text-sm text-blue-600 underline"
+                                                        >
+                                                            View Image
+                                                        </a>
+                                                    ) : (
+                                                        <span className="text-sm text-muted-foreground">No image</span>
+                                                    )}
+                                                </div>
+                                                {(cert.verificationStatus || 'pending') === 'pending' && (
+                                                    <div className="flex gap-2 mt-3">
+                                                        <Button
+                                                            size="sm"
+                                                            className="bg-green-600 hover:bg-green-700"
+                                                            onClick={() => handleCertificationAction(selectedMechanic.user?._id, index, 'approve')}
+                                                        >
+                                                            Approve
+                                                        </Button>
+                                                        <Button
+                                                            size="sm"
+                                                            variant="destructive"
+                                                            onClick={() => handleCertificationAction(selectedMechanic.user?._id, index, 'reject')}
+                                                        >
+                                                            Reject
+                                                        </Button>
+                                                    </div>
+                                                )}
+                                            </div>
                                         ))}
                                     </div>
                                 </div>
