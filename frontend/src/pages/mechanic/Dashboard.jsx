@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { StatsCards } from "../../components/mechanic/dashboard/stats-cards";
 import { ProfileSummary } from "../../components/mechanic/dashboard/profile-summary";
 import { RecentBookings } from "../../components/mechanic/dashboard/recent-bookings";
@@ -6,22 +6,42 @@ import { NearbyRequests } from "../../components/mechanic/dashboard/nearby-reque
 import { EarningsChart } from "../../components/mechanic/dashboard/earnings-chart";
 import { PerformanceStats } from "../../components/mechanic/dashboard/performance-stats";
 import { QuickActions } from "../../components/mechanic/dashboard/quick-actions";
-import { EarningsBreakdown, MonthlyTrend, RepeatCustomers, PerformanceSummary } from "../../components/mechanic/analytics";
+import {
+  EarningsBreakdown,
+  MonthlyTrend,
+  RepeatCustomers,
+  PerformanceSummary,
+  StatusDistribution,
+  RatingsDistribution,
+  WeeklyPerformance
+} from "../../components/mechanic/analytics";
 import MapPicker from "../../components/MapPicker";
 import { useDispatch, useSelector } from 'react-redux';
 import { setCoordinates, setAddress } from '../../store/slices/locationSlice';
 import { fetchMechanicAnalytics } from '../../store/slices/mechanicThunks';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/card';
-import { BarChart3 } from 'lucide-react';
+import { BarChart3, RefreshCw } from 'lucide-react';
 
 export default function MechanicDashboard() {
   const dispatch = useDispatch();
   const address = useSelector((s) => s.location?.address);
   const { analytics, analyticsLoading } = useSelector((s) => s.mechanic);
+  const [lastSyncedAt, setLastSyncedAt] = useState(null);
 
   useEffect(() => {
-    dispatch(fetchMechanicAnalytics());
+    dispatch(fetchMechanicAnalytics()).finally(() => setLastSyncedAt(new Date()));
+
+    const intervalId = setInterval(() => {
+      dispatch(fetchMechanicAnalytics()).finally(() => setLastSyncedAt(new Date()));
+    }, 60000);
+
+    return () => clearInterval(intervalId);
   }, [dispatch]);
+
+  const handleRefreshAnalytics = async () => {
+    await dispatch(fetchMechanicAnalytics());
+    setLastSyncedAt(new Date());
+  };
 
   const reverseGeocode = async (lat, lng) => {
     try {
@@ -49,7 +69,7 @@ export default function MechanicDashboard() {
   };
 
   return (
-    <main className="min-h-screen bg-background dark:bg-background">
+    <main className="min-h-screen bg-[radial-gradient(circle_at_top,rgba(34,197,94,0.08),transparent_55%),radial-gradient(circle_at_right,rgba(59,130,246,0.08),transparent_45%)] bg-background dark:bg-background">
       <div className="container mx-auto px-4 py-8">
         <StatsCards />
 
@@ -92,11 +112,31 @@ export default function MechanicDashboard() {
 
         {/* Analytics Section */}
         <div className="mt-8">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="p-2 rounded-lg bg-green-500/10">
-              <BarChart3 className="w-6 h-6 text-green-600" />
+          <div className="mb-6 rounded-2xl border border-border/60 bg-card/70 backdrop-blur px-4 py-4 sm:px-6">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-green-500/10">
+                  <BarChart3 className="w-6 h-6 text-green-600" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold">Mechanic Analytics Hub</h2>
+                  <p className="text-sm text-muted-foreground">Live performance, trends, ratings, and customer insights</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={handleRefreshAnalytics}
+                  disabled={analyticsLoading}
+                  className="inline-flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-2 text-sm hover:bg-muted disabled:opacity-60"
+                >
+                  <RefreshCw className={`w-4 h-4 ${analyticsLoading ? 'animate-spin' : ''}`} />
+                  Refresh
+                </button>
+                <span className="text-xs text-muted-foreground">
+                  {lastSyncedAt ? `Last sync ${lastSyncedAt.toLocaleTimeString()}` : 'Sync pending'}
+                </span>
+              </div>
             </div>
-            <h2 className="text-xl font-bold">Your Analytics</h2>
           </div>
 
           {analyticsLoading ? (
@@ -104,10 +144,22 @@ export default function MechanicDashboard() {
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
             </div>
           ) : (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <PerformanceSummary data={analytics?.performance} />
-              <EarningsBreakdown data={analytics?.earningsByCategory} />
-              <MonthlyTrend data={analytics?.monthlyEarnings} />
+            <div className="space-y-6">
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                <PerformanceSummary data={analytics?.performance} />
+                <StatusDistribution data={analytics?.statusDistribution} />
+              </div>
+
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                <MonthlyTrend data={analytics?.monthlyEarnings} />
+                <WeeklyPerformance data={analytics?.weeklyPerformance} />
+              </div>
+
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                <EarningsBreakdown data={analytics?.earningsByCategory} />
+                <RatingsDistribution data={analytics?.ratingDistribution} />
+              </div>
+
               <RepeatCustomers data={analytics?.repeatCustomers} />
             </div>
           )}
