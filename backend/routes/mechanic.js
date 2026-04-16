@@ -222,8 +222,21 @@ router.post("/booking/:id/accept", async (req, res) => {
       await chat.save();
     }
 
-    // Notify the user that their booking was accepted
+    // Notify connected clients immediately so booking UI can switch to live-tracking state
     const io = req.app.get('io');
+    if (io) {
+      const statusPayload = {
+        bookingId: booking._id.toString(),
+        status: booking.status,
+        updatedAt: booking.updatedAt,
+      };
+      io.to(booking.user.toString()).emit('booking-status-changed', statusPayload);
+      if (booking.mechanic) {
+        io.to(booking.mechanic.toString()).emit('booking-status-changed', statusPayload);
+      }
+    }
+
+    // Notify the user that their booking was accepted
     if (io && io.createNotification) {
       await io.createNotification({
         recipient: booking.user,
@@ -292,8 +305,21 @@ router.post("/booking/:id/start", async (req, res) => {
     booking.updatedAt = new Date();
     await booking.save();
 
-    // Notify the user that service has started
+    // Notify connected clients immediately so booking UI can react in real time
     const io = req.app.get('io');
+    if (io) {
+      const statusPayload = {
+        bookingId: booking._id.toString(),
+        status: booking.status,
+        updatedAt: booking.updatedAt,
+      };
+      io.to(booking.user.toString()).emit('booking-status-changed', statusPayload);
+      if (booking.mechanic) {
+        io.to(booking.mechanic.toString()).emit('booking-status-changed', statusPayload);
+      }
+    }
+
+    // Notify the user that service has started
     if (io && io.createNotification) {
       await io.createNotification({
         recipient: booking.user,

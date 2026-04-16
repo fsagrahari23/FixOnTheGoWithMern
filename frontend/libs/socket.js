@@ -2,9 +2,14 @@ import { io } from "socket.io-client";
 
 let socketInstance = null;
 
+const SOCKET_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL ||
+  import.meta.env.VITE_API_URL ||
+  "http://localhost:3000";
+
 export const getSocket = () => {
   if (!socketInstance) {
-    socketInstance = io(import.meta.env.VITE_API_BASE_URL || "http://localhost:3001", {
+    socketInstance = io(SOCKET_BASE_URL, {
       withCredentials: true,
       transports: ["websocket", "polling"],
       autoConnect: true,

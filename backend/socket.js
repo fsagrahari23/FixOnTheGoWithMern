@@ -105,6 +105,35 @@ const notifyAdmins = async (io, notificationData, onlineUsers) => {
 module.exports = (io) => {
   // Store online users
   const onlineUsers = {};
+  // In-memory path store per booking for live tracking line
+  const bookingTrackingPaths = new Map();
+
+  const isValidGeoCoordinates = (coordinates) => {
+    return (
+      Array.isArray(coordinates) &&
+      coordinates.length === 2 &&
+      Number.isFinite(coordinates[0]) &&
+      Number.isFinite(coordinates[1])
+    );
+  };
+
+  const appendTrackingPoint = (bookingId, coordinates) => {
+    if (!isValidGeoCoordinates(coordinates)) return [];
+
+    const key = bookingId.toString();
+    const previous = bookingTrackingPaths.get(key) || [];
+    const last = previous[previous.length - 1];
+
+    if (last && last[0] === coordinates[0] && last[1] === coordinates[1]) {
+      return previous;
+    }
+
+    const next = [...previous, coordinates];
+    // Cap path points to keep memory bounded
+    const bounded = next.length > 300 ? next.slice(next.length - 300) : next;
+    bookingTrackingPaths.set(key, bounded);
+    return bounded;
+  };
   
   // Make helper functions available via io for use in routes
   io.notifyNearbyMechanics = (booking) => notifyNearbyMechanics(io, booking, onlineUsers);
@@ -429,7 +458,7 @@ module.exports = (io) => {
     // Real-time mechanic location update for nearby users (Uber/Rapido style)
     socket.on("mechanic-location-update", async (data) => {
       try {
-        const { coordinates } = data; // [longitude, latitude]
+        const { coordinates, bookingId } = data; // [longitude, latitude]
         
         if (!socket.userId || !coordinates || coordinates.length !== 2) {
           return;
@@ -462,7 +491,25 @@ module.exports = (io) => {
           status: { $in: ["accepted", "in-progress"] },
         });
 
-        activeBookings.forEach((booking) => {
+        const relevantBookings = bookingId
+          ? activeBookings.filter((b) => b._id.toString() === bookingId.toString())
+          : activeBookings;
+
+        relevantBookings.forEach((booking) => {
+          const pathCoordinates = appendTrackingPoint(booking._id, coordinates);
+
+          const trackingPayload = {
+            bookingId: booking._id,
+            mechanicId: socket.userId,
+            mechanicName: user.name,
+            mechanicCoordinates: coordinates,
+            userCoordinates: booking.location?.coordinates || null,
+            pathCoordinates,
+            updatedAt: new Date(),
+          };
+
+          io.to(`booking-${booking._id}-tracking`).emit("booking-tracking-update", trackingPayload);
+
           const userId = booking.user.toString();
           if (onlineUsers[userId]) {
             io.to(onlineUsers[userId]).emit("assigned-mechanic-location", {
@@ -470,6 +517,8 @@ module.exports = (io) => {
               mechanicId: socket.userId,
               mechanicName: user.name,
               coordinates,
+              userCoordinates: booking.location?.coordinates || null,
+              pathCoordinates,
               lastSeen: user.lastSeen,
             });
           }
@@ -477,6 +526,56 @@ module.exports = (io) => {
       } catch (error) {
         console.error("Mechanic location update error:", error);
       }
+    });
+
+    // Join booking-specific tracking room for user/mechanic
+    socket.on("join-booking-tracking", async (data) => {
+      try {
+        const { bookingId } = data || {};
+        if (!bookingId || !socket.userId) return;
+
+        const booking = await Booking.findById(bookingId)
+          .populate("mechanic", "name location")
+          .populate("user", "name");
+
+        if (!booking) return;
+
+        const isOwner = booking.user?._id?.toString() === socket.userId;
+        const isAssignedMechanic = booking.mechanic?._id?.toString() === socket.userId;
+        const requester = await User.findById(socket.userId).select("role");
+        const isPrivileged = requester && ["admin", "staff"].includes(requester.role);
+
+        if (!isOwner && !isAssignedMechanic && !isPrivileged) {
+          return;
+        }
+
+        socket.join(`booking-${bookingId}-tracking`);
+
+        const initialPath = bookingTrackingPaths.get(bookingId.toString()) || [];
+        const mechanicCoordinates = booking.mechanic?.location?.coordinates || null;
+
+        if (isValidGeoCoordinates(mechanicCoordinates) && initialPath.length === 0) {
+          appendTrackingPoint(bookingId, mechanicCoordinates);
+        }
+
+        socket.emit("booking-tracking-snapshot", {
+          bookingId,
+          mechanicId: booking.mechanic?._id || null,
+          mechanicName: booking.mechanic?.name || null,
+          mechanicCoordinates,
+          userCoordinates: booking.location?.coordinates || null,
+          pathCoordinates: bookingTrackingPaths.get(bookingId.toString()) || [],
+          updatedAt: booking.updatedAt,
+        });
+      } catch (error) {
+        console.error("Join booking tracking error:", error);
+      }
+    });
+
+    socket.on("leave-booking-tracking", (data) => {
+      const { bookingId } = data || {};
+      if (!bookingId) return;
+      socket.leave(`booking-${bookingId}-tracking`);
     });
 
     // User subscribes to watch nearby mechanics (for dashboard/booking)
