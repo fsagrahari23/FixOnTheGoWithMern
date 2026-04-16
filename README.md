@@ -391,6 +391,91 @@ mongoose.connect(process.env.MONGODB_URI, {
 - `POST /staff/mechanic/:id/certification/:certIndex/approve`
 - `POST /staff/mechanic/:id/certification/:certIndex/reject`
 
+## Unit Testing And Reports
+
+Core and important backend functions are covered with unit tests in:
+
+- `backend/tests/unit/auth.middleware.unit.test.js`
+- `backend/tests/unit/otp.service.unit.test.js`
+- `backend/tests/unit/app-error.unit.test.js`
+
+Run unit tests on demand:
+
+```bash
+cd backend
+npm run test:unit
+```
+
+Generate reports on demand:
+
+```bash
+cd backend
+npm run test:report
+```
+
+Generated report artifacts:
+
+- JUnit XML: `backend/reports/junit/junit.xml`
+- Coverage HTML: `backend/reports/coverage/index.html`
+- Coverage LCOV: `backend/reports/coverage/lcov.info`
+
+### Mechanic-Specific Tests And Reports
+
+Mechanic workflow unit tests (accept/start/complete booking scenarios and edge cases) are available in:
+
+- `backend/tests/unit/mechanic.routes.unit.test.js`
+
+Run only mechanic tests:
+
+```bash
+cd backend
+npm run test:mechanic
+```
+
+Generate mechanic-only report on demand:
+
+```bash
+cd backend
+npm run test:mechanic:report
+```
+
+Mechanic report artifacts:
+
+- Coverage HTML: `backend/reports/mechanic-coverage/index.html`
+- Coverage LCOV: `backend/reports/mechanic-coverage/lcov.info`
+
+## Containerization (Docker)
+
+This project is dockerized with separate containers for:
+
+- MongoDB
+- Backend API
+- Frontend web app (served via Nginx)
+
+Main files:
+
+- `docker-compose.yml`
+- `backend/Dockerfile`
+- `frontend/Dockerfile`
+- `frontend/nginx.conf`
+
+Run full stack with Docker:
+
+```bash
+docker compose up --build
+```
+
+Stop containers:
+
+```bash
+docker compose down
+```
+
+Application URLs after compose startup:
+
+- Frontend: `http://localhost:5173`
+- Backend: `http://localhost:3000`
+
 ## Express.js Setup
 
 Express.js is the core web framework that handles HTTP requests, middleware, and routing.
