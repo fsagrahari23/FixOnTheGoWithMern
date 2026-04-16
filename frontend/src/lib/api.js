@@ -1,6 +1,9 @@
 // Small fetch-based API helper to replace axios usage
-// Prefer explicit Vite env var `VITE_API_URL`, otherwise default to backend port 3001 in dev
-const API_PREFIX = import.meta.env.VITE_API_BASE_URL ? import.meta.env.VITE_API_BASE_URL : (import.meta.env.DEV ? 'http://localhost:3001' : '');
+// Supports both VITE_API_BASE_URL and VITE_API_URL, defaults to backend port 3000 in dev.
+const API_PREFIX =
+  import.meta.env.VITE_API_BASE_URL ||
+  import.meta.env.VITE_API_URL ||
+  (import.meta.env.DEV ? 'http://localhost:3000' : '');
 
 async function parseResponse(res) {
   const contentType = res.headers.get('content-type') || '';

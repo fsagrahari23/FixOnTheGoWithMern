@@ -1,6 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useSelector } from 'react-redux';
 import { apiGet, apiPost } from '../../lib/api';
+import { getSocket } from '../../../libs/socket';
+import BookingTrackingMap from '../../components/tracking/BookingTrackingMap';
 import {
   ArrowLeft,
   CalendarClock,
@@ -16,9 +19,16 @@ import {
 export default function MechanicBookingDetails() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const authUser = useSelector((state) => state.auth?.user);
   const [booking, setBooking] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const geoWatchRef = useRef(null);
+  const [trackingData, setTrackingData] = useState({
+    userCoordinates: null,
+    mechanicCoordinates: null,
+    pathCoordinates: [],
+  });
 
   const fetchBookingDetails = async () => {
     try {
@@ -36,6 +46,113 @@ export default function MechanicBookingDetails() {
   useEffect(() => {
     fetchBookingDetails();
   }, [id]);
+
+  useEffect(() => {
+    if (!authUser?._id) return;
+
+    const socket = getSocket();
+    socket.emit('authenticate', authUser._id);
+  }, [authUser?._id]);
+
+  useEffect(() => {
+    if (!id) return;
+
+    const socket = getSocket();
+    const handleBookingStatusChanged = (payload) => {
+      if (!payload || String(payload.bookingId) !== String(id)) return;
+      fetchBookingDetails();
+    };
+
+    socket.on('booking-status-changed', handleBookingStatusChanged);
+
+    return () => {
+      socket.off('booking-status-changed', handleBookingStatusChanged);
+    };
+  }, [id]);
+
+  useEffect(() => {
+    if (!booking?.location?.coordinates) return;
+    setTrackingData((prev) => ({
+      ...prev,
+      userCoordinates: booking.location.coordinates,
+    }));
+  }, [booking?.location?.coordinates]);
+
+  useEffect(() => {
+    if (!id || !['accepted', 'in-progress'].includes(booking?.status)) {
+      return;
+    }
+
+    const socket = getSocket();
+
+    const handleSnapshot = (payload) => {
+      if (!payload || String(payload.bookingId) !== String(id)) return;
+      setTrackingData((prev) => ({
+        ...prev,
+        userCoordinates: payload.userCoordinates || prev.userCoordinates,
+        mechanicCoordinates: payload.mechanicCoordinates || prev.mechanicCoordinates,
+        pathCoordinates: payload.pathCoordinates || prev.pathCoordinates,
+      }));
+    };
+
+    const handleTrackingUpdate = (payload) => {
+      if (!payload || String(payload.bookingId) !== String(id)) return;
+      setTrackingData((prev) => ({
+        ...prev,
+        userCoordinates: payload.userCoordinates || prev.userCoordinates,
+        mechanicCoordinates: payload.mechanicCoordinates || prev.mechanicCoordinates,
+        pathCoordinates: payload.pathCoordinates || prev.pathCoordinates,
+      }));
+    };
+
+    socket.on('booking-tracking-snapshot', handleSnapshot);
+    socket.on('booking-tracking-update', handleTrackingUpdate);
+    socket.emit('join-booking-tracking', { bookingId: id });
+
+    return () => {
+      socket.emit('leave-booking-tracking', { bookingId: id });
+      socket.off('booking-tracking-snapshot', handleSnapshot);
+      socket.off('booking-tracking-update', handleTrackingUpdate);
+    };
+  }, [id, booking?.status]);
+
+  useEffect(() => {
+    if (!id || !['accepted', 'in-progress'].includes(booking?.status)) {
+      if (geoWatchRef.current) {
+        navigator.geolocation.clearWatch(geoWatchRef.current);
+        geoWatchRef.current = null;
+      }
+      return;
+    }
+
+    if (!navigator.geolocation) {
+      return;
+    }
+
+    const socket = getSocket();
+
+    geoWatchRef.current = navigator.geolocation.watchPosition(
+      (position) => {
+        const coordinates = [position.coords.longitude, position.coords.latitude];
+        socket.emit('mechanic-location-update', { bookingId: id, coordinates });
+      },
+      () => {
+        // silently ignore geolocation errors to avoid blocking other UI actions
+      },
+      {
+        enableHighAccuracy: true,
+        maximumAge: 3000,
+        timeout: 10000,
+      }
+    );
+
+    return () => {
+      if (geoWatchRef.current) {
+        navigator.geolocation.clearWatch(geoWatchRef.current);
+        geoWatchRef.current = null;
+      }
+    };
+  }, [id, booking?.status]);
 
   const handleAccept = async (e) => {
     e.preventDefault();
@@ -245,6 +362,24 @@ export default function MechanicBookingDetails() {
                 </div>
               </div>
             </div>
+
+            {['accepted', 'in-progress'].includes(booking?.status) && (
+              <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
+                <h2 className="mb-4 flex items-center gap-2 text-xl font-bold">
+                  <LocateFixed className="h-5 w-5 text-violet-600" />
+                  Live Route To Customer
+                </h2>
+                <BookingTrackingMap
+                  userCoordinates={trackingData.userCoordinates}
+                  mechanicCoordinates={trackingData.mechanicCoordinates}
+                  pathCoordinates={trackingData.pathCoordinates}
+                  className="h-80"
+                />
+                <div className="mt-3 text-sm text-muted-foreground">
+                  Your travel path points: <span className="font-semibold text-foreground">{trackingData.pathCoordinates?.length || 0}</span>
+                </div>
+              </div>
+            )}
 
             {booking.images && booking.images.length > 0 && (
               <div className="rounded-xl border border-border bg-card p-6 shadow-sm">

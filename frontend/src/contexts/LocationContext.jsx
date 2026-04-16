@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useRef } from "react";
 import { useDispatch } from "react-redux";
+import { useSelector } from "react-redux";
 import { setCoordinates ,setAddress} from "../store/slices/locationSlice";
 import { getSocket } from "../../libs/socket";
 
@@ -9,6 +10,7 @@ export const useLocation = () => useContext(LocationContext);
 
 export const LocationProvider = ({ children }) => {
   const dispatch = useDispatch();
+  const userRole = useSelector((state) => state.auth?.user?.role);
   const socketRef = useRef(null);
   const watchIdRef = useRef(null);
   const listenersAddedRef = useRef(false);
@@ -51,6 +53,9 @@ export const LocationProvider = ({ children }) => {
           // Emit location update to server
           if (socket.connected) {
             socket.emit("update-location", { coordinates });
+            if (userRole === "mechanic") {
+              socket.emit("mechanic-location-update", { coordinates });
+            }
             console.log("Frontend: Emitted location update:", coordinates);
           }
         },
@@ -66,7 +71,7 @@ export const LocationProvider = ({ children }) => {
       }
       // Socket is managed globally, do not disconnect here
     };
-  }, [dispatch]);
+  }, [dispatch, userRole]);
 
   return <LocationContext.Provider value={{ socket: socketRef.current }}>{children}</LocationContext.Provider>;
 };
