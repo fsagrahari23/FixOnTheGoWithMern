@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites name="jest tests" tests="7" failures="0" errors="0" time="1.689">
+  <testsuite name="mechanic routes unit tests" errors="0" failures="0" skipped="0" timestamp="2026-04-16T10:05:22" time="1.597" tests="7">
+    <testcase classname="mechanic routes unit tests POST /booking/:id/accept returns 404 when booking is missing" name="mechanic routes unit tests POST /booking/:id/accept returns 404 when booking is missing" time="0.025">
+    </testcase>
+    <testcase classname="mechanic routes unit tests POST /booking/:id/accept returns 400 for non-pending booking" name="mechanic routes unit tests POST /booking/:id/accept returns 400 for non-pending booking" time="0.006">
+    </testcase>
+    <testcase classname="mechanic routes unit tests POST /booking/:id/accept updates booking, emits status, and creates notification" name="mechanic routes unit tests POST /booking/:id/accept updates booking, emits status, and creates notification" time="0.01">
+    </testcase>
+    <testcase classname="mechanic routes unit tests POST /booking/:id/start returns 403 when mechanic is not assigned" name="mechanic routes unit tests POST /booking/:id/start returns 403 when mechanic is not assigned" time="0.005">
+    </testcase>
+    <testcase classname="mechanic routes unit tests POST /booking/:id/start moves accepted booking to in-progress" name="mechanic routes unit tests POST /booking/:id/start moves accepted booking to in-progress" time="0.006">
+    </testcase>
+    <testcase classname="mechanic routes unit tests POST /booking/:id/complete validates amount" name="mechanic routes unit tests POST /booking/:id/complete validates amount" time="0.018">
+    </testcase>
+    <testcase classname="mechanic routes unit tests POST /booking/:id/complete marks booking as completed and updates payment" name="mechanic routes unit tests POST /booking/:id/complete marks booking as completed and updates payment" time="0.006">
+    </testcase>
+  </testsuite>
+</testsuites>
