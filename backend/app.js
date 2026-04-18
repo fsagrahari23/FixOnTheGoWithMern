@@ -51,6 +51,10 @@ const {
 const app = express();
 const server = http.createServer(app);
 const io = socketIo(server);
+
+// Trust proxy for cross-origin cookies in production (e.g., Render)
+app.set('trust proxy', 1);
+
 // Make io available to routes via app.get('io')
 app.set('io', io);
 
