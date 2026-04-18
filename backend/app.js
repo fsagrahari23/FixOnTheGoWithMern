@@ -36,6 +36,7 @@ const chatRoutes = require("./routes/chat");
 const paymentRoutes = require("./routes/payment");
 const bookingRoutes = require("./routes/booking");
 const notificationRoutes = require("./routes/notification");
+const sharedSession = require("express-socket.io-session");
 
 // Import middleware
 const {
@@ -69,8 +70,8 @@ app.use(
     cookie: { 
       maxAge: 1000 * 60 * 60 * 24, // 1 day
       httpOnly: true,
-      sameSite: 'lax',
-      secure: false // Set to true in production with HTTPS
+      sameSite: none,
+      secure: process.env.CODE=='production'?true:false // Set to true in production with HTTPS
     }
   })
 );
