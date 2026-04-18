@@ -120,9 +120,14 @@ export function SidebarNav({
             </aside>
 
             {/* ─── Mobile Bottom Bar ───────────────────────────── */}
-            <div className="md:hidden fixed bottom-4 left-4 right-4 z-40 flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2 bg-background/80 backdrop-blur rounded-full px-2 py-2 shadow-sm border border-border w-full">
-                    <div className="flex justify-evenly gap-1 flex-1 overflow-x-auto">
+            <div className="md:hidden fixed bottom-6 left-1/2 -translate-x-1/2 w-[92%] max-w-sm z-top">
+                <div className={cn(
+                    "flex items-center backdrop-blur-2xl rounded-full p-2 shadow-2xl transition-all duration-300",
+                    "bg-white/90 dark:bg-zinc-900/95",
+                    "border border-slate-200/60 dark:border-white/10",
+                    "ring-1 ring-slate-900/5 dark:ring-white/5"
+                )}>
+                    <div className="flex justify-around items-center flex-1 pr-2">
                         {tabs.map((tab) => {
                             const active = pathname === tab.url || activeId === tab.id
                             return (
@@ -131,26 +136,37 @@ export function SidebarNav({
                                     to={tab.url || "#"}
                                     onClick={() => handleTabClick(tab)}
                                     className={cn(
-                                        "flex items-center justify-center p-2 rounded-md",
-                                        active ? "bg-primary/10 text-primary" : "text-foreground/80"
+                                        "relative flex flex-col items-center justify-center p-2.5 transition-all duration-300",
+                                        active ? "text-primary scale-110" : "text-slate-500 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-white"
                                     )}
                                 >
-                                    {tab.icon ? <tab.icon className="h-5 w-5" /> : <span>{tab.label?.[0]}</span>}
+                                    {tab.icon ? (
+                                        <tab.icon className={cn("h-5 w-5", active ? "stroke-[2.5px]" : "stroke-[1.5px]")} />
+                                    ) : (
+                                        <span className="font-bold text-xs">{tab.label?.[0]}</span>
+                                    )}
+                                    
+                                    {active && (
+                                        <motion.div
+                                            layoutId="activeTabMobile"
+                                            className="absolute -bottom-1 w-1 h-1 bg-primary rounded-full shadow-[0_0_8px_rgba(59,130,246,0.8)]"
+                                            transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                                        />
+                                    )}
                                 </Link>
                             )
                         })}
                     </div>
 
-                    {/* 🔹 Mobile Logout Button on top right */}
-                    <Button
-                        variant="destructive"
-                        size="icon"
+                    <div className="h-8 w-[1px] bg-slate-200 dark:bg-white/10 mx-1" />
+
+                    <button
                         onClick={onLogout}
+                        className="flex items-center justify-center h-10 w-10 min-w-[40px] rounded-full bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-900/20 transition-all active:scale-90"
                         aria-label="Logout"
-                        className="ml-2"
                     >
                         <LogOut className="h-5 w-5" />
-                    </Button>
+                    </button>
                 </div>
             </div>
 

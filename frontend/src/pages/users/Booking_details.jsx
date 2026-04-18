@@ -41,12 +41,12 @@ import { getSocket } from '../../../libs/socket';
 
 const InfoItem = ({ icon, label, value, highlight }) => {
   return (
-    <div className={`flex items-center justify-between ${highlight ? 'bg-indigo-100 dark:bg-slate-600 p-3 rounded-lg' : ''}`}>
+    <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-2 ${highlight ? 'bg-indigo-100 dark:bg-slate-600 p-3 rounded-lg' : ''}`}>
       <div className="flex items-center gap-2">
         {icon && icon}
         <span className="text-sm font-medium text-slate-600 dark:text-slate-400">{label}:</span>
       </div>
-      <span className={`text-sm font-semibold ${highlight ? 'text-indigo-800 dark:text-slate-200' : 'text-slate-800 dark:text-slate-200'}`}>{value}</span>
+      <span className={`text-sm font-semibold break-all sm:break-normal ${highlight ? 'text-indigo-800 dark:text-slate-200 text-right' : 'text-slate-800 dark:text-slate-200 text-left sm:text-right'}`}>{value}</span>
     </div>
   );
 }
@@ -323,7 +323,7 @@ const BookingDetails = () => {
 
           <CardContent className="p-8 space-y-10">
             {/* Basic Info Grid */}
-            <div className="grid lg:grid-cols-2 gap-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <Card className="p-6 shadow-md border-0 animate-fade-in bg-linear-to-br from-blue-50 to-indigo-50 dark:bg-slate-700">
                 <h3 className="text-lg font-bold mb-6 flex items-center gap-2 text-indigo-700 dark:text-blue-300">
                   <FileText className="w-5 h-5" />
@@ -759,7 +759,8 @@ const BookingDetails = () => {
                   </Badge>
                 )}
 
-                {currentBooking?.mechanic && (
+                {currentBooking?.mechanic && 
+                 !(currentBooking.status === 'completed' && currentBooking.payment?.status === 'completed') && (
                   <Button
                     onClick={() => setIsChatOpen(true)}
                     className="py-6 px-8 text-base font-semibold bg-linear-to-r from-blue-500 to-purple-600 

@@ -138,9 +138,9 @@ const Emergency = () => {
         )}
 
         {!recentEmergency && (
-          <div className="grid lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
             {/* Main Form */}
-            <div className="lg:col-span-2">
+            <div className="xl:col-span-2">
               <Card className="shadow-lg">
                 <CardHeader className="bg-red-50 dark:bg-slate-700">
                   <CardTitle className="text-xl flex items-center gap-2 text-red-700 dark:text-red-300">

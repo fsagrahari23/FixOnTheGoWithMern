@@ -42,7 +42,7 @@ const notifyNearbyMechanics = async (io, booking, onlineUsers) => {
     ]);
 
     const bookingUser = await User.findById(booking.user).select("name");
-    
+
     // Create notification for each nearby mechanic
     for (const mechanic of nearbyMechanics) {
       const notification = await createNotification(io, {
@@ -79,7 +79,7 @@ const notifyNearbyMechanics = async (io, booking, onlineUsers) => {
         });
       }
     }
-    
+
     console.log(`Notified ${nearbyMechanics.length} mechanics about new booking`);
   } catch (error) {
     console.error("Error notifying nearby mechanics:", error);
@@ -90,7 +90,7 @@ const notifyNearbyMechanics = async (io, booking, onlineUsers) => {
 const notifyAdmins = async (io, notificationData, onlineUsers) => {
   try {
     const admins = await User.find({ role: "admin", isActive: true }).select("_id");
-    
+
     for (const admin of admins) {
       await createNotification(io, {
         ...notificationData,
@@ -134,7 +134,7 @@ module.exports = (io) => {
     bookingTrackingPaths.set(key, bounded);
     return bounded;
   };
-  
+
   // Make helper functions available via io for use in routes
   io.notifyNearbyMechanics = (booking) => notifyNearbyMechanics(io, booking, onlineUsers);
   io.notifyAdmins = (notificationData) => notifyAdmins(io, notificationData, onlineUsers);
@@ -192,6 +192,25 @@ module.exports = (io) => {
       } catch (error) {
         console.error("Join chat error:", error);
       }
+    });
+
+    // Typing Indicators
+    socket.on("typing", (data) => {
+      const { chatId } = data;
+      socket.to(chatId).emit("typing-status", {
+        chatId,
+        userId: socket.userId,
+        isTyping: true
+      });
+    });
+
+    socket.on("stop-typing", (data) => {
+      const { chatId } = data;
+      socket.to(chatId).emit("typing-status", {
+        chatId,
+        userId: socket.userId,
+        isTyping: false
+      });
     });
 
     // Join a general chat room
@@ -459,7 +478,7 @@ module.exports = (io) => {
     socket.on("mechanic-location-update", async (data) => {
       try {
         const { coordinates, bookingId } = data; // [longitude, latitude]
-        
+
         if (!socket.userId || !coordinates || coordinates.length !== 2) {
           return;
         }
@@ -474,13 +493,14 @@ module.exports = (io) => {
         user.lastSeen = new Date();
         await user.save();
 
-        console.log(`Mechanic ${socket.userId} location updated:`, coordinates);
+        // console.log(`Mechanic ${socket.userId} location updated:`, coordinates);
 
         // Broadcast to all connected users watching nearby mechanics
         // Users subscribe to "watch-nearby-mechanics" room
         io.to("nearby-mechanics-watchers").emit("mechanic-location-changed", {
           mechanicId: socket.userId,
           name: user.name,
+          profileImage: user.profileImage,
           coordinates,
           lastSeen: user.lastSeen,
         });
@@ -525,6 +545,39 @@ module.exports = (io) => {
         });
       } catch (error) {
         console.error("Mechanic location update error:", error);
+      }
+    });
+
+    // Real-time user/customer location update
+    socket.on("update-location", async (data) => {
+      try {
+        const { coordinates } = data; // [longitude, latitude]
+        if (!socket.userId || !coordinates || coordinates.length !== 2) return;
+
+        const user = await User.findById(socket.userId);
+        if (!user) return;
+
+        // Update user's location in database
+        user.location.coordinates = coordinates;
+        user.lastSeen = new Date();
+        await user.save();
+
+        // Notify mechanics of active bookings about user's new location
+        const activeBookings = await Booking.find({
+          user: socket.userId,
+          status: { $in: ["accepted", "in-progress"] },
+        });
+
+        activeBookings.forEach((booking) => {
+          io.to(`booking-${booking._id}-tracking`).emit("booking-tracking-update", {
+            bookingId: booking._id,
+            userCoordinates: coordinates,
+            updatedAt: new Date(),
+          });
+        });
+
+      } catch (error) {
+        console.error("User location update error:", error);
       }
     });
 
@@ -583,10 +636,10 @@ module.exports = (io) => {
       try {
         socket.join("nearby-mechanics-watchers");
         console.log(`User ${socket.userId || 'anonymous'} started watching nearby mechanics`);
-        
+
         // Send initial list of online mechanics
         const { lat, lng, radius = 10000 } = data || {};
-        
+
         if (lat && lng) {
           const nearbyMechanics = await User.aggregate([
             {
@@ -613,6 +666,21 @@ module.exports = (io) => {
                 name: 1,
                 location: 1,
                 lastSeen: 1,
+                profileImage: 1,
+              },
+            },
+            {
+              $lookup: {
+                from: "mechanicprofiles",
+                localField: "_id",
+                foreignField: "user",
+                as: "profile",
+              },
+            },
+            {
+              $unwind: {
+                path: "$profile",
+                preserveNullAndEmptyArrays: true,
               },
             },
             { $limit: 50 },
@@ -621,10 +689,16 @@ module.exports = (io) => {
           const mechanicsWithStatus = nearbyMechanics.map(m => ({
             mechanicId: m._id,
             name: m.name,
-            coordinates: m.location.coordinates,
+            profileImage: m.profileImage,
+            coordinates: m.location?.coordinates,
             isOnline: !!onlineUsers[m._id.toString()],
             distance: m.distance,
+            distanceKm: (m.distance / 1000).toFixed(1),
             lastSeen: m.lastSeen,
+            profile: {
+              rating: m.profile?.rating || 0,
+              specialization: m.profile?.specialization || [],
+            }
           }));
 
           socket.emit("nearby-mechanics-list", {
@@ -646,11 +720,11 @@ module.exports = (io) => {
     socket.on("request-mechanic-location", async (data) => {
       try {
         const { bookingId } = data;
-        
+
         if (!bookingId) return;
 
         const booking = await Booking.findById(bookingId).populate("mechanic", "name location lastSeen");
-        
+
         if (!booking || booking.user.toString() !== socket.userId) {
           return;
         }
@@ -676,7 +750,7 @@ module.exports = (io) => {
       try {
         const GeneralChat = require("./models/GeneralChat");
         const chat = await GeneralChat.findById(chatId);
-        
+
         if (chat && chat.participants.some(p => p.toString() === socket.userId)) {
           socket.join(`staff-chat-${chatId}`);
           console.log(`User ${socket.userId} joined staff chat ${chatId}`);
@@ -738,7 +812,7 @@ module.exports = (io) => {
         if (recipientId) {
           const recipient = await User.findById(recipientId);
           const notificationType = sender.role === "staff" ? "user-message" : "staff-message";
-          
+
           await createNotification(io, {
             recipient: recipientId,
             type: notificationType,
@@ -823,7 +897,7 @@ module.exports = (io) => {
               mechanicId: socket.userId,
             });
           }
-        }).catch(() => {});
+        }).catch(() => { });
 
         delete onlineUsers[socket.userId];
         console.log(`User ${socket.userId} disconnected`);

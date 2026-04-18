@@ -19,7 +19,7 @@ export default function StaffLayout() {
     const [activeTab, setActiveTab] = useState("dashboard")
 
     return (
-        <div className="flex flex-col h-screen bg-background text-foreground">
+        <div className="flex flex-col h-screen bg-background text-foreground dark:radial-glow">
             {/* Top Navbar */}
             <Navbar />
 
@@ -40,8 +40,10 @@ export default function StaffLayout() {
                     className="shrink-0"
                 />
 
-                <main className="flex-1 overflow-auto bg-background/80 p-8">
-                    <Outlet />
+                <main className="flex-1 overflow-auto p-4 sm:p-6 lg:p-8 pb-24 md:pb-8">
+                    <div className="max-w-7xl mx-auto dark:premium-glass rounded-3xl p-1 md:p-2">
+                        <Outlet />
+                    </div>
                 </main>
             </div>
         </div>

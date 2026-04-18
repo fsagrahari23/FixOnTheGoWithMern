@@ -117,7 +117,7 @@ export const sendMessage = createAsyncThunk(
 
             return {
                 success: response.success,
-                message: message,
+                message: response.msg || message, // Use returned message if available
             };
         } catch (error) {
             return rejectWithValue(error?.response?.data || { message: error.message });

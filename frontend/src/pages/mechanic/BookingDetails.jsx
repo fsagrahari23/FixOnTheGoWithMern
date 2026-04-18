@@ -14,7 +14,10 @@ import {
   PhoneCall,
   UserCircle2,
   Wrench,
+  MessageCircle,
 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import ChatModal from '../../components/users/ChatModal';
 
 export default function MechanicBookingDetails() {
   const { id } = useParams();
@@ -23,6 +26,7 @@ export default function MechanicBookingDetails() {
   const [booking, setBooking] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [isChatOpen, setIsChatOpen] = useState(false);
   const geoWatchRef = useRef(null);
   const [trackingData, setTrackingData] = useState({
     userCoordinates: null,
@@ -373,7 +377,7 @@ export default function MechanicBookingDetails() {
                   userCoordinates={trackingData.userCoordinates}
                   mechanicCoordinates={trackingData.mechanicCoordinates}
                   pathCoordinates={trackingData.pathCoordinates}
-                  className="h-80"
+                  className="h-64 sm:h-80 md:h-[400px]"
                 />
                 <div className="mt-3 text-sm text-muted-foreground">
                   Your travel path points: <span className="font-semibold text-foreground">{trackingData.pathCoordinates?.length || 0}</span>
@@ -414,7 +418,18 @@ export default function MechanicBookingDetails() {
                 Update booking progress using the next valid action below.
               </p>
 
-              {booking.status === 'pending' && (
+              <div className="flex flex-col gap-3">
+                {['accepted', 'in-progress'].includes(booking.status) && (booking.payment?.status !== 'completed') && (
+                  <Button
+                    onClick={() => setIsChatOpen(true)}
+                    className="w-full bg-blue-600 hover:bg-blue-700 text-white flex items-center gap-2 py-6 rounded-xl shadow-md transition-all active:scale-95 font-bold"
+                  >
+                    <MessageCircle className="w-5 h-5" />
+                    Chat with Customer
+                  </Button>
+                )}
+
+                {booking.status === 'pending' && (
                 <form onSubmit={handleAccept}>
                   <button
                     type="submit"
@@ -474,6 +489,7 @@ export default function MechanicBookingDetails() {
                 </div>
               )}
             </div>
+          </div>
 
             <div className="rounded-xl border border-border bg-card p-6 shadow-sm">
               <h2 className="mb-4 flex items-center gap-2 text-xl font-bold">
@@ -499,6 +515,13 @@ export default function MechanicBookingDetails() {
           </div>
         </div>
       </div>
+
+      <ChatModal
+        isOpen={isChatOpen}
+        onClose={() => setIsChatOpen(false)}
+        bookingId={id}
+        customer={booking?.user}
+      />
     </main>
   );
 }

@@ -11,11 +11,13 @@ import { Loader2 } from 'lucide-react';
 import {
   User, Mail, Phone, MapPin, Calendar, Package,
   Crown, Shield, Lock, Save, ArrowLeft, Key,
-  CheckCircle2, Zap, TrendingUp, Settings, Moon, Sun
+  CheckCircle2, Zap, TrendingUp, Settings, Moon, Sun, Info
 } from 'lucide-react';
 import { validate } from '../../lib/validation';
 import { apiGet, apiPost } from '@/lib/api';
 import { useNavigate } from 'react-router-dom';
+import { cn } from "@/lib/utils";
+import MapPicker from '../../components/MapPicker';
 
 export default function UserProfile() {
   const navigate = useNavigate();
@@ -33,6 +35,8 @@ export default function UserProfile() {
     name: '',
     phone: '',
     address: '',
+    latitude: '',
+    longitude: '',
     currentPassword: '',
     newPassword: '',
     confirmPassword: ''
@@ -41,6 +45,7 @@ export default function UserProfile() {
   const [activeTab, setActiveTab] = useState('profile');
   const [formErrors, setFormErrors] = useState({});
   const [updating, setUpdating] = useState(false);
+  const [isLocating, setIsLocating] = useState(false);
 
   useEffect(() => {
     fetchProfileData();
@@ -58,9 +63,12 @@ export default function UserProfile() {
         phone: profileData.user.phone || '',
         address: profileData.user.address || '',
         memberSince: profileData.user.createdAt,
-        totalBookings: 0, // Will be calculated from bookings
+        totalBookings: 0, 
         isPremium: profileData.isPremium,
+        premiumFeatures: profileData.premiumFeatures || {},
+        remainingBookings: profileData.remainingBookings || 0,
         subscription: profileData.subscription,
+        subscriptionHistory: profileData.subscriptionHistory || [],
         location: profileData.user.location?.coordinates ? {
           lat: profileData.user.location.coordinates[1],
           lng: profileData.user.location.coordinates[0]
@@ -72,6 +80,8 @@ export default function UserProfile() {
         name: profileData.user.name,
         phone: profileData.user.phone || '',
         address: profileData.user.address || '',
+        latitude: profileData.user.location?.coordinates ? profileData.user.location.coordinates[1].toString() : '',
+        longitude: profileData.user.location?.coordinates ? profileData.user.location.coordinates[0].toString() : '',
         currentPassword: '',
         newPassword: '',
         confirmPassword: ''
@@ -131,7 +141,9 @@ export default function UserProfile() {
       await apiPost('/user/api/profile', {
         name: formData.name,
         phone: formData.phone,
-        address: formData.address
+        address: formData.address,
+        latitude: formData.latitude,
+        longitude: formData.longitude
       });
 
       // Update local state
@@ -139,7 +151,11 @@ export default function UserProfile() {
         ...prev,
         name: formData.name,
         phone: formData.phone,
-        address: formData.address
+        address: formData.address,
+        location: {
+          lat: parseFloat(formData.latitude),
+          lng: parseFloat(formData.longitude)
+        }
       }));
 
       alert('Profile updated successfully!');
@@ -160,15 +176,47 @@ export default function UserProfile() {
     console.log('Password updated');
     // Handle password update
   };
+  
+  const formatDate = (dateStr, options = {}) => {
+    if (!dateStr) return 'N/A';
+    const date = new Date(dateStr);
+    return isNaN(date.getTime()) ? 'N/A' : date.toLocaleDateString('en-US', options);
+  };
 
-  const premiumFeatures = [
-    { icon: Zap, label: 'Priority Service', active: true },
-    { icon: MapPin, label: 'Real-time Tracking', active: true },
-    { icon: TrendingUp, label: '25% Discount', active: true },
-    { icon: Shield, label: 'Emergency Assistance', active: true },
-    { icon: Package, label: 'Free Towing (3x)', active: true },
-    { icon: Settings, label: 'Maintenance Checks', active: true }
-  ];
+  const handleMapChange = async (coords) => {
+    setFormData(prev => ({
+      ...prev,
+      latitude: coords.lat.toString(),
+      longitude: coords.lng.toString()
+    }));
+
+    // Reverse geocode to get address
+    try {
+      const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${coords.lat}&lon=${coords.lng}`);
+      const data = await response.json();
+      setFormData(prev => ({
+        ...prev,
+        address: data.display_name || prev.address
+      }));
+    } catch (error) {
+      console.error('Reverse geocoding error:', error);
+    }
+  };
+
+  const getMappedFeatures = () => {
+    if (!userData?.premiumFeatures) return [];
+    const { priorityService, tracking, discounts, emergencyAssistance, freeTowing, maintenanceChecks } = userData.premiumFeatures;
+    const features = [];
+    
+    if (priorityService) features.push({ icon: Zap, label: 'Priority Service' });
+    if (tracking) features.push({ icon: MapPin, label: 'Real-time Tracking' });
+    if (discounts) features.push({ icon: TrendingUp, label: `${discounts}% Discount` });
+    if (emergencyAssistance) features.push({ icon: Shield, label: 'Emergency Assistance' });
+    if (freeTowing) features.push({ icon: Package, label: `Free Towing (${freeTowing}x)` });
+    if (maintenanceChecks) features.push({ icon: Settings, label: 'Maintenance Checks' });
+    
+    return features;
+  };
 
   if (loading) {
     return (
@@ -227,7 +275,7 @@ export default function UserProfile() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
           {/* Left Sidebar */}
           <div className="space-y-6">
             {/* Profile Card */}
@@ -250,9 +298,17 @@ export default function UserProfile() {
 
                   <div className="w-full mt-6 pt-6 border-t border-slate-200 dark:border-slate-700 grid grid-cols-2 gap-4 text-sm">
                     <div>
-                      <p className="text-slate-500 dark:text-slate-400 mb-1">Member Since</p>
+                      <p className="text-slate-500 dark:text-slate-400 mb-1">Service Location</p>
+                      <p className="font-semibold text-slate-900 dark:text-white truncate max-w-[200px]" title={userData.address}>
+                        {userData.address || 'Not Set'}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-slate-500 dark:text-slate-400 mb-1">Coordinates</p>
                       <p className="font-semibold text-slate-900 dark:text-white">
-                        {new Date(userData.memberSince).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+                        {userData.location?.lat && userData.location?.lng 
+                          ? `${userData.location.lat.toFixed(4)}, ${userData.location.lng.toFixed(4)}`
+                          : 'N/A'}
                       </p>
                     </div>
                     <div>
@@ -267,34 +323,55 @@ export default function UserProfile() {
             {/* Membership Status */}
             {userData.isPremium ? (
               <Card className="border-0 shadow-lg bg-linear-to-br from-blue-50 to-purple-50 dark:from-blue-950/50 dark:to-purple-950/50 dark:border-slate-800">
-                <CardHeader>
-                  <CardTitle className="flex items-center text-lg text-slate-900 dark:text-white">
-                    <Crown className="mr-2 h-5 w-5 text-amber-500 dark:text-amber-400" />
-                    Premium Benefits
-                  </CardTitle>
-                  <CardDescription className="dark:text-slate-400">
-                    Active until {userData.subscription ? new Date(userData.subscription.expiresAt).toLocaleDateString() : 'N/A'}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {premiumFeatures.map((feature, index) => (
-                    <div key={index} className="flex items-center space-x-3">
-                      <div className="h-8 w-8 rounded-full bg-white dark:bg-slate-800 flex items-center justify-center">
-                        <feature.icon className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                      </div>
-                      <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{feature.label}</span>
-                      {feature.active && (
-                        <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400 ml-auto" />
-                      )}
+                <CardHeader className="pb-2">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <CardTitle className="flex items-center text-lg text-slate-900 dark:text-white">
+                        <Crown className="mr-2 h-5 w-5 text-amber-500 dark:text-amber-400" />
+                        Premium Plan
+                      </CardTitle>
+                      <CardDescription className="dark:text-slate-400">
+                        {userData.subscription?.plan?.charAt(0).toUpperCase() + userData.subscription?.plan?.slice(1)} Billing
+                      </CardDescription>
                     </div>
-                  ))}
+                    <Badge variant="outline" className="bg-green-100 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800">
+                      Active
+                    </Badge>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="p-3 bg-white dark:bg-slate-800 rounded-xl border border-blue-100 dark:border-blue-900/50">
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Remaining Bookings</p>
+                    <p className="text-xl font-bold text-blue-600 dark:text-blue-400">
+                      {userData.remainingBookings === "Unlimited" ? "Unlimited" : `${userData.remainingBookings} Left`}
+                    </p>
+                  </div>
 
-                  <div className="pt-4 space-y-2">
-                    <Button className="w-full bg-linear-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 dark:from-blue-500 dark:to-purple-500 dark:hover:from-blue-600 dark:hover:to-purple-600">
-                      Change Plan
-                    </Button>
-                    <Button variant="outline" className="w-full text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-950/30 dark:border-slate-700">
-                      Cancel Subscription
+                  <div className="space-y-2">
+                    <p className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">Features</p>
+                    {getMappedFeatures().map((feature, index) => (
+                      <div key={index} className="flex items-center space-x-3">
+                        <div className="h-7 w-7 rounded-full bg-white dark:bg-slate-800 flex items-center justify-center border border-slate-100 dark:border-slate-700">
+                          <feature.icon className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+                        </div>
+                        <span className="text-sm text-slate-700 dark:text-slate-300">{feature.label}</span>
+                        <CheckCircle2 className="h-3.5 w-3.5 text-green-600 dark:text-green-400 ml-auto" />
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="pt-2 border-t border-slate-200 dark:border-slate-700">
+                      <div className="flex justify-between items-center text-xs mb-3">
+                        <span className="text-slate-500 dark:text-slate-400">Expires On</span>
+                        <span className="font-semibold text-slate-700 dark:text-slate-300">
+                          {formatDate(userData.subscription?.expiresAt)}
+                        </span>
+                      </div>
+                    <Button 
+                      onClick={() => setActiveTab('subscription')}
+                      className="w-full bg-linear-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 dark:from-blue-500 dark:to-purple-500 shadow-lg shadow-blue-500/20"
+                    >
+                      Manage Subscription
                     </Button>
                   </div>
                 </CardContent>
@@ -336,16 +413,20 @@ export default function UserProfile() {
           </div>
 
           {/* Main Content */}
-          <div className="lg:col-span-2 space-y-6">
+          <div className="xl:col-span-2 space-y-6">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="grid w-full grid-cols-2 h-12 dark:bg-slate-900 dark:border dark:border-slate-800">
-                <TabsTrigger value="profile" className="text-sm font-medium dark:data-[state=active]:bg-slate-800 dark:data-[state=active]:text-white">
-                  <User className="mr-2 h-4 w-4" />
-                  Edit Profile
+              <TabsList className="grid w-full grid-cols-3 h-14 md:h-12 bg-slate-100 dark:bg-slate-900/80 p-1 border border-slate-200 dark:border-slate-800">
+                <TabsTrigger value="profile" className="text-[10px] sm:text-sm font-medium py-2 dark:data-[state=active]:bg-slate-800 dark:data-[state=active]:text-white">
+                  <User className="mr-1 sm:mr-2 h-4 w-4" />
+                  <span className="truncate">Profile</span>
                 </TabsTrigger>
-                <TabsTrigger value="security" className="text-sm font-medium dark:data-[state=active]:bg-slate-800 dark:data-[state=active]:text-white">
-                  <Lock className="mr-2 h-4 w-4" />
-                  Security
+                <TabsTrigger value="subscription" className="text-[10px] sm:text-sm font-medium py-2 dark:data-[state=active]:bg-slate-800 dark:data-[state=active]:text-white">
+                  <Crown className="mr-1 sm:mr-2 h-4 w-4" />
+                  <span className="truncate">Plan</span>
+                </TabsTrigger>
+                <TabsTrigger value="security" className="text-[10px] sm:text-sm font-medium py-2 dark:data-[state=active]:bg-slate-800 dark:data-[state=active]:text-white">
+                  <Lock className="mr-1 sm:mr-2 h-4 w-4" />
+                  <span className="truncate">Security</span>
                 </TabsTrigger>
               </TabsList>
 
@@ -405,6 +486,69 @@ export default function UserProfile() {
                           {formErrors.phone && <p className="text-sm text-red-600 dark:text-red-400 mt-1">{formErrors.phone}</p>}
                         </div>
 
+                        <div className="space-y-2 lg:col-span-2">
+                          <div className="flex items-center justify-between mb-2">
+                            <Label htmlFor="address" className="flex items-center text-slate-700 dark:text-slate-300">
+                              <MapPin className="mr-2 h-4 w-4 text-slate-500 dark:text-slate-400" />
+                              Service Address
+                            </Label>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              disabled={isLocating}
+                              onClick={() => {
+                                setIsLocating(true);
+                                if (!navigator.geolocation) {
+                                  alert('Geolocation is not supported by your browser');
+                                  setIsLocating(false);
+                                  return;
+                                }
+                                
+                                navigator.geolocation.getCurrentPosition(
+                                  (pos) => {
+                                    const { latitude, longitude } = pos.coords;
+                                    handleMapChange({ 
+                                      lat: latitude, 
+                                      lng: longitude 
+                                    });
+                                    setIsLocating(false);
+                                  },
+                                  (err) => {
+                                    alert('Failed to get location. Please check permissions.');
+                                    setIsLocating(false);
+                                  },
+                                  { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+                                );
+                              }}
+                              className="text-blue-600 border-blue-200 hover:bg-blue-50 dark:border-blue-800 dark:hover:bg-blue-900/30 gap-2 h-8"
+                            >
+                              {isLocating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <MapPin className="w-3.5 h-3.5" />}
+                              <span className="text-xs">{isLocating ? 'Locating...' : 'Use Current Location'}</span>
+                            </Button>
+                          </div>
+                          <Input
+                            id="address"
+                            name="address"
+                            value={formData.address}
+                            onChange={handleInputChange}
+                            placeholder="Enter your service address"
+                            className="h-11 dark:bg-slate-800 dark:border-slate-700 dark:text-white"
+                          />
+                          
+                          <div className="mt-4">
+                            <p className="text-xs text-slate-500 dark:text-slate-400 mb-3 flex items-center gap-1.5">
+                              <Info className="w-3.5 h-3.5 text-blue-500" />
+                              Adjust your location by dragging the marker or clicking the map
+                            </p>
+                            <MapPicker
+                              onChange={handleMapChange}
+                              center={formData.latitude && formData.longitude ? { lat: Number(formData.latitude), lng: Number(formData.longitude) } : null}
+                              className="w-full h-64 rounded-xl border border-slate-200 dark:border-slate-800 shadow-inner overflow-hidden"
+                            />
+                          </div>
+                        </div>
+
                         <div className="space-y-2">
                           <Label htmlFor="memberSince" className="flex items-center text-slate-700 dark:text-slate-300">
                             <Calendar className="mr-2 h-4 w-4 text-slate-500 dark:text-slate-400" />
@@ -412,51 +556,12 @@ export default function UserProfile() {
                           </Label>
                           <Input
                             id="memberSince"
-                            value={new Date(userData.memberSince).toLocaleDateString()}
+                            value={formatDate(userData.memberSince)}
                             disabled
                             className="h-11 bg-slate-50 dark:bg-slate-950 dark:border-slate-800 dark:text-slate-400"
                           />
                         </div>
                       </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="address" className="flex items-center text-slate-700 dark:text-slate-300">
-                          <MapPin className="mr-2 h-4 w-4 text-slate-500 dark:text-slate-400" />
-                          Address
-                        </Label>
-                        <Input
-                          id="address"
-                          name="address"
-                          value={formData.address}
-                          onChange={handleInputChange}
-                          placeholder="Enter your address"
-                          className="h-11 dark:bg-slate-800 dark:border-slate-700 dark:text-white dark:placeholder:text-slate-500"
-                        />
-                      </div>
-
-                      {/* Location Map Placeholder */}
-                      <div className="space-y-2">
-                        <Label className="text-slate-700 dark:text-slate-300">Location</Label>
-                        <div className="relative h-64 bg-slate-100 dark:bg-slate-950 rounded-lg overflow-hidden border-2 border-slate-200 dark:border-slate-800">
-                          <div className="absolute inset-0 flex items-center justify-center">
-                            <div className="text-center space-y-2">
-                              <MapPin className="h-12 w-12 text-slate-400 dark:text-slate-600 mx-auto" />
-                              <p className="text-sm text-slate-600 dark:text-slate-400">
-                                {userData.address}
-                              </p>
-                              <p className="text-xs text-slate-500 dark:text-slate-500">
-                                Lat: {userData.location.lat}, Lng: {userData.location.lng}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      <Alert className="bg-blue-50 border-blue-200 dark:bg-blue-950/30 dark:border-blue-900">
-                        <AlertDescription className="text-sm text-blue-800 dark:text-blue-300">
-                          💡 Drag the marker on the map to update your location coordinates
-                        </AlertDescription>
-                      </Alert>
 
                       <div className="flex gap-3 pt-4">
                         <Button
@@ -475,7 +580,115 @@ export default function UserProfile() {
                 </Card>
               </TabsContent>
 
-              {/* Security Tab */}
+              {/* Subscription Tab */}
+              <TabsContent value="subscription" className="mt-6">
+                <div className="space-y-6">
+                  {/* Active Subscription Details */}
+                  <Card className="border-0 shadow-lg dark:bg-slate-900 dark:border-slate-800">
+                    <CardHeader>
+                      <CardTitle className="text-slate-900 dark:text-white">Active Plan Status</CardTitle>
+                      <CardDescription className="dark:text-slate-400">Detailed information about your current membership</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      {userData.isPremium ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          <div className="space-y-4">
+                            <div className="flex justify-between items-center p-3 rounded-lg bg-slate-50 dark:bg-slate-800/50">
+                              <span className="text-sm text-slate-500 dark:text-slate-400">Current Plan</span>
+                              <span className="font-bold text-slate-900 dark:text-white uppercase">{userData.subscription?.plan}</span>
+                            </div>
+                            <div className="flex justify-between items-center p-3 rounded-lg bg-slate-50 dark:bg-slate-800/50">
+                              <span className="text-sm text-slate-500 dark:text-slate-400">Amount Paid</span>
+                              <span className="font-bold text-slate-900 dark:text-white">${userData.subscription?.amount}</span>
+                            </div>
+                            <div className="flex justify-between items-center p-3 rounded-lg bg-slate-50 dark:bg-slate-800/50">
+                              <span className="text-sm text-slate-500 dark:text-slate-400">Status</span>
+                              <Badge className="bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 uppercase">
+                                {userData.subscription?.status}
+                              </Badge>
+                            </div>
+                          </div>
+                          <div className="space-y-4">
+                             <div className="flex justify-between items-center p-3 rounded-lg bg-slate-50 dark:bg-slate-800/50">
+                              <span className="text-sm text-slate-500 dark:text-slate-400">Start Date</span>
+                              <span className="font-medium text-slate-900 dark:text-white">
+                                {formatDate(userData.subscription?.startDate)}
+                              </span>
+                            </div>
+                             <div className="flex justify-between items-center p-3 rounded-lg bg-slate-50 dark:bg-slate-800/50">
+                              <span className="text-sm text-slate-500 dark:text-slate-400">Next Renewal</span>
+                              <span className="font-medium text-slate-900 dark:text-white">
+                                {formatDate(userData.subscription?.expiresAt)}
+                              </span>
+                            </div>
+                             <div className="flex justify-between items-center p-3 rounded-lg bg-slate-50 dark:bg-slate-800/50">
+                              <span className="text-sm text-slate-500 dark:text-slate-400">Payment Type</span>
+                              <span className="font-medium text-slate-900 dark:text-white uppercase">
+                                {userData.subscription?.paymentMethod}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="text-center py-8">
+                          <Package className="h-12 w-12 text-slate-300 dark:text-slate-700 mx-auto mb-4" />
+                          <p className="text-slate-600 dark:text-slate-400">You don't have an active premium plan.</p>
+                          <Button onClick={() => navigate('/user/premium')} className="mt-4">Explore Premium Plans</Button>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+
+                  {/* Subscription History */}
+                  <Card className="border-0 shadow-lg dark:bg-slate-900 dark:border-slate-800">
+                    <CardHeader>
+                      <CardTitle className="text-slate-900 dark:text-white">Billing History</CardTitle>
+                      <CardDescription className="dark:text-slate-400">Track your past transactions and plan changes</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm text-left">
+                          <thead className="text-xs text-slate-500 dark:text-slate-400 uppercase border-b border-slate-200 dark:border-slate-800">
+                            <tr>
+                              <th className="py-3 px-4">Date</th>
+                              <th className="py-3 px-4">Plan</th>
+                              <th className="py-3 px-4">Amount</th>
+                              <th className="py-3 px-4">Status</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                            {userData.subscriptionHistory && userData.subscriptionHistory.length > 0 ? (
+                              userData.subscriptionHistory.map((item, idx) => (
+                                <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
+                                  <td className="py-3 px-4 font-medium text-slate-900 dark:text-white">
+                                    {formatDate(item.startDate)}
+                                  </td>
+                                  <td className="py-3 px-4 text-slate-700 dark:text-slate-300 capitalize">{item.plan}</td>
+                                  <td className="py-3 px-4 text-slate-700 dark:text-slate-300">${item.amount}</td>
+                                  <td className="py-3 px-4">
+                                    <Badge variant="secondary" className={cn(
+                                      "text-[10px] px-2 py-0.5",
+                                      item.status === 'active' ? "bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400" :
+                                      item.status === 'cancelled' ? "bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400" :
+                                      "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400"
+                                    )}>
+                                      {item.status}
+                                    </Badge>
+                                  </td>
+                                </tr>
+                              ))
+                            ) : (
+                              <tr>
+                                <td colSpan="4" className="py-8 text-center text-slate-500 dark:text-slate-400">No billing history found.</td>
+                              </tr>
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              </TabsContent>
               <TabsContent value="security" className="mt-6">
                 <Card className="border-0 shadow-lg dark:bg-slate-900 dark:border-slate-800">
                   <CardHeader>

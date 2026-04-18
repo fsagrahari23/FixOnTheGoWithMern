@@ -377,7 +377,7 @@ export default function SupportChatPage() {
   }
 
   return (
-    <div className="h-[calc(100vh-8rem)] flex flex-col">
+    <div className="h-[calc(100vh-14rem)] md:h-[calc(100vh-8rem)] flex flex-col">
       {/* Header */}
       <Card className="mb-4 shrink-0">
         <CardHeader className="py-3">

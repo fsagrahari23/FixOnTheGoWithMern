@@ -7,7 +7,7 @@ export function QuickActions() {
     const navigate = useNavigate();
 
     return (
-        <Card className="border-0 shadow-lg">
+        <Card className="border-0 shadow-lg dark:premium-glass">
             <CardHeader className="border-b border-border/50">
                 <CardTitle className="flex items-center gap-2">
                     <Zap className="w-5 h-5" />

@@ -32,13 +32,13 @@ export default function Dashboard() {
   }, []);
 
   return (
-    <main className="min-h-screen bg-background">
+    <main className="min-h-screen">
       <div className="container mx-auto px-4 py-8">
         <PremiumAlert />
         <StatsCards />
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-8">
-          <div className="lg:col-span-2 space-y-6">
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 mt-8">
+          <div className="xl:col-span-2 space-y-6">
             {/* Real-time nearby mechanics map - Uber/Rapido style */}
             <NearbyMechanicsMap height={350} />
             <RecentBookings />
@@ -61,7 +61,7 @@ export default function Dashboard() {
             <div className="p-2 rounded-lg bg-blue-500/10">
               <BarChart3 className="w-6 h-6 text-blue-600" />
             </div>
-            <h2 className="text-xl font-bold">Your Insights</h2>
+            <h2 className="text-xl font-bold dark:text-gradient">Your Insights</h2>
           </div>
 
           {analyticsLoading ? (

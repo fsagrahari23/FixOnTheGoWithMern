@@ -155,7 +155,7 @@ const Premium = () => {
         )}
 
         {/* Pricing Cards */}
-        <div className="grid lg:grid-cols-3 gap-8 mb-12">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-12">
           {/* Basic Plan */}
           <Card className="shadow-lg">
             <CardHeader className="text-center py-6 bg-slate-50 dark:bg-slate-700">

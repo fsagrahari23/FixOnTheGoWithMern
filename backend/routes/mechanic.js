@@ -485,7 +485,7 @@ router.get('/profile', (req, res) => {
 
 router.get('/api/profile', async (req, res) => {
   try {
-    const user = await User.findById(req.user._id).select('name email phone role location createdAt isApproved');
+    const user = await User.findById(req.user._id).select("-password");
     const profile = await MechanicProfile.findOne({ user: req.user._id });
   res.json({ user, profile, flash: { success_msg: req.flash('success_msg') || [], error_msg: req.flash('error_msg') || [], error: req.flash('error') || [] } });
   } catch (error) {
