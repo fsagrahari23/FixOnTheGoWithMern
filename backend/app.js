@@ -70,12 +70,13 @@ app.use(
     cookie: { 
       maxAge: 1000 * 60 * 60 * 24, // 1 day
       httpOnly: true,
-      sameSite: "none",
-      secure: process.env.CODE=='production'?true:false // Set to true in production with HTTPS
+      sameSite: isProduction ? "none" : "lax",
+      secure:isProduction// Set to true in production with HTTPS
     }
   })
 );
 
+console.log(isProduction)
 // File upload middleware (before express.json)
 app.use(fileUpload({
   useTempFiles: true,
