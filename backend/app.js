@@ -50,7 +50,13 @@ const {
 // Initialize Express app
 const app = express();
 const server = http.createServer(app);
-const io = socketIo(server);
+const io = socketIo(server, {
+  cors: {
+    origin: process.env.FRONTEND_URL,
+    methods: ["GET", "POST"],
+    credentials: true
+  }
+});
 
 // Trust proxy for cross-origin cookies in production (e.g., Render)
 app.set('trust proxy', 1);
@@ -71,11 +77,11 @@ app.use(
     resave: false,
     saveUninitialized: false,
     store: MongoStore.create({ mongoUrl: process.env.MONGODB_URI }),
-    cookie: { 
+    cookie: {
       maxAge: 1000 * 60 * 60 * 24, // 1 day
       httpOnly: true,
       sameSite: isProduction ? "none" : "lax",
-      secure:isProduction// Set to true in production with HTTPS
+      secure: isProduction// Set to true in production with HTTPS
     }
   })
 );
@@ -110,7 +116,7 @@ app.use((req, res, next) => {
 });
 
 
- 
+
 
 // Pipe Morgan to Winston
 // Create a stream for Morgan to write to Winston at 'http' level
