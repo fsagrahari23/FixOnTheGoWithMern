@@ -28,6 +28,8 @@ export default function MechanicBookingDetails() {
   const [error, setError] = useState(null);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const geoWatchRef = useRef(null);
+  const geoEmitIntervalRef = useRef(null);
+  const latestMechanicCoordinatesRef = useRef(null);
   const [trackingData, setTrackingData] = useState({
     userCoordinates: null,
     mechanicCoordinates: null,
@@ -126,6 +128,11 @@ export default function MechanicBookingDetails() {
         navigator.geolocation.clearWatch(geoWatchRef.current);
         geoWatchRef.current = null;
       }
+      if (geoEmitIntervalRef.current) {
+        clearInterval(geoEmitIntervalRef.current);
+        geoEmitIntervalRef.current = null;
+      }
+      latestMechanicCoordinatesRef.current = null;
       return;
     }
 
@@ -138,7 +145,7 @@ export default function MechanicBookingDetails() {
     geoWatchRef.current = navigator.geolocation.watchPosition(
       (position) => {
         const coordinates = [position.coords.longitude, position.coords.latitude];
-        socket.emit('mechanic-location-update', { bookingId: id, coordinates });
+        latestMechanicCoordinatesRef.current = coordinates;
       },
       () => {
         // silently ignore geolocation errors to avoid blocking other UI actions
@@ -150,10 +157,22 @@ export default function MechanicBookingDetails() {
       }
     );
 
+    geoEmitIntervalRef.current = setInterval(() => {
+      if (!latestMechanicCoordinatesRef.current) return;
+      socket.emit('mechanic-location-update', {
+        bookingId: id,
+        coordinates: latestMechanicCoordinatesRef.current,
+      });
+    }, 300);
+
     return () => {
       if (geoWatchRef.current) {
         navigator.geolocation.clearWatch(geoWatchRef.current);
         geoWatchRef.current = null;
+      }
+      if (geoEmitIntervalRef.current) {
+        clearInterval(geoEmitIntervalRef.current);
+        geoEmitIntervalRef.current = null;
       }
     };
   }, [id, booking?.status]);

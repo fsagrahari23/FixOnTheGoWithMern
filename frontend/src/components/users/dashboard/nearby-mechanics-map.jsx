@@ -23,7 +23,7 @@ import { toast } from "sonner"
 import io from "socket.io-client"
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:3001"
-const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || "http://localhost:3001"
+const SOCKET_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:3001"
 
 export function NearbyMechanicsMap({ 
   onMechanicSelect, 
