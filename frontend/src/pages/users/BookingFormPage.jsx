@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
-import { apiPost } from '../../lib/api';
+import { apiGet } from '../../lib/api';
 import { MapPin, Upload, Wrench, Crown, Info, AlertCircle, ArrowLeft, Send, Users } from 'lucide-react';
 import MapPicker from '../../components/MapPicker';
 import { NearbyMechanicsMap } from '../../components/users/dashboard/nearby-mechanics-map';
@@ -261,16 +261,21 @@ const BookingForm = () => {
       }));
     }
 
-    // Simulate API call for user data
+    // Load premium/subscription data for current user
     const loadUserData = async () => {
-      // Mock data - replace with actual API call
-      const mockData = {
-        isPremium: false,
-        plan: 'monthly'
-      };
+      try {
+        const response = await apiGet('/user/api/premium');
+        const subscription = response?.subscription;
+        const isUserPremium = !!(response?.user?.isPremium || subscription);
+        const plan = subscription?.plan || response?.user?.premiumTier || 'monthly';
 
-      setIsPremium(mockData.isPremium);
-      setDiscount(mockData.plan === 'monthly' ? 10 : 15);
+        setIsPremium(isUserPremium);
+        setDiscount(plan === 'yearly' ? 15 : 10);
+      } catch {
+        // Keep booking flow usable even if premium API is temporarily unavailable
+        setIsPremium(false);
+        setDiscount(10);
+      }
     };
 
     loadUserData();

@@ -29,17 +29,45 @@ export const LocationProvider = ({ children }) => {
     return R * c;
   };
 
+  const formatFallbackAddress = (lat, lng) => {
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return "";
+    return `Lat ${lat.toFixed(5)}, Lng ${lng.toFixed(5)}`;
+  };
+
   const fetchAddress = async (lat, lng) => {
+    const fallbackAddress = formatFallbackAddress(lat, lng);
+
+    if (!navigator.onLine) {
+      dispatch(setAddress(fallbackAddress));
+      return;
+    }
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
+
     try {
       const response = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`,
+        {
+          signal: controller.signal,
+          headers: {
+            Accept: "application/json",
+          },
+        }
       );
+
+      if (!response.ok) {
+        throw new Error(`Reverse geocode failed with status ${response.status}`);
+      }
+
       const data = await response.json();
-      const address = data.display_name || "";
+      const address = data.display_name || fallbackAddress;
       dispatch(setAddress(address));
-      console.log("Frontend: Fetched address:", address);
+      // console.log("Frontend: Fetched address:", address);
     } catch (error) {
-      console.error("Error fetching address:", error);
+      dispatch(setAddress(fallbackAddress));
+    } finally {
+      clearTimeout(timeoutId);
     }
   };
 
@@ -82,7 +110,6 @@ export const LocationProvider = ({ children }) => {
 
           const coordinates = [longitude, latitude]; // GeoJSON format [lng, lat]
           dispatch(setCoordinates({ lat: latitude, lng: longitude }));
-          await fetchAddress(latitude, longitude);
 
           // Emit location update to server
           if (socket.connected) {
@@ -92,6 +119,9 @@ export const LocationProvider = ({ children }) => {
             }
             console.log("Frontend: Emitted location update:", coordinates);
           }
+
+          // Reverse geocoding should not block location emits.
+          void fetchAddress(latitude, longitude);
         },
         (err) => console.error("Geolocation error:", err),
         { enableHighAccuracy: true }

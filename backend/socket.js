@@ -107,6 +107,7 @@ module.exports = (io) => {
   const onlineUsers = {};
   // In-memory path store per booking for live tracking line
   const bookingTrackingPaths = new Map();
+  const userLocationPersistTimestamps = new Map();
 
   const isValidGeoCoordinates = (coordinates) => {
     return (
@@ -133,6 +134,20 @@ module.exports = (io) => {
     const bounded = next.length > 300 ? next.slice(next.length - 300) : next;
     bookingTrackingPaths.set(key, bounded);
     return bounded;
+  };
+
+  const shouldPersistLocation = (userId, minIntervalMs = 5000) => {
+    const key = userId?.toString();
+    if (!key) return false;
+
+    const now = Date.now();
+    const lastPersistedAt = userLocationPersistTimestamps.get(key) || 0;
+    if (now - lastPersistedAt < minIntervalMs) {
+      return false;
+    }
+
+    userLocationPersistTimestamps.set(key, now);
+    return true;
   };
 
   // Make helper functions available via io for use in routes
@@ -488,10 +503,14 @@ module.exports = (io) => {
           return;
         }
 
-        // Update mechanic's location in database
-        user.location.coordinates = coordinates;
-        user.lastSeen = new Date();
-        await user.save();
+        const lastSeen = new Date();
+
+        // Persist less frequently to avoid DB bottlenecks during high-frequency tracking.
+        if (shouldPersistLocation(socket.userId, 5000)) {
+          user.location.coordinates = coordinates;
+          user.lastSeen = lastSeen;
+          await user.save();
+        }
 
         // console.log(`Mechanic ${socket.userId} location updated:`, coordinates);
 
@@ -502,7 +521,7 @@ module.exports = (io) => {
           name: user.name,
           profileImage: user.profileImage,
           coordinates,
-          lastSeen: user.lastSeen,
+          lastSeen,
         });
 
         // Also notify users with active bookings with this mechanic
@@ -539,7 +558,7 @@ module.exports = (io) => {
               coordinates,
               userCoordinates: booking.location?.coordinates || null,
               pathCoordinates,
-              lastSeen: user.lastSeen,
+              lastSeen,
             });
           }
         });
@@ -551,16 +570,20 @@ module.exports = (io) => {
     // Real-time user/customer location update
     socket.on("update-location", async (data) => {
       try {
-        const { coordinates } = data; // [longitude, latitude]
+        const { coordinates, bookingId } = data || {}; // [longitude, latitude]
         if (!socket.userId || !coordinates || coordinates.length !== 2) return;
 
         const user = await User.findById(socket.userId);
         if (!user) return;
 
-        // Update user's location in database
-        user.location.coordinates = coordinates;
-        user.lastSeen = new Date();
-        await user.save();
+        const lastSeen = new Date();
+
+        // Persist less frequently to avoid DB bottlenecks during high-frequency tracking.
+        if (shouldPersistLocation(socket.userId, 5000)) {
+          user.location.coordinates = coordinates;
+          user.lastSeen = lastSeen;
+          await user.save();
+        }
 
         // Notify mechanics of active bookings about user's new location
         const activeBookings = await Booking.find({
@@ -568,7 +591,11 @@ module.exports = (io) => {
           status: { $in: ["accepted", "in-progress"] },
         });
 
-        activeBookings.forEach((booking) => {
+        const relevantBookings = bookingId
+          ? activeBookings.filter((b) => b._id.toString() === bookingId.toString())
+          : activeBookings;
+
+        relevantBookings.forEach((booking) => {
           io.to(`booking-${booking._id}-tracking`).emit("booking-tracking-update", {
             bookingId: booking._id,
             userCoordinates: coordinates,
@@ -589,7 +616,7 @@ module.exports = (io) => {
 
         const booking = await Booking.findById(bookingId)
           .populate("mechanic", "name location")
-          .populate("user", "name");
+          .populate("user", "name location");
 
         if (!booking) return;
 
@@ -616,7 +643,7 @@ module.exports = (io) => {
           mechanicId: booking.mechanic?._id || null,
           mechanicName: booking.mechanic?.name || null,
           mechanicCoordinates,
-          userCoordinates: booking.location?.coordinates || null,
+          userCoordinates: booking.user?.location?.coordinates || booking.location?.coordinates || null,
           pathCoordinates: bookingTrackingPaths.get(bookingId.toString()) || [],
           updatedAt: booking.updatedAt,
         });

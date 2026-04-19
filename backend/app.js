@@ -149,7 +149,9 @@ app.use((req, res, next) => {
 
 // Security middleware
 if (process.env.NODE_ENV === 'production') {
-  app.use(helmet());
+ app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" }
+}));
 }
 
 
@@ -157,6 +159,7 @@ if (process.env.NODE_ENV === 'production') {
 app.use(cors({
   origin: process.env.FRONTEND_URL,
   credentials: true,
+  allowedHeaders: ["Content-Type", "Authorization"],
   methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
 }));
 
@@ -178,6 +181,11 @@ app.use((req, res, next) => {
 app.set("view engine", "ejs");
 app.set("views", path.join(__dirname, "views"));
 
+app.options("*", cors({
+  origin: process.env.FRONTEND_URL,
+  credentials: true,
+  allowedHeaders: ["Content-Type", "Authorization"]
+}));
 // Swagger docs
 setupSwagger(app);
 

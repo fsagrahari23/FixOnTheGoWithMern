@@ -1,10 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Alert, AlertDescription, } from '@/components/ui/alert';
 import {
   ArrowLeft,
   Star,
@@ -21,7 +17,15 @@ import {
   DollarSign,
   AlertCircle,
   Mail,
-  AlertTriangle
+  AlertTriangle,
+  ChevronRight,
+  Navigation,
+  Clock,
+  Banknote,
+  Wrench,
+  User,
+  Shield,
+  Zap,
 } from 'lucide-react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
@@ -30,797 +34,653 @@ import {
   selectMechanic,
   cancelBooking,
   rateBooking,
-  processPayment
+  processPayment,
 } from '../../store/slices/bookingThunks';
 import ChatModal from '../../components/users/ChatModal';
 import PaymentModal from '../../components/users/PaymentModal';
 import { RaiseDisputeDialog } from '../../components/users/dashboard/dispute-form';
 import BookingTrackingMap from '../../components/tracking/BookingTrackingMap';
 import { getSocket } from '../../../libs/socket';
-// import { setCurrentBooking, clearError } from '../../store/slices/bookingSlice';
+import { useBookingTracker } from '../../hooks/useBookingTracker';
 
-const InfoItem = ({ icon, label, value, highlight }) => {
+// ── status config ─────────────────────────────────────────────────────────────
+const STATUS = {
+  pending: {
+    label: 'Pending',
+    pill: 'bg-amber-50 text-amber-700 ring-1 ring-amber-200',
+    dot: 'bg-amber-400',
+    step: 0,
+  },
+  accepted: {
+    label: 'Accepted',
+    pill: 'bg-sky-50 text-sky-700 ring-1 ring-sky-200',
+    dot: 'bg-sky-500 animate-pulse',
+    step: 1,
+  },
+  'in-progress': {
+    label: 'In Progress',
+    pill: 'bg-blue-50 text-blue-700 ring-1 ring-blue-200',
+    dot: 'bg-blue-600 animate-pulse',
+    step: 2,
+  },
+  completed: {
+    label: 'Completed',
+    pill: 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200',
+    dot: 'bg-emerald-500',
+    step: 3,
+  },
+  cancelled: {
+    label: 'Cancelled',
+    pill: 'bg-rose-50 text-rose-700 ring-1 ring-rose-200',
+    dot: 'bg-rose-500',
+    step: -1,
+  },
+};
+
+const STEPS = ['Pending', 'Accepted', 'In Progress', 'Completed'];
+
+// ── small atoms ───────────────────────────────────────────────────────────────
+function Card({ children, className = '' }) {
   return (
-    <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-2 ${highlight ? 'bg-indigo-100 dark:bg-slate-600 p-3 rounded-lg' : ''}`}>
-      <div className="flex items-center gap-2">
-        {icon && icon}
-        <span className="text-sm font-medium text-slate-600 dark:text-slate-400">{label}:</span>
-      </div>
-      <span className={`text-sm font-semibold break-all sm:break-normal ${highlight ? 'text-indigo-800 dark:text-slate-200 text-right' : 'text-slate-800 dark:text-slate-200 text-left sm:text-right'}`}>{value}</span>
+    <div className={`rounded-3xl border border-slate-100 bg-white/80 backdrop-blur-md p-6 shadow-sm transition-shadow duration-300 hover:shadow-md ${className}`}>
+      {children}
     </div>
   );
 }
 
+function SectionHeader({ icon: Icon, iconClass, title }) {
+  return (
+    <div className="mb-5 flex items-center gap-3">
+      <div className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl ${iconClass}`}>
+        <Icon className="h-4 w-4" />
+      </div>
+      <h2 className="text-[15px] font-bold tracking-tight text-slate-800">{title}</h2>
+    </div>
+  );
+}
+
+function InfoRow({ icon: Icon, iconClass = 'text-slate-400', label, value }) {
+  return (
+    <div className="flex items-start gap-3 py-2.5 border-b border-slate-50 last:border-0">
+      <div className="mt-0.5 flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg bg-slate-50">
+        <Icon className={`h-3.5 w-3.5 ${iconClass}`} />
+      </div>
+      <div className="flex flex-1 flex-col sm:flex-row sm:items-center sm:justify-between gap-0.5 min-w-0">
+        <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">{label}</span>
+        <span className="text-sm font-semibold text-slate-800 sm:text-right break-words">{value || '—'}</span>
+      </div>
+    </div>
+  );
+}
+
+function ActionButton({ onClick, type = 'button', icon: Icon, label, variant = 'primary', disabled = false, className = '', children }) {
+  const variants = {
+    primary: 'bg-slate-900 text-white hover:bg-slate-700 shadow-md',
+    blue: 'bg-blue-600 text-white hover:bg-blue-700 shadow-md shadow-blue-200',
+    emerald: 'bg-emerald-600 text-white hover:bg-emerald-700 shadow-md shadow-emerald-200',
+    rose: 'bg-rose-600 text-white hover:bg-rose-700 shadow-md shadow-rose-200',
+    outline: 'border border-slate-200 text-slate-700 hover:bg-slate-50',
+    'outline-rose': 'border border-rose-200 text-rose-600 hover:bg-rose-50',
+  };
+  return (
+    <button
+      type={type}
+      onClick={onClick}
+      disabled={disabled}
+      className={`group relative flex w-full items-center justify-between gap-3 overflow-hidden rounded-2xl px-5 py-4 text-sm font-bold transition-all duration-200 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed ${variants[variant]} ${className}`}
+    >
+      <div className="flex items-center gap-2.5">
+        {Icon && <Icon className="h-4.5 w-4.5" />}
+        {label || children}
+      </div>
+      <ChevronRight className="h-4 w-4 opacity-50 transition-transform duration-200 group-hover:translate-x-1" />
+      <span className="absolute inset-0 -translate-x-full bg-white/10 skew-x-12 transition-transform duration-500 group-hover:translate-x-full" />
+    </button>
+  );
+}
+
+// ── status stepper ────────────────────────────────────────────────────────────
+function StatusStepper({ status }) {
+  const cfg = STATUS[status];
+  if (!cfg || cfg.step === -1) return null;
+  const current = cfg.step;
+  return (
+    <div className="flex items-center">
+      {STEPS.map((step, i) => {
+        const done = i <= current;
+        const active = i === current;
+        return (
+          <div key={step} className="flex flex-1 items-center">
+            <div className="flex flex-col items-center gap-1">
+              <div className={`flex h-6 w-6 items-center justify-center rounded-full border-2 transition-all duration-500 ${done ? 'border-blue-600 bg-blue-600' : 'border-slate-200 bg-white'} ${active ? 'ring-4 ring-blue-100' : ''}`}>
+                {done && (
+                  <svg className="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                  </svg>
+                )}
+              </div>
+              <span className={`text-[10px] font-semibold whitespace-nowrap ${done ? 'text-blue-600' : 'text-slate-400'}`}>{step}</span>
+            </div>
+            {i < STEPS.length - 1 && (
+              <div className="relative mx-1 mb-4 h-0.5 flex-1 overflow-hidden rounded-full bg-slate-200">
+                <div className={`absolute inset-y-0 left-0 rounded-full bg-blue-600 transition-all duration-700 ease-out ${i < current ? 'w-full' : 'w-0'}`} />
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// ── star rating ───────────────────────────────────────────────────────────────
+function StarRow({ value, interactive = false, onChange }) {
+  const [hover, setHover] = useState(0);
+  return (
+    <div className="flex items-center gap-1">
+      {[1, 2, 3, 4, 5].map((n) => (
+        <button
+          key={n}
+          type="button"
+          disabled={!interactive}
+          onClick={() => interactive && onChange?.(n)}
+          onMouseEnter={() => interactive && setHover(n)}
+          onMouseLeave={() => interactive && setHover(0)}
+          className={`transition-transform duration-150 ${interactive ? 'hover:scale-125 cursor-pointer' : 'cursor-default'}`}
+        >
+          <Star
+            className={`${interactive ? 'h-9 w-9' : 'h-5 w-5'} transition-colors duration-150 ${
+              n <= (hover || value) ? 'fill-amber-400 text-amber-400' : 'text-slate-200'
+            }`}
+          />
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// ── mechanic card ─────────────────────────────────────────────────────────────
+function MechanicCard({ mechanic, selected, onSelect }) {
+  return (
+    <div
+      onClick={() => onSelect(mechanic._id)}
+      className={`relative cursor-pointer overflow-hidden rounded-3xl border-2 bg-white p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg ${
+        selected ? 'border-emerald-500 ring-4 ring-emerald-50' : 'border-slate-100 hover:border-slate-200'
+      }`}
+    >
+      {selected && (
+        <div className="absolute right-4 top-4 flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-emerald-700">
+          <CheckCircle className="h-3 w-3" /> Selected
+        </div>
+      )}
+      <div className="mb-4 flex items-start gap-3">
+        <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
+          <Wrench className="h-6 w-6" />
+        </div>
+        <div>
+          <p className="font-bold text-slate-800">{mechanic.name}</p>
+          <p className="text-xs text-slate-500">Professional Mechanic</p>
+          <div className="mt-1.5 flex items-center gap-1.5">
+            <StarRow value={Math.round(mechanic.rating)} />
+            <span className="text-xs font-bold text-amber-600">{mechanic.rating?.toFixed(1)}</span>
+          </div>
+        </div>
+      </div>
+      <div className="space-y-1.5">
+        <div className="flex items-center gap-2 rounded-xl bg-slate-50 px-3 py-2 text-xs font-medium text-slate-600">
+          <Phone className="h-3.5 w-3.5 text-slate-400" /> {mechanic.phone}
+        </div>
+        <div className="flex items-center gap-2 rounded-xl bg-slate-50 px-3 py-2 text-xs font-medium text-slate-600 truncate">
+          <Mail className="h-3.5 w-3.5 flex-shrink-0 text-slate-400" />
+          <span className="truncate">{mechanic.email}</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── skeleton ──────────────────────────────────────────────────────────────────
+function Skeleton() {
+  return (
+    <main className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-50">
+      <div className="mx-auto max-w-6xl px-4 py-8 space-y-6">
+        <div className="h-8 w-44 animate-pulse rounded-xl bg-slate-200" />
+        <div className="rounded-3xl border border-slate-100 bg-white p-6">
+          <div className="h-6 w-40 animate-pulse rounded-lg bg-slate-200 mb-3" />
+          <div className="flex gap-2">
+            {[...Array(4)].map((_, i) => <div key={i} className="flex-1 h-1.5 animate-pulse rounded-full bg-slate-200" />)}
+          </div>
+        </div>
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+          <div className="xl:col-span-2 space-y-6">
+            {[180, 220, 300].map((h) => (
+              <div key={h} className="rounded-3xl border border-slate-100 bg-white p-6">
+                <div className="h-5 w-36 animate-pulse rounded-lg bg-slate-200 mb-5" />
+                <div className="space-y-3">{[...Array(4)].map((_, i) => <div key={i} className="h-10 animate-pulse rounded-xl bg-slate-100" />)}</div>
+              </div>
+            ))}
+          </div>
+          <div className="space-y-6">
+            {[160, 200].map((h) => (
+              <div key={h} className="rounded-3xl border border-slate-100 bg-white p-6">
+                <div className="h-5 w-24 animate-pulse rounded-lg bg-slate-200 mb-4" />
+                <div className="space-y-3">{[...Array(3)].map((_, i) => <div key={i} className="h-11 animate-pulse rounded-xl bg-slate-100" />)}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </main>
+  );
+}
+
+// ── main ──────────────────────────────────────────────────────────────────────
 const BookingDetails = () => {
   const { id } = useParams();
-  console.log("BookingDetails component rendering with id:", id);
   const navigate = useNavigate();
   const dispatch = useDispatch();
+
+  const { currentBooking, nearbyMechanics, loading, error } = useSelector((s) => s.booking);
+  const authUser = useSelector((s) => s.auth?.user);
+
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
-
-  const { currentBooking, nearbyMechanics, loading, error } = useSelector((state) => state.booking);
-  const authUser = useSelector((state) => state.auth?.user);
   const [selectedRating, setSelectedRating] = useState(5);
   const [comment, setComment] = useState('');
-  const [animateIn, setAnimateIn] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const [selectedMechanicId, setSelectedMechanicId] = useState(null);
-  const socketRef = useRef(null);
-  const [trackingData, setTrackingData] = useState({
-    userCoordinates: null,
-    mechanicCoordinates: null,
-    pathCoordinates: [],
-    mechanicOnline: false,
+  const isTracking = ['accepted', 'in-progress'].includes(currentBooking?.status) && !!currentBooking?.mechanic;
+  const { trackingData, setStaticUserCoordinates } = useBookingTracker({
+    bookingId: id,
+    isTracking,
+    actorRole: 'user',
+    mechanicId: currentBooking?.mechanic?._id || null,
   });
 
+  useEffect(() => { requestAnimationFrame(() => setMounted(true)); }, []);
+
   useEffect(() => {
-    console.log("BookingDetails component mounted, id:", id);
-    setAnimateIn(true);
-    console.log("Dispatching fetchBookingDetails with id:", id);
     dispatch(fetchBookingDetails(id));
   }, [id, dispatch]);
 
   useEffect(() => {
-    if (error) {
-      // Handle error - could show toast or alert
-      console.error('Booking details error:', error);
-    }
-    
-    // Debug logs
-    console.log('Current booking:', currentBooking);
-    console.log('Nearby mechanics:', nearbyMechanics);
-    console.log('Booking status:', currentBooking?.status);
-  }, [error, currentBooking, nearbyMechanics]);
-
-  useEffect(() => {
     if (!currentBooking?.location?.coordinates) return;
-
-    setTrackingData((prev) => ({
-      ...prev,
-      userCoordinates: currentBooking.location.coordinates,
-    }));
-  }, [currentBooking?.location?.coordinates]);
+    setStaticUserCoordinates(currentBooking.location.coordinates);
+  }, [currentBooking?.location?.coordinates, setStaticUserCoordinates]);
 
   useEffect(() => {
     if (!authUser?._id) return;
-    const socket = getSocket();
-    socket.emit('authenticate', authUser._id);
+    getSocket().emit('authenticate', authUser._id);
   }, [authUser?._id]);
 
   useEffect(() => {
     if (!id) return;
-
     const socket = getSocket();
-
-    const handleBookingStatusChanged = (payload) => {
-      if (!payload || String(payload.bookingId) !== String(id)) return;
-      dispatch(fetchBookingDetails(id));
-    };
-
-    const handleBookingNotification = (payload) => {
-      if (!payload?.data?.bookingId) return;
-      if (String(payload.data.bookingId) !== String(id)) return;
-
-      if (['booking-accepted', 'booking-started'].includes(payload.type)) {
+    const onStatus = (p) => { if (p && String(p.bookingId) === String(id)) dispatch(fetchBookingDetails(id)); };
+    const onNotif = (p) => {
+      if (p?.data?.bookingId && String(p.data.bookingId) === String(id) && ['booking-accepted', 'booking-started'].includes(p.type))
         dispatch(fetchBookingDetails(id));
-      }
     };
-
-    socket.on('booking-status-changed', handleBookingStatusChanged);
-    socket.on('notification', handleBookingNotification);
-
-    return () => {
-      socket.off('booking-status-changed', handleBookingStatusChanged);
-      socket.off('notification', handleBookingNotification);
-    };
+    socket.on('booking-status-changed', onStatus);
+    socket.on('notification', onNotif);
+    return () => { socket.off('booking-status-changed', onStatus); socket.off('notification', onNotif); };
   }, [id, dispatch]);
 
-  useEffect(() => {
-    if (!id || !currentBooking?.mechanic || !['accepted', 'in-progress'].includes(currentBooking?.status)) {
-      return;
-    }
 
-    const socket = getSocket();
-    socketRef.current = socket;
+  // ── handlers ──
+  const handleRatingSubmit = () => dispatch(rateBooking({ bookingId: id, rating: selectedRating, comment }));
 
-    const handleSnapshot = (payload) => {
-      if (!payload || String(payload.bookingId) !== String(id)) return;
-      setTrackingData((prev) => ({
-        ...prev,
-        userCoordinates: payload.userCoordinates || prev.userCoordinates,
-        mechanicCoordinates: payload.mechanicCoordinates || prev.mechanicCoordinates,
-        pathCoordinates: payload.pathCoordinates || prev.pathCoordinates,
-        mechanicOnline: !!payload.mechanicCoordinates,
-      }));
-    };
-
-    const handleTrackingUpdate = (payload) => {
-      if (!payload || String(payload.bookingId) !== String(id)) return;
-      setTrackingData((prev) => ({
-        ...prev,
-        userCoordinates: payload.userCoordinates || prev.userCoordinates,
-        mechanicCoordinates: payload.mechanicCoordinates || prev.mechanicCoordinates,
-        pathCoordinates: payload.pathCoordinates || prev.pathCoordinates,
-        mechanicOnline: true,
-      }));
-    };
-
-    const handleAssignedLocation = (payload) => {
-      if (!payload || String(payload.bookingId) !== String(id)) return;
-      setTrackingData((prev) => ({
-        ...prev,
-        mechanicCoordinates: payload.coordinates || prev.mechanicCoordinates,
-        userCoordinates: payload.userCoordinates || prev.userCoordinates,
-        pathCoordinates: payload.pathCoordinates || prev.pathCoordinates,
-        mechanicOnline: true,
-      }));
-    };
-
-    const handleCurrentLocation = (payload) => {
-      if (!payload || String(payload.bookingId) !== String(id)) return;
-      setTrackingData((prev) => ({
-        ...prev,
-        mechanicCoordinates: payload.coordinates || prev.mechanicCoordinates,
-        mechanicOnline: !!payload.isOnline,
-      }));
-    };
-
-    const handleMechanicOffline = (payload) => {
-      if (!payload || String(payload.mechanicId) !== String(currentBooking.mechanic._id)) return;
-      setTrackingData((prev) => ({ ...prev, mechanicOnline: false }));
-    };
-
-    socket.on('booking-tracking-snapshot', handleSnapshot);
-    socket.on('booking-tracking-update', handleTrackingUpdate);
-    socket.on('assigned-mechanic-location', handleAssignedLocation);
-    socket.on('mechanic-current-location', handleCurrentLocation);
-    socket.on('mechanic-offline', handleMechanicOffline);
-
-    socket.emit('join-booking-tracking', { bookingId: id });
-    socket.emit('request-mechanic-location', { bookingId: id });
-
-    return () => {
-      socket.emit('leave-booking-tracking', { bookingId: id });
-      socket.off('booking-tracking-snapshot', handleSnapshot);
-      socket.off('booking-tracking-update', handleTrackingUpdate);
-      socket.off('assigned-mechanic-location', handleAssignedLocation);
-      socket.off('mechanic-current-location', handleCurrentLocation);
-      socket.off('mechanic-offline', handleMechanicOffline);
-    };
-  }, [id, currentBooking?.status, currentBooking?.mechanic, currentBooking?.mechanic?._id]);
-
-  const getStatusConfig = (status) => {
-    const configs = {
-      pending: {
-        color: 'bg-linear-to-r from-amber-400 to-orange-500',
-        textColor: 'text-white',
-        icon: '⏳'
-      },
-      accepted: {
-        color: 'bg-linear-to-r from-blue-400 to-blue-600',
-        textColor: 'text-white',
-        icon: '✓'
-      },
-      'in-progress': {
-        color: 'bg-linear-to-r from-purple-400 to-pink-500',
-        textColor: 'text-white',
-        icon: '🔧'
-      },
-      completed: {
-        color: 'bg-linear-to-r from-emerald-400 to-green-600',
-        textColor: 'text-white',
-        icon: '✓'
-      },
-      cancelled: {
-        color: 'bg-linear-to-r from-red-400 to-red-600',
-        textColor: 'text-white',
-        icon: '✗'
+  const handleConfirmMechanic = useCallback(async () => {
+    if (!selectedMechanicId) return;
+    try {
+      const result = await dispatch(selectMechanic({ id, mechanicId: selectedMechanicId })).unwrap();
+      if (result.success) {
+        dispatch(fetchBookingDetails(id));
+        setSelectedMechanicId(null);
       }
-    };
-    return configs[status] || configs.pending;
-  };
-
-  const handleRatingSubmit = () => {
-    dispatch(rateBooking({ bookingId: id, rating: selectedRating, comment }));
-  };
-
-  const handleSelectMechanic = (mechanicId) => {
-    setSelectedMechanicId(mechanicId);
-  };
-
-  const handleConfirmMechanic = async () => {
-    if (selectedMechanicId) {
-      try {
-        console.log(id, selectedMechanicId);
-        const result = await dispatch(selectMechanic({ id, mechanicId: selectedMechanicId })).unwrap();
-        
-        if (result.success) {
-          alert('Request sent to mechanic successfully! Please wait for the mechanic to accept your booking.');
-          // Refresh booking details to show updated status
-          dispatch(fetchBookingDetails(id));
-          setSelectedMechanicId(null);
-        }
-      } catch (error) {
-        console.error('Failed to assign mechanic:', error);
-        alert(`Failed to assign mechanic: ${error.message || 'Please try again'}`);
-      }
+    } catch (err) {
+      console.error('Failed to assign mechanic:', err);
     }
-  };
+  }, [selectedMechanicId, id, dispatch]);
 
   const handleCancelBooking = () => {
-    if (window.confirm('Are you sure you want to cancel this booking?')) {
+    if (window.confirm('Are you sure you want to cancel this booking?'))
       dispatch(cancelBooking(id));
-    }
   };
 
-  const handlePayment = async (paymentMethodId) => {
+  const handlePayment = useCallback(async (paymentMethodId) => {
     try {
-      const result = await dispatch(processPayment({ 
-        bookingId: id, 
-        paymentMethodId 
-      })).unwrap();
-      
-      if (result.success) {
-        alert('Payment completed successfully!');
-        // Refresh booking details to show updated payment status
-        dispatch(fetchBookingDetails(id));
-      }
-    } catch (error) {
-      console.error('Payment failed:', error);
-      alert(`Payment failed: ${error.message || 'Please try again'}`);
+      const result = await dispatch(processPayment({ bookingId: id, paymentMethodId })).unwrap();
+      if (result.success) dispatch(fetchBookingDetails(id));
+    } catch (err) {
+      console.error('Payment failed:', err);
     }
-  };
+  }, [id, dispatch]);
 
-  const handleOpenPaymentModal = () => {
-    setIsPaymentModalOpen(true);
-  };
+  if (loading && !currentBooking) return <Skeleton />;
 
-  const statusConfig = getStatusConfig(currentBooking?.status);
+  const bk = currentBooking;
+  const cfg = STATUS[bk?.status] || STATUS.pending;
+  const isActive = ['accepted', 'in-progress'].includes(bk?.status);
+  const isDone = ['completed', 'cancelled'].includes(bk?.status);
+  const canPay = bk?.status === 'completed' && bk?.payment?.status === 'pending';
+  const canRate = bk?.status === 'completed' && bk?.payment?.status === 'completed' && !bk?.rating;
 
   return (
-    <div className="min-h-screen transition-all duration-500 bg-linear-to-br from-slate-50 via-blue-50 to-purple-50 dark:bg-linear-to-br dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 py-8 px-4 sm:px-6 lg:px-8">
+    <main className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/20 to-slate-50">
+      {error && (
+        <div className="border-b border-rose-200 bg-rose-50 px-4 py-2.5 text-center text-sm font-medium text-rose-700">
+          {error}
+        </div>
+      )}
 
+      <div className={`mx-auto max-w-6xl px-4 py-8 transition-all duration-500 ease-out ${mounted ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
 
-
-      <div className="max-w-7xl mx-auto space-y-8">
-        {/* Main Booking Card */}
-        <Card
-          className={`overflow-hidden shadow-2xl transition-all duration-700 border-0 ${animateIn ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
-            } bg-white dark:bg-slate-800`}
-        >
-          <CardHeader className="bg-linear-to-r from-indigo-600 to-purple-600 dark:from-slate-700 dark:to-slate-600 text-white py-8 px-8">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-              <div>
-                <CardTitle className="text-3xl font-bold mb-2">Booking Details</CardTitle>
-                <p className="text-blue-100 text-sm">Track and manage your service booking</p>
-              </div>
-              <Badge className={`${statusConfig.color} ${statusConfig.textColor} px-6 py-3 text-sm font-bold uppercase tracking-wider shadow-lg`}>
-                <span className="mr-2">{statusConfig.icon}</span>
-                {currentBooking?.status}
-              </Badge>
+        {/* ── header ── */}
+        <div className="mb-6 rounded-3xl border border-slate-100 bg-white/90 backdrop-blur-md px-6 py-5 shadow-sm">
+          <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+            <div>
+              <button
+                onClick={() => navigate('/user/dashboard')}
+                className="mb-3 inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm font-medium text-slate-600 transition-all hover:bg-slate-100 active:scale-95"
+              >
+                <ArrowLeft className="h-3.5 w-3.5" /> Dashboard
+              </button>
+              <h1 className="text-2xl font-extrabold tracking-tight text-slate-900">Booking Details</h1>
+              <p className="mt-0.5 font-mono text-xs text-slate-400">#{bk?._id}</p>
             </div>
-          </CardHeader>
+            <div className="flex flex-wrap items-center gap-2.5">
+              <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold ${cfg.pill}`}>
+                <span className={`h-1.5 w-1.5 rounded-full ${cfg.dot}`} />
+                {cfg.label}
+              </span>
+              <div className="rounded-xl border border-slate-100 bg-slate-50 px-3 py-1.5 text-xs text-slate-500">
+                <Calendar className="mb-0.5 mr-1 inline h-3.5 w-3.5" />
+                {bk?.createdAt ? new Date(bk.createdAt).toLocaleString() : '—'}
+              </div>
+            </div>
+          </div>
+          {bk?.status !== 'cancelled' && (
+            <div className="mt-5 pt-5 border-t border-slate-100">
+              <StatusStepper status={bk?.status} />
+            </div>
+          )}
+        </div>
 
-          <CardContent className="p-8 space-y-10">
-            {/* Basic Info Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-              <Card className="p-6 shadow-md border-0 animate-fade-in bg-linear-to-br from-blue-50 to-indigo-50 dark:bg-slate-700">
-                <h3 className="text-lg font-bold mb-6 flex items-center gap-2 text-indigo-700 dark:text-blue-300">
-                  <FileText className="w-5 h-5" />
-                  Booking Information
-                </h3>
-                <div className="space-y-5">
-                  <InfoItem
-                    icon={<Calendar className="w-5 h-5" />}
-                    label="Booking ID"
-                    value={currentBooking?._id}
-                  />
-                  <InfoItem
-                    icon={<Calendar className="w-5 h-5" />}
-                    label="Date & Time"
-                    value={new Date(currentBooking?.createdAt).toLocaleString()}
-                  />
-                  <InfoItem
-                    label="Problem Category"
-                    value={currentBooking?.problemCategory}
-                  />
-                  <div className="pt-4 border-t border-indigo-200 dark:border-slate-600">
-                    <InfoItem
-                      label="Current Status"
-                      value={currentBooking?.status.replace('-', ' ').toUpperCase()}
-                      highlight
-                    />
+        {/* ── grid ── */}
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+
+          {/* ── LEFT ── */}
+          <div className="xl:col-span-2 space-y-6">
+
+            {/* booking info */}
+            <Card>
+              <SectionHeader icon={FileText} iconClass="bg-blue-50 text-blue-600" title="Booking Information" />
+              <InfoRow icon={Calendar} iconClass="text-blue-500" label="Date & Time" value={bk?.createdAt ? new Date(bk.createdAt).toLocaleString() : '—'} />
+              <InfoRow icon={Wrench} iconClass="text-indigo-500" label="Problem Category" value={bk?.problemCategory} />
+              <InfoRow icon={MapPin} iconClass="text-rose-500" label="Service Location" value={bk?.location?.address} />
+              {bk?.description && (
+                <div className="mt-3 rounded-2xl bg-slate-50 p-4">
+                  <p className="mb-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">Description</p>
+                  <p className="text-sm leading-relaxed text-slate-700">{bk.description}</p>
+                </div>
+              )}
+            </Card>
+
+            {/* mechanic info */}
+            <Card>
+              <SectionHeader icon={User} iconClass="bg-violet-50 text-violet-600" title="Mechanic Details" />
+              {bk?.mechanic ? (
+                <>
+                  <InfoRow icon={User} iconClass="text-violet-500" label="Name" value={bk.mechanic.name} />
+                  <InfoRow icon={Phone} iconClass="text-emerald-500" label="Phone" value={bk.mechanic.phone} />
+                  <div className="flex items-start gap-3 py-2.5">
+                    <div className="mt-0.5 flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg bg-slate-50">
+                      <Star className="h-3.5 w-3.5 text-amber-500" />
+                    </div>
+                    <div className="flex flex-1 flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
+                      <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">Rating</span>
+                      <div className="flex items-center gap-2">
+                        <StarRow value={Math.round(bk.mechanic.rating)} />
+                        <span className="text-xs font-bold text-amber-600">{bk.mechanic.rating}</span>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="flex items-center gap-3 rounded-2xl bg-amber-50 p-4">
+                  <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-amber-100">
+                    <Clock className="h-5 w-5 text-amber-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-amber-800">Mechanic not assigned yet</p>
+                    <p className="text-xs text-amber-600">We're finding the best mechanic for you</p>
                   </div>
                 </div>
-              </Card>
+              )}
+            </Card>
 
-              <Card className="p-6 shadow-md border-0 animate-fade-in delay-100 bg-linear-to-br from-purple-50 to-pink-50 dark:bg-slate-700">
-                <h3 className="text-lg font-bold mb-6 flex items-center gap-2 text-purple-700 dark:text-purple-300">
-                  <MapPin className="w-5 h-5" />
-                  Location & Mechanic
-                </h3>
-                <div className="space-y-5">
-                  <InfoItem
-                    icon={<MapPin className="w-5 h-5" />}
-                    label="Service Location"
-                    value={currentBooking?.location.address}
+            {/* live map */}
+            {isTracking && (
+              <Card className="overflow-hidden">
+                <SectionHeader icon={Navigation} iconClass="bg-violet-50 text-violet-600" title="Live Mechanic Tracking" />
+                <div className="overflow-hidden rounded-2xl border border-slate-100">
+                  <BookingTrackingMap
+                    userCoordinates={trackingData.userCoordinates}
+                    mechanicCoordinates={trackingData.mechanicCoordinates}
+                    pathCoordinates={trackingData.pathCoordinates}
+                    className="h-64 sm:h-80 md:h-[400px]"
                   />
-                  {currentBooking?.mechanic ? (
-                    <>
-                      <InfoItem
-                        label="Assigned Mechanic"
-                        value={currentBooking?.mechanic.name}
-                      />
-                      <InfoItem
-                        icon={<Phone className="w-5 h-5" />}
-                        label="Contact Number"
-                        value={currentBooking?.mechanic.phone}
-                      />
-                      <div className="flex items-center gap-2 pt-2">
-                        <span className="text-sm text-purple-600 dark:text-slate-400">Rating:</span>
-                        <div className="flex">
-                          {[...Array(5)].map((_, i) => (
-                            <Star
-                              key={i}
-                              className={`w-4 h-4 ${i < Math.round(currentBooking?.mechanic.rating)
-                                ? 'fill-yellow-400 text-yellow-400'
-                                : 'text-gray-300 dark:text-slate-600'
-                                }`}
-                            />
-                          ))}
-                        </div>
-                        <span className="text-sm font-semibold text-yellow-600 dark:text-yellow-400">
-                          {currentBooking?.mechanic?.rating}
-                        </span>
-                      </div>
-                    </>
-                  ) : (
-                    <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 dark:bg-amber-900/20 dark:border-amber-700">
-                      <p className="font-semibold text-amber-700 dark:text-amber-400">⏳ Mechanic not assigned yet</p>
-                      <p className="text-sm mt-1 text-amber-600 dark:text-amber-300">We're finding the best mechanic for you</p>
-                    </div>
-                  )}
+                </div>
+                <div className="mt-3 flex items-center justify-between text-xs text-slate-500">
+                  <div className="flex items-center gap-1.5">
+                    <span className={`h-2 w-2 rounded-full ${trackingData.mechanicOnline ? 'bg-emerald-500 animate-pulse' : 'bg-slate-300'}`} />
+                    <span>Mechanic {trackingData.mechanicOnline ? 'Online' : 'Offline'}</span>
+                  </div>
+                  <span>{trackingData.pathCoordinates?.length || 0} path points</span>
                 </div>
               </Card>
-            </div>
+            )}
 
-            {/* Description */}
-            <div className="animate-fade-in delay-200">
-              <h3 className="text-xl font-bold mb-4 flex items-center gap-2 text-slate-800 dark:text-slate-200">
-                <FileText className="w-6 h-6" />
-                Problem Description
-              </h3>
-              <Card className="p-6 shadow-md border-0 bg-slate-50 dark:bg-slate-700">
-                <p className="leading-relaxed text-slate-700 dark:text-slate-300">
-                  {currentBooking?.description}
-                </p>
-              </Card>
-            </div>
-
-            {/* Images */}
-            {currentBooking?.images && currentBooking?.images.length > 0 && (
-              <div className="animate-fade-in delay-300">
-                <h3 className="text-xl font-bold mb-4 flex items-center gap-2 text-slate-800 dark:text-slate-200">
-                  <ImageIcon className="w-6 h-6" />
-                  Attached Images
-                </h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {currentBooking?.images.map((image, index) => (
-                    <div
-                      key={index}
-                      className="relative overflow-hidden rounded-2xl group cursor-pointer transform transition-all duration-300 hover:scale-105 hover:shadow-2xl shadow-lg dark:shadow-slate-900/50"
-                      style={{ animationDelay: `${index * 100}ms` }}
+            {/* images */}
+            {bk?.images?.length > 0 && (
+              <Card>
+                <SectionHeader icon={ImageIcon} iconClass="bg-fuchsia-50 text-fuchsia-600" title="Attached Images" />
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  {bk.images.map((img, i) => (
+                    <button
+                      key={i}
+                      onClick={() => window.open(img, '_blank')}
+                      className="group relative overflow-hidden rounded-2xl border border-slate-100 bg-slate-50 aspect-video transition-all duration-300 hover:shadow-lg hover:scale-[1.02] active:scale-95"
                     >
-                      <img
-                        src={image}
-                        alt={`Booking ${index + 1}`}
-                        className="w-full h-64 object-cover transition-transform duration-500 group-hover:scale-110"
-                      />
-                      <div className="absolute inset-0 bg-linear-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                      <div className="absolute bottom-4 left-4 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-                        <p className="font-semibold">Image {index + 1}</p>
+                      <img src={img} alt={`Booking image ${i + 1}`} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-110" />
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/0 transition-colors duration-300 group-hover:bg-black/20">
+                        <span className="text-xs font-semibold text-white opacity-0 transition-opacity duration-300 group-hover:opacity-100">View</span>
                       </div>
-                    </div>
+                    </button>
                   ))}
                 </div>
-              </div>
-            )}
-
-            {/* Payment Details */}
-            {currentBooking?.status === 'completed' && currentBooking?.payment && (
-              <Card className="animate-fade-in delay-400 border-0 shadow-lg overflow-hidden bg-white dark:bg-slate-700">
-                <div className="bg-linear-to-r from-emerald-500 to-teal-500 dark:from-emerald-800 dark:to-teal-800 px-6 py-4">
-                  <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                    <DollarSign className="w-6 h-6" />
-                    Payment Details
-                  </h3>
-                </div>
-                <CardContent className="p-8 space-y-6">
-                  <div className="flex justify-between items-center">
-                    <span className="text-lg text-slate-600 dark:text-slate-400">Total Amount:</span>
-                    <span className="text-4xl font-bold text-emerald-600 dark:text-emerald-400">
-                      ${currentBooking?.payment.amount.toFixed(2)}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-slate-600 dark:text-slate-400">Payment Status:</span>
-                    <Badge className={`${currentBooking?.payment.status === 'completed' ? 'bg-emerald-500' : 'bg-amber-500'} text-white px-4 py-2`}>
-                      {currentBooking?.payment.status}
-                    </Badge>
-                  </div>
-
-                  {currentBooking.payment.status === 'pending' && (
-                    <Button 
-                      onClick={handleOpenPaymentModal}
-                      disabled={loading}
-                      className="w-full py-6 text-lg bg-linear-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white shadow-lg transition-all duration-300 hover:shadow-xl hover:scale-105"
-                    >
-                      <CreditCard className="w-5 h-5 mr-2" />
-                      Make Payment Now
-                    </Button>
-                  )}
-
-                  {currentBooking?.payment.status === 'completed' && currentBooking?.payment.transactionId && (
-                    <>
-                      <div className="text-sm text-slate-600 dark:text-slate-400">
-                        <strong>Transaction ID:</strong> {currentBooking?.payment.transactionId}
-                      </div>
-                      <Alert className="bg-emerald-50 border-emerald-200 dark:bg-emerald-900/20 dark:border-emerald-700 border-2">
-                        <CheckCircle className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
-                        <AlertDescription className="font-semibold text-emerald-800 dark:text-emerald-300">
-                          Payment completed successfully!
-                        </AlertDescription>
-                      </Alert>
-                    </>
-                  )}
-                </CardContent>
               </Card>
             )}
 
-            {/* Nearby Mechanics */}
-            {currentBooking?.status === 'pending' && !currentBooking?.mechanic && (
-              <div className="animate-fade-in delay-500">
-                <h3 className="text-xl font-bold mb-6 flex items-center gap-2 text-slate-800 dark:text-slate-200">
-                  <UserCheck className="w-6 h-6" />
-                  Available Mechanics Nearby
-                </h3>
-                {nearbyMechanics.length === 0 ? (
-                  <Card className="p-8 text-center border-0 shadow-lg bg-amber-50 dark:bg-amber-900/20">
-                    <AlertCircle className="w-16 h-16 mx-auto mb-4 text-amber-500" />
-                    <h4 className="text-xl font-semibold mb-2 text-amber-900 dark:text-amber-100">No Mechanics Available</h4>
-                    <p className="text-amber-700 dark:text-amber-300 mb-4">
-                      Currently, there are no approved mechanics within 10km of your location.
-                    </p>
-                    <p className="text-sm text-amber-600 dark:text-amber-400">
-                      Please try again later or contact support for assistance.
-                    </p>
-                  </Card>
+            {/* nearby mechanics */}
+            {bk?.status === 'pending' && !bk?.mechanic && (
+              <Card>
+                <SectionHeader icon={UserCheck} iconClass="bg-teal-50 text-teal-600" title="Available Mechanics Nearby" />
+                {nearbyMechanics?.length === 0 ? (
+                  <div className="flex flex-col items-center gap-3 py-10">
+                    <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-amber-50">
+                      <AlertCircle className="h-8 w-8 text-amber-500" />
+                    </div>
+                    <p className="text-sm font-bold text-slate-700">No Mechanics Available</p>
+                    <p className="text-xs text-slate-500 text-center max-w-xs">No approved mechanics within 10km of your location. Please try again later.</p>
+                  </div>
                 ) : (
                   <>
-                    <div className="grid md:grid-cols-2 gap-6">
-                  {nearbyMechanics.map((mechanic, index) => (
-                    <Card
-                      key={mechanic._id}
-                      className={`hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 border-2 overflow-hidden ${
-                        selectedMechanicId === mechanic._id
-                          ? 'border-green-500 bg-green-50 dark:bg-green-900/20'
-                          : 'border-transparent bg-white hover:bg-slate-50 dark:bg-slate-700 dark:hover:bg-slate-650'
-                      }`}
-                      style={{ animationDelay: `${index * 100}ms` }}
-                    >
-                      <CardContent className="p-6">
-                        {selectedMechanicId === mechanic._id && (
-                          <div className="flex items-center gap-2 mb-3 text-green-600 dark:text-green-400 font-semibold">
-                            <CheckCircle className="w-5 h-5" />
-                            <span>Selected</span>
-                          </div>
-                        )}
-                        <div className="flex justify-between items-start mb-4">
-                          <div>
-                            <h4 className="font-bold text-xl mb-1 text-slate-800 dark:text-slate-200">{mechanic.name}</h4>
-                            <p className="text-sm text-slate-600 dark:text-slate-400">Professional Mechanic</p>
-                          </div>
-                          <div className="flex flex-col items-end">
-                            <div className="flex mb-1">
-                              {[...Array(5)].map((_, i) => (
-                                <Star
-                                  key={i}
-                                  className={`w-4 h-4 ${
-                                    i < Math.round(mechanic.rating)
-                                      ? 'fill-yellow-400 text-yellow-400'
-                                      : 'text-gray-300 dark:text-slate-600'
-                                  }`}
-                                />
-                              ))}
-                            </div>
-                            <span className="text-sm font-semibold text-yellow-600 dark:text-yellow-400">
-                              {mechanic?.rating?.toFixed(1)}
-                            </span>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2 mb-3 p-3 rounded-lg bg-slate-100 dark:bg-slate-600">
-                          <Phone className="w-4 h-4 text-slate-600 dark:text-slate-400" />
-                          <p className="font-medium text-slate-700 dark:text-slate-300">{mechanic.phone}</p>
-                        </div>
-                        <div className="flex items-center gap-2 mb-6 p-3 rounded-lg bg-slate-100 dark:bg-slate-600">
-                          <Mail className="w-4 h-4 text-slate-600 dark:text-slate-400" />
-                          <p className="font-medium text-slate-700 dark:text-slate-300 truncate">{mechanic.email}</p>
-                        </div>
-                        <Button
-                          onClick={() => handleSelectMechanic(mechanic._id)}
-                          className={`w-full py-6 shadow-lg transition-all duration-300 hover:shadow-xl hover:scale-105 ${
-                            selectedMechanicId === mechanic._id
-                              ? 'bg-green-600 hover:bg-green-700 text-white'
-                              : 'bg-linear-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white'
-                          }`}
-                        >
-                          {selectedMechanicId === mechanic._id ? (
-                            <>
-                              <CheckCircle className="w-5 h-5 mr-2" />
-                              Selected
-                            </>
-                          ) : (
-                            <>
-                              <UserCheck className="w-5 h-5 mr-2" />
-                              Select This Mechanic
-                            </>
-                          )}
-                        </Button>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-                {selectedMechanicId && (
-                  <div className="mt-8 animate-fade-in">
-                    <Button
-                      onClick={handleConfirmMechanic}
-                      disabled={loading}
-                      className="w-full py-8 text-xl bg-linear-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white shadow-2xl transition-all duration-300 hover:shadow-3xl hover:scale-105"
-                    >
-                      <CheckCircle className="w-6 h-6 mr-3" />
-                      Send Request to Mechanic
-                    </Button>
-                  </div>
-                )}
-                  </>
-                )}
-              </div>
-            )}
-
-            {/* Rating Form */}
-            {currentBooking?.status === 'completed' &&
-              currentBooking?.payment &&
-              currentBooking?.payment.status === 'completed' &&
-              !currentBooking?.rating && (
-                <Card className="animate-fade-in delay-600 border-0 shadow-lg overflow-hidden bg-linear-to-br from-amber-50 to-orange-50 dark:bg-slate-700">
-                  <div className="bg-linear-to-r from-amber-500 to-orange-500 dark:from-amber-800 dark:to-orange-800 px-6 py-4">
-                    <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                      <Star className="w-6 h-6" />
-                      Rate Your Experience
-                    </h3>
-                  </div>
-                  <CardContent className="p-8">
-                    <div className="space-y-6">
-                      <div>
-                        <Label className="mb-4 block text-lg font-semibold text-slate-800 dark:text-slate-200">
-                          How would you rate the service?
-                        </Label>
-                        <div className="flex gap-3 justify-center mb-6">
-                          {[1, 2, 3, 4, 5].map((rating) => (
-                            <button
-                              key={rating}
-                              type="button"
-                              onClick={() => setSelectedRating(rating)}
-                              className="transition-all duration-300 hover:scale-125"
-                            >
-                              <Star
-                                className={`w-12 h-12 cursor-pointer transition-all duration-300 ${rating <= selectedRating
-                                  ? 'fill-yellow-400 text-yellow-400 drop-shadow-lg'
-                                  : 'text-gray-300 hover:text-yellow-200 dark:text-slate-600 dark:hover:text-slate-500'
-                                  }`}
-                              />
-                            </button>
-                          ))}
-                        </div>
-                        <p className="text-center text-sm text-slate-600 dark:text-slate-400">
-                          {selectedRating === 1 && "Poor"}
-                          {selectedRating === 2 && "Fair"}
-                          {selectedRating === 3 && "Good"}
-                          {selectedRating === 4 && "Very Good"}
-                          {selectedRating === 5 && "Excellent"}
-                        </p>
-                      </div>
-
-                      <div>
-                        <Label htmlFor="comment" className="mb-2 block font-semibold text-slate-800 dark:text-slate-200">
-                          Share Your Feedback (Optional)
-                        </Label>
-                        <Textarea
-                          id="comment"
-                          value={comment}
-                          onChange={(e) => setComment(e.target.value)}
-                          placeholder="Tell us about your experience with the mechanic..."
-                          rows={4}
-                          className="mt-2 bg-white dark:bg-slate-600 dark:text-slate-200 dark:border-slate-500"
-                        />
-                      </div>
-
-                      <Button
-                        onClick={handleRatingSubmit}
-                        className="w-full py-6 text-lg bg-linear-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white shadow-lg transition-all duration-300 hover:shadow-xl hover:scale-105"
-                      >
-                        <Star className="w-5 h-5 mr-2" />
-                        Submit Rating
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-
-            {/* Existing Rating Display */}
-            {currentBooking?.rating && (
-              <Card className="animate-fade-in delay-600 border-0 shadow-lg bg-slate-50 dark:bg-slate-700">
-                <CardHeader>
-                  <CardTitle className="text-xl flex items-center gap-2 text-slate-800 dark:text-slate-200">
-                    <Star className="w-6 h-6" />
-                    Your Rating
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-6">
-                  <div className="flex items-center gap-6 mb-4">
-                    <div className="flex">
-                      {[1, 2, 3, 4, 5].map((rating) => (
-                        <Star
-                          key={rating}
-                          className={`w-6 h-6 ${rating <= currentBooking.rating.value
-                            ? 'fill-yellow-400 text-yellow-400'
-                            : 'text-gray-300 dark:text-slate-600'
-                            }`}
-                        />
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {nearbyMechanics.map((m) => (
+                        <MechanicCard key={m._id} mechanic={m} selected={selectedMechanicId === m._id} onSelect={setSelectedMechanicId} />
                       ))}
                     </div>
-                    <span className="text-sm text-slate-500 dark:text-slate-400">
-                      {new Date(currentBooking.rating.createdAt).toLocaleDateString()}
-                    </span>
-                  </div>
-                  {currentBooking.rating.comment ? (
-                    <p className="leading-relaxed text-slate-700 dark:text-slate-300">{currentBooking.rating.comment}</p>
-                  ) : (
-                    <p className="italic text-slate-400 dark:text-slate-500">No comment provided</p>
-                  )}
-                </CardContent>
+                    {selectedMechanicId && (
+                      <div className="mt-5 animate-[slideDown_0.3s_ease-out]">
+                        <ActionButton
+                          onClick={handleConfirmMechanic}
+                          icon={Zap}
+                          label="Send Request to Mechanic"
+                          variant="emerald"
+                          disabled={loading}
+                        />
+                      </div>
+                    )}
+                  </>
+                )}
               </Card>
             )}
 
-            {/* Action Buttons */}
-            <div className="flex flex-col sm:flex-row justify-between gap-4 pt-8 border-t border-slate-200 dark:border-slate-700">
-              <Button
-                variant="outline"
-                onClick={() => navigate('/user/dashboard')}
-                className="py-6 px-8 text-base font-semibold transition-all duration-300 hover:scale-105 border-slate-300 text-slate-700 hover:bg-slate-100 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-700"
-              >
-                <ArrowLeft className="w-5 h-5 mr-2" />
-                Back to Dashboard
-              </Button>
+            {/* rating form */}
+            {canRate && (
+              <Card>
+                <SectionHeader icon={Star} iconClass="bg-amber-50 text-amber-600" title="Rate Your Experience" />
+                <div className="space-y-4">
+                  <div className="flex flex-col items-center gap-3 py-4">
+                    <StarRow value={selectedRating} interactive onChange={setSelectedRating} />
+                    <p className="text-sm font-semibold text-slate-600">
+                      {['', 'Poor', 'Fair', 'Good', 'Very Good', 'Excellent'][selectedRating]}
+                    </p>
+                  </div>
+                  <div>
+                    <Label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-slate-500">
+                      Feedback (Optional)
+                    </Label>
+                    <textarea
+                      value={comment}
+                      onChange={(e) => setComment(e.target.value)}
+                      placeholder="Tell us about your experience..."
+                      rows={3}
+                      className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800 placeholder:text-slate-400 outline-none transition-all focus:border-blue-400 focus:ring-2 focus:ring-blue-100 resize-none"
+                    />
+                  </div>
+                  <ActionButton onClick={handleRatingSubmit} icon={Star} label="Submit Rating" variant="primary" />
+                </div>
+              </Card>
+            )}
 
-              <div className="flex flex-col sm:flex-row gap-3">
-                {(currentBooking?.status === 'pending' || currentBooking?.status === 'accepted') && (
-                  <Button
-                    onClick={handleCancelBooking}
-                    className="py-6 px-8 text-base font-semibold bg-linear-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white shadow-lg transition-all duration-300 hover:shadow-xl hover:scale-105"
-                  >
-                    <XCircle className="w-5 h-5 mr-2" />
-                    Cancel Booking
-                  </Button>
+            {/* existing rating */}
+            {bk?.rating && (
+              <Card>
+                <SectionHeader icon={Star} iconClass="bg-amber-50 text-amber-600" title="Your Rating" />
+                <div className="flex items-center gap-3 mb-3">
+                  <StarRow value={bk.rating.value} />
+                  <span className="text-xs text-slate-400">{new Date(bk.rating.createdAt).toLocaleDateString()}</span>
+                </div>
+                <p className={`text-sm leading-relaxed ${bk.rating.comment ? 'text-slate-700' : 'italic text-slate-400'}`}>
+                  {bk.rating.comment || 'No comment provided'}
+                </p>
+              </Card>
+            )}
+          </div>
+
+          {/* ── RIGHT ── */}
+          <div className="space-y-6">
+
+            {/* payment */}
+            {bk?.payment && (
+              <Card>
+                <SectionHeader icon={DollarSign} iconClass="bg-emerald-50 text-emerald-600" title="Payment" />
+                <div className="space-y-3 mb-4">
+                  <div className="flex items-center justify-between rounded-2xl bg-emerald-50 px-4 py-4">
+                    <span className="text-xs font-bold uppercase tracking-wider text-emerald-600">Total</span>
+                    <span className="text-2xl font-extrabold tracking-tight text-emerald-700">
+                      ${bk.payment.amount?.toFixed(2)}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3">
+                    <span className="text-xs font-bold uppercase tracking-wider text-slate-400">Status</span>
+                    <span className={`rounded-full px-3 py-1 text-xs font-bold capitalize ${bk.payment.status === 'completed' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                      {bk.payment.status}
+                    </span>
+                  </div>
+                  {bk.payment.transactionId && (
+                    <div className="rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-xs text-emerald-700">
+                      <span className="font-semibold">Txn:</span> {bk.payment.transactionId}
+                    </div>
+                  )}
+                </div>
+                {canPay && (
+                  <ActionButton onClick={() => setIsPaymentModalOpen(true)} icon={CreditCard} label="Make Payment Now" variant="emerald" />
+                )}
+                {bk.payment.status === 'completed' && (
+                  <div className="flex items-center gap-2 rounded-2xl bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700">
+                    <CheckCircle className="h-4 w-4" /> Payment completed
+                  </div>
+                )}
+              </Card>
+            )}
+
+            {/* actions */}
+            <Card>
+              <SectionHeader icon={Shield} iconClass="bg-slate-100 text-slate-600" title="Actions" />
+              <div className="flex flex-col gap-3">
+                {/* chat */}
+                {bk?.mechanic && !(bk?.status === 'completed' && bk?.payment?.status === 'completed') && (
+                  <ActionButton onClick={() => setIsChatOpen(true)} icon={MessageSquare} label="Chat with Mechanic" variant="blue" />
                 )}
 
-                {/* Raise Dispute Button - Available for completed bookings */}
-                {(currentBooking?.status === 'completed' || currentBooking?.status === 'in-progress') && !currentBooking?.dispute?.hasDispute && (
+                {/* cancel */}
+                {(bk?.status === 'pending' || bk?.status === 'accepted') && (
+                  <ActionButton onClick={handleCancelBooking} icon={XCircle} label="Cancel Booking" variant="rose" />
+                )}
+
+                {/* dispute */}
+                {(bk?.status === 'completed' || bk?.status === 'in-progress') && !bk?.dispute?.hasDispute && (
                   <RaiseDisputeDialog
-                    bookingId={currentBooking?._id}
+                    bookingId={bk?._id}
                     onSuccess={() => dispatch(fetchBookingDetails(id))}
                     trigger={
-                      <Button
-                        variant="outline"
-                        className="py-6 px-8 text-base font-semibold border-red-300 text-red-600 hover:bg-red-50 dark:border-red-700 dark:text-red-400 dark:hover:bg-red-900/20 transition-all duration-300 hover:scale-105"
-                      >
-                        <AlertTriangle className="w-5 h-5 mr-2" />
-                        Raise Dispute
-                      </Button>
+                      <button className="group relative flex w-full items-center justify-between gap-3 overflow-hidden rounded-2xl border border-rose-200 px-5 py-4 text-sm font-bold text-rose-600 transition-all duration-200 hover:bg-rose-50 active:scale-95">
+                        <div className="flex items-center gap-2.5">
+                          <AlertTriangle className="h-4.5 w-4.5" />
+                          Raise Dispute
+                        </div>
+                        <ChevronRight className="h-4 w-4 opacity-50" />
+                      </button>
                     }
                   />
                 )}
 
-                {/* Show dispute status if already raised */}
-                {currentBooking?.dispute?.hasDispute && (
-                  <Badge className="py-3 px-6 text-sm bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300 border border-yellow-300">
-                    <AlertTriangle className="w-4 h-4 mr-2" />
-                    Dispute {currentBooking.dispute.status}
-                  </Badge>
+                {/* dispute status */}
+                {bk?.dispute?.hasDispute && (
+                  <div className="flex items-center gap-2 rounded-2xl bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-700">
+                    <AlertTriangle className="h-4 w-4" />
+                    Dispute {bk.dispute.status}
+                  </div>
                 )}
 
-                {currentBooking?.mechanic && 
-                 !(currentBooking.status === 'completed' && currentBooking.payment?.status === 'completed') && (
-                  <Button
-                    onClick={() => setIsChatOpen(true)}
-                    className="py-6 px-8 text-base font-semibold bg-linear-to-r from-blue-500 to-purple-600 
-                   hover:from-blue-600 hover:to-purple-700 text-white shadow-lg transition-all 
-                   duration-300 hover:shadow-xl hover:scale-105 flex items-center"
-                  >
-                    <MessageSquare className="w-5 h-5 mr-2" />
-                    Chat with Mechanic
-                  </Button>
+                {isDone && !bk?.dispute?.hasDispute && !(canRate || canPay) && (
+                  <div className="flex items-center gap-3 rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-500">
+                    <CheckCircle className={`h-5 w-5 flex-shrink-0 ${bk?.status === 'completed' ? 'text-emerald-500' : 'text-rose-400'}`} />
+                    Booking is <strong className="text-slate-700 ml-1">{bk?.status}</strong>.
+                  </div>
                 )}
-
-                <ChatModal
-                  isOpen={isChatOpen}
-                  onClose={() => setIsChatOpen(false)}
-                  bookingId={currentBooking?._id}
-                  mechanic={currentBooking?.mechanic}
-                />
-
-                <PaymentModal
-                  isOpen={isPaymentModalOpen}
-                  onClose={() => setIsPaymentModalOpen(false)}
-                  onPayment={handlePayment}
-                  amount={currentBooking?.payment?.amount}
-                  bookingId={currentBooking?._id}
-                  loading={loading}
-                />
-
               </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Tracking Map */}
-        {['accepted', 'in-progress'].includes(currentBooking?.status) && currentBooking?.mechanic && (
-          <Card className="animate-fade-in delay-700 shadow-2xl border-0 bg-white dark:bg-slate-800">
-            <CardHeader className="bg-linear-to-r from-purple-600 to-pink-600 dark:bg-slate-700 text-white py-6">
-              <CardTitle className="text-2xl flex items-center gap-2">
-                <MapPin className="w-6 h-6" />
-                Live Tracking
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-8">
-              <BookingTrackingMap
-                userCoordinates={trackingData.userCoordinates}
-                mechanicCoordinates={trackingData.mechanicCoordinates}
-                pathCoordinates={trackingData.pathCoordinates}
-                className="h-80"
-              />
-              <div className="mt-4 flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">
-                  Mechanic: <span className="font-semibold text-foreground">{trackingData.mechanicOnline ? 'Online' : 'Offline'}</span>
-                </span>
-                <span className="text-muted-foreground">Path points: {trackingData.pathCoordinates?.length || 0}</span>
-              </div>
-            </CardContent>
-          </Card>
-        )}
+            </Card>
+          </div>
+        </div>
       </div>
-    </div>
+
+      {/* modals */}
+      <ChatModal isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} bookingId={bk?._id} mechanic={bk?.mechanic} />
+      <PaymentModal isOpen={isPaymentModalOpen} onClose={() => setIsPaymentModalOpen(false)} onPayment={handlePayment} amount={bk?.payment?.amount} bookingId={bk?._id} loading={loading} />
+
+      <style>{`
+        @keyframes slideDown {
+          from { opacity: 0; transform: translateY(-8px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
+    </main>
   );
-}
+};
 
 export default BookingDetails;
