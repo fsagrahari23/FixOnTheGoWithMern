@@ -33,6 +33,8 @@ const paymentRoutes = require("./routes/payment");
 const bookingRoutes = require("./routes/booking");
 const notificationRoutes = require("./routes/notification");
 const staffRoutes = require("./routes/staff");
+const User = require("./models/User");
+const { initEmailBloomFilter } = require("./utils/bloomFilter");
 
 // Import middleware
 const {
@@ -53,9 +55,19 @@ app.set('io', io);
 // Connect to MongoDB (driver v4+ no longer needs deprecated options)
 mongoose
   .connect(process.env.MONGODB_URI)
-  .then(() => console.log("MongoDB connected"))
-  .catch((err) => console.error("MongoDB connection error:", err));
+  .then(async () => {
+    console.log("MongoDB connected");
+    await initEmailBloomFilter(User);
+    console.log("Email Bloom filter initialized");
 
+    const PORT = process.env.PORT || 3000;
+    server.listen(PORT, () => {
+      logger.info(`Server running on http://localhost:${PORT} in ${isProduction ? 'production' : 'development'} mode`);
+      logger.info(`Swagger Docs at http://localhost:${PORT}/api-docs`);
+    });
+  })
+  .catch((err) => console.error("MongoDB connection error:", err));
+  
 // Set up session with MongoDB store
 app.use(
   session({

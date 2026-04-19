@@ -2,6 +2,9 @@ const express = require("express");
 const router = express.Router();
 const authController = require("../controllers/authController");
 const authMiddleware = require("../middleware/auth");
+const User = require('../models/User');
+const { emailProbablyExists, addEmailToBloom } = require('../utils/bloomFilter');
+const { validateSignup, validateLogin } = require('../middleware/validation');
 
 /**
  * @swagger
@@ -28,14 +31,64 @@ const authMiddleware = require("../middleware/auth");
  */
 router.post("/send-otp", authController.sendOtp);
 router.post("/verify-otp", authController.verifyOtp);
-
-const { validateSignup, validateLogin } = require("../middleware/validation");
-
-router.post("/register-user", validateSignup, authController.registerUser);
-router.post("/register-mechanic", validateSignup, authController.registerMechanic);
-router.post("/login", validateLogin, authController.login);
+router.post("/register-user", authController.registerUser);
+router.post("/register-mechanic", authController.registerMechanic);
+router.post("/login", authController.login);
 router.get("/logout", authController.logout);
 router.get("/me", authMiddleware.isAuthenticated, authController.getMe);
+
+router.post('/signup', validateSignup, async (req, res) => {
+  try {
+    const email = req.body.email.toLowerCase().trim();
+
+    if (emailProbablyExists(email)) {
+      return res.status(409).json({ error: 'Email already registered' });
+    }
+
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(409).json({ error: 'Email already registered' });
+    }
+
+    const user = new User({
+      name: req.body.name.trim(),
+      email,
+      password: req.body.password,
+    });
+
+    await user.save();
+    addEmailToBloom(email);
+
+    return res.status(201).json({ message: 'Signup successful' });
+  } catch (error) {
+    return res.status(500).json({ error: 'Unable to create user' });
+  }
+});
+
+router.post('/login', validateLogin, async (req, res) => {
+  try {
+    const email = req.body.email.toLowerCase().trim();
+
+    if (!emailProbablyExists(email)) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const validPassword = await user.comparePassword(req.body.password);
+    if (!validPassword) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    return res.status(200).json({ message: 'Login successful' });
+    } catch (error) {
+    return res.status(500).json({ error: 'Unable to log in' });
+    }
+});
+
 
 // Forgot Password routes
 router.post("/forgot-password/send-otp", authController.sendForgotPasswordOtp);
