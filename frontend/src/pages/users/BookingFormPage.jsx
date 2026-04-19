@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
-import { apiGet } from '../../lib/api';
+import { apiGet, apiPostForm } from '../../lib/api';
 import { MapPin, Upload, Wrench, Crown, Info, AlertCircle, ArrowLeft, Send, Users } from 'lucide-react';
 import MapPicker from '../../components/MapPicker';
 import { NearbyMechanicsMap } from '../../components/users/dashboard/nearby-mechanics-map';
@@ -409,21 +409,7 @@ const BookingForm = () => {
         });
       }
 
-      // Use fetch directly for FormData
-      // Prefer Vite env var, otherwise default to backend port 3001 in dev
-      const API_PREFIX = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL : (import.meta.env.DEV ? 'http://localhost:3000' : '');
-      const response = await fetch(`${API_PREFIX}/user/book`, {
-        method: 'POST',
-        credentials: 'include',
-        body: formDataToSend,
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || `HTTP ${response.status}: Failed to create booking`);
-      }
-
-      const res = await response.json();
+      const res = await apiPostForm('/user/api/book', formDataToSend);
 
       // Navigate to booking details
       if (res.success && res.bookingId) {

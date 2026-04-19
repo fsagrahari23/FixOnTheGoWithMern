@@ -65,7 +65,7 @@ router.get("/book", checkBookingLimits, async (req, res) => {
 })
 
 // Create new booking
-router.post("/book", checkBookingLimits, async (req, res) => {
+const createBookingHandler = async (req, res) => {
     try {
         const {
             problemCategory,
@@ -238,7 +238,11 @@ router.post("/book", checkBookingLimits, async (req, res) => {
         console.error("Create booking error:", error)
         res.status(500).json({ success: false, message: `Failed to create booking: ${error.message}` })
     }
-})
+}
+
+router.post("/book", checkBookingLimits, createBookingHandler)
+// API alias for SPA/proxy setups where /user/book may be treated as page route
+router.post("/api/book", checkBookingLimits, createBookingHandler)
 
 // View booking details
 router.get("/booking/:id", async (req, res) => {
