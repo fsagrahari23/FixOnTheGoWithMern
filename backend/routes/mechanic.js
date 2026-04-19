@@ -5,6 +5,9 @@ const MechanicProfile = require("../models/MechanicProfile");
 const Booking = require("../models/Booking");
 const Chat = require("../models/Chat");
 const path = require("path");
+const cloudinary = require("../config/cloudinary");
+
+const escapeRegex = (value = "") => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
 // Mechanic dashboard
 router.get("/dashboard", (req, res) => {
@@ -125,6 +128,62 @@ router.get('/api/booking/:id', async (req, res) => {
   }
 });
 
+// Search users by name/email and return all their booking details
+router.get('/api/bookings/search-user', async (req, res) => {
+  try {
+    const query = String(req.query.q || "").trim();
+
+    if (!query) {
+      return res.status(400).json({ success: false, message: "Search query is required" });
+    }
+
+    const safeQuery = escapeRegex(query);
+    const users = await User.find({
+      role: "user",
+      $or: [
+        { name: { $regex: safeQuery, $options: "i" } },
+        { email: { $regex: safeQuery, $options: "i" } }
+      ]
+    })
+      .select("_id name email phone")
+      .limit(20)
+      .lean();
+
+    if (!users.length) {
+      return res.json({ success: true, query, users: [] });
+    }
+
+    const userIds = users.map((u) => u._id);
+    const bookings = await Booking.find({ user: { $in: userIds } })
+      .populate("user", "name email phone")
+      .populate("mechanic", "name email phone")
+      .sort({ createdAt: -1 })
+      .lean();
+
+    const bookingsByUser = new Map();
+    for (const booking of bookings) {
+      const userId = booking.user?._id?.toString();
+      if (!userId) continue;
+      if (!bookingsByUser.has(userId)) bookingsByUser.set(userId, []);
+      bookingsByUser.get(userId).push(booking);
+    }
+
+    const payload = users.map((user) => {
+      const groupedBookings = bookingsByUser.get(String(user._id)) || [];
+      return {
+        ...user,
+        bookingCount: groupedBookings.length,
+        bookings: groupedBookings
+      };
+    });
+
+    return res.json({ success: true, query, users: payload });
+  } catch (error) {
+    console.error("Search user bookings error:", error);
+    return res.status(500).json({ success: false, message: "Failed to search user bookings" });
+  }
+});
+
 // Accept booking
 router.post("/booking/:id/accept", async (req, res) => {
   try {
@@ -163,8 +222,21 @@ router.post("/booking/:id/accept", async (req, res) => {
       await chat.save();
     }
 
-    // Notify the user that their booking was accepted
+    // Notify connected clients immediately so booking UI can switch to live-tracking state
     const io = req.app.get('io');
+    if (io) {
+      const statusPayload = {
+        bookingId: booking._id.toString(),
+        status: booking.status,
+        updatedAt: booking.updatedAt,
+      };
+      io.to(booking.user.toString()).emit('booking-status-changed', statusPayload);
+      if (booking.mechanic) {
+        io.to(booking.mechanic.toString()).emit('booking-status-changed', statusPayload);
+      }
+    }
+
+    // Notify the user that their booking was accepted
     if (io && io.createNotification) {
       await io.createNotification({
         recipient: booking.user,
@@ -233,8 +305,21 @@ router.post("/booking/:id/start", async (req, res) => {
     booking.updatedAt = new Date();
     await booking.save();
 
-    // Notify the user that service has started
+    // Notify connected clients immediately so booking UI can react in real time
     const io = req.app.get('io');
+    if (io) {
+      const statusPayload = {
+        bookingId: booking._id.toString(),
+        status: booking.status,
+        updatedAt: booking.updatedAt,
+      };
+      io.to(booking.user.toString()).emit('booking-status-changed', statusPayload);
+      if (booking.mechanic) {
+        io.to(booking.mechanic.toString()).emit('booking-status-changed', statusPayload);
+      }
+    }
+
+    // Notify the user that service has started
     if (io && io.createNotification) {
       await io.createNotification({
         recipient: booking.user,
@@ -400,8 +485,9 @@ router.get('/profile', (req, res) => {
 
 router.get('/api/profile', async (req, res) => {
   try {
+    const user = await User.findById(req.user._id).select("-password");
     const profile = await MechanicProfile.findOne({ user: req.user._id });
-  res.json({ user: req.user, profile, flash: { success_msg: req.flash('success_msg') || [], error_msg: req.flash('error_msg') || [], error: req.flash('error') || [] } });
+  res.json({ user, profile, flash: { success_msg: req.flash('success_msg') || [], error_msg: req.flash('error_msg') || [], error: req.flash('error') || [] } });
   } catch (error) {
     console.error('Profile API error:', error);
     res.status(500).json({ error: 'Failed to load profile' });
@@ -411,6 +497,8 @@ router.get('/api/profile', async (req, res) => {
 // Update profile
 router.post("/profile", async (req, res) => {
   try {
+    const expectsJson = req.headers.accept?.includes("application/json");
+
     const {
       name,
       phone,
@@ -420,17 +508,44 @@ router.post("/profile", async (req, res) => {
       specialization,
       experience,
       hourlyRate,
+      certifications,
     } = req.body;
+
+    const existingUser = await User.findById(req.user._id);
+    const existingProfile = await MechanicProfile.findOne({ user: req.user._id });
+
+    let parsedCertifications = certifications;
+    if (typeof certifications === "string") {
+      try {
+        parsedCertifications = JSON.parse(certifications);
+      } catch (e) {
+        parsedCertifications = [];
+      }
+    }
+
+    const normalizedSpecialization = Array.isArray(specialization)
+      ? specialization.filter(Boolean)
+      : specialization
+      ? [specialization]
+      : existingProfile?.specialization || [];
+
+    const resolvedAddress = address || existingUser?.location?.address || "";
 
     // Validation
     if (
       !name ||
       !phone ||
-      !address ||
-      !specialization ||
+      !resolvedAddress ||
+      normalizedSpecialization.length === 0 ||
       !experience ||
       !hourlyRate
     ) {
+      if (expectsJson) {
+        return res.status(400).json({
+          success: false,
+          message: "Please fill in all required profile fields (name, phone, address, specialization, experience, hourly rate)",
+        });
+      }
       req.flash("error_msg", "Please fill in all fields");
       return res.redirect("/mechanic/profile");
     }
@@ -439,32 +554,76 @@ router.post("/profile", async (req, res) => {
     await User.findByIdAndUpdate(req.user._id, {
       name,
       phone,
-      address,
       location: {
         type: "Point",
         coordinates: [
           Number.parseFloat(longitude) || 0,
           Number.parseFloat(latitude) || 0,
         ],
+        address: resolvedAddress,
       },
     });
 
     // Update mechanic profile
-    await MechanicProfile.findOneAndUpdate(
+    const normalizedCertifications = Array.isArray(parsedCertifications)
+      ? parsedCertifications
+          .filter((cert) => cert && (cert.name || cert.issuer || cert.year || cert.imageUrl))
+          .map((cert) => ({
+            name: cert.name || "",
+            issuer: cert.issuer || "",
+            year: cert.year ? Number.parseInt(cert.year, 10) : undefined,
+            imageUrl: cert.imageUrl || "",
+            verificationStatus: cert.verificationStatus || "pending",
+          }))
+      : [];
+
+    if (req.files) {
+      for (let i = 0; i < normalizedCertifications.length; i++) {
+        const fileKey = `certFile_${i}`;
+        const certFile = req.files[fileKey];
+        if (!certFile) continue;
+
+        const uploaded = await cloudinary.uploader.upload(certFile.tempFilePath, {
+          folder: "mechanic-certifications",
+          resource_type: "image",
+        });
+
+        normalizedCertifications[i].imageUrl = uploaded.secure_url;
+        normalizedCertifications[i].verificationStatus = "pending";
+      }
+    }
+
+    const updatedProfile = await MechanicProfile.findOneAndUpdate(
       { user: req.user._id },
       {
         specialization: Array.isArray(specialization)
-          ? specialization
-          : [specialization],
+          ? specialization.filter(Boolean)
+          : normalizedSpecialization,
         experience: Number.parseInt(experience),
         hourlyRate: Number.parseFloat(hourlyRate),
-      }
+        certifications: normalizedCertifications,
+      },
+      { new: true }
     );
+
+    if (expectsJson) {
+      return res.status(200).json({
+        success: true,
+        message: "Profile updated successfully",
+        profile: updatedProfile,
+      });
+    }
 
     req.flash("success_msg", "Profile updated successfully");
     res.redirect("/mechanic/profile");
   } catch (error) {
     console.error("Update profile error:", error);
+    if (req.headers.accept?.includes("application/json")) {
+      return res.status(500).json({
+        success: false,
+        message: "Failed to update profile",
+      });
+    }
     req.flash("error_msg", "Failed to update profile");
     res.redirect("/mechanic/profile");
   }
@@ -489,6 +648,44 @@ router.post("/toggle-availability", async (req, res) => {
     console.error("Toggle availability error:", error);
     req.flash("error_msg", "Failed to update availability");
     res.redirect("/mechanic/dashboard");
+  }
+});
+
+// Change mechanic password
+router.post("/change-password", async (req, res) => {
+  try {
+    const { currentPassword, newPassword, confirmPassword } = req.body;
+
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      return res.status(400).json({ success: false, message: "All password fields are required" });
+    }
+
+    if (newPassword !== confirmPassword) {
+      return res.status(400).json({ success: false, message: "New passwords do not match" });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({ success: false, message: "New password must be at least 6 characters long" });
+    }
+
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+
+    const isMatch = await user.comparePassword(currentPassword);
+    if (!isMatch) {
+      return res.status(400).json({ success: false, message: "Current password is incorrect" });
+    }
+
+    user.password = newPassword;
+    user.updatedAt = new Date();
+    await user.save();
+
+    return res.status(200).json({ success: true, message: "Password updated successfully" });
+  } catch (error) {
+    console.error("Mechanic change password error:", error);
+    return res.status(500).json({ success: false, message: "Failed to update password" });
   }
 });
 

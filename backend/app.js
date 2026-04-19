@@ -19,6 +19,9 @@ const isProduction = process.env.NODE_ENV === 'production';
 const AppError = require("./utils/AppError");
 const setupSwagger = require("./swagger");
 const logger = require("./utils/Logger");
+const { graphqlHTTP } = require("express-graphql");
+const mechanicGraphQLSchema = require("./graphql/schema");
+const mechanicResolvers = require("./graphql/resolvers");
 const metricsMiddleware = require("./middleware/metircs.middleware")
 const { register } = require("./metrics/prometheus");
 const globalRateLimiter = require("./middleware/rateLimiter");
@@ -28,13 +31,18 @@ const userRoutes = require("./routes/user");
 const emergencyRoutes = require("./routes/emergency");
 const mechanicRoutes = require("./routes/mechanic");
 const adminRoutes = require("./routes/admin");
+const staffRoutes = require("./routes/staff");
 const chatRoutes = require("./routes/chat");
 const paymentRoutes = require("./routes/payment");
 const bookingRoutes = require("./routes/booking");
 const notificationRoutes = require("./routes/notification");
+<<<<<<< HEAD
 const staffRoutes = require("./routes/staff");
 const User = require("./models/User");
 const { initEmailBloomFilter } = require("./utils/bloomFilter");
+=======
+const sharedSession = require("express-socket.io-session");
+>>>>>>> 9c95608638ef812f83ffbf2751a84f09aa565024
 
 // Import middleware
 const authMiddleware = require("./middleware/auth");
@@ -46,7 +54,17 @@ const isMechanic = authMiddleware.isMechanic;
 // Initialize Express app
 const app = express();
 const server = http.createServer(app);
-const io = socketIo(server);
+const io = socketIo(server, {
+  cors: {
+    origin: process.env.FRONTEND_URL,
+    methods: ["GET", "POST"],
+    credentials: true
+  }
+});
+
+// Trust proxy for cross-origin cookies in production (e.g., Render)
+app.set('trust proxy', 1);
+
 // Make io available to routes via app.get('io')
 app.set('io', io);
 
@@ -73,15 +91,16 @@ app.use(
     resave: false,
     saveUninitialized: false,
     store: MongoStore.create({ mongoUrl: process.env.MONGODB_URI }),
-    cookie: { 
+    cookie: {
       maxAge: 1000 * 60 * 60 * 24, // 1 day
       httpOnly: true,
-      sameSite: 'lax',
-      secure: false // Set to true in production with HTTPS
+      sameSite: isProduction ? "none" : "lax",
+      secure: isProduction// Set to true in production with HTTPS
     }
   })
 );
 
+console.log(isProduction)
 // File upload middleware (before express.json)
 app.use(fileUpload({
   useTempFiles: true,
@@ -111,7 +130,7 @@ app.use((req, res, next) => {
 });
 
 
- 
+
 
 // Pipe Morgan to Winston
 // Create a stream for Morgan to write to Winston at 'http' level
@@ -149,12 +168,11 @@ if (process.env.NODE_ENV === 'production') {
 
 
 
-app.use(cors(
-  {
-    origin: true,
-    credentials: true
-  }
-))
+app.use(cors({
+  origin: process.env.FRONTEND_URL,
+  credentials: true,
+  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+}));
 
 // Passport middleware
 app.use(passport.initialize());
@@ -183,6 +201,27 @@ app.use("/user", isAuthenticated, isUser, userRoutes);
 app.use("/user", isAuthenticated, isUser, bookingRoutes);
 app.use("/user", isAuthenticated, isUser, emergencyRoutes);
 app.use("/mechanic", isAuthenticated, isMechanic, mechanicRoutes);
+app.use("/staff", isAuthenticated, isStaff, staffRoutes);
+
+// Mechanic GraphQL endpoint
+app.use(
+  "/mechanic/graphql",
+  isAuthenticated,
+  isMechanic,
+  graphqlHTTP((req) => ({
+    schema: mechanicGraphQLSchema,
+    graphiql: process.env.NODE_ENV !== "production",
+    context: {
+      user: req.user,
+      flash: {
+        success_msg: req.flash ? req.flash("success_msg") || [] : [],
+        error_msg: req.flash ? req.flash("error_msg") || [] : [],
+        error: req.flash ? req.flash("error") || [] : [],
+      },
+      resolvers: mechanicResolvers,
+    },
+  }))
+);
 app.use("/admin", isAuthenticated, isAdmin, adminRoutes);
 app.use("/staff", isAuthenticated, staffRoutes);
 app.use("/chat", isAuthenticated, chatRoutes);

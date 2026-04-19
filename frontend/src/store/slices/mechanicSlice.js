@@ -29,7 +29,10 @@ const initialState = {
     analytics: {
         earningsByCategory: [],
         monthlyEarnings: [],
+        weeklyPerformance: [],
         repeatCustomers: [],
+        statusDistribution: [],
+        ratingDistribution: [],
         performance: {}
     },
     

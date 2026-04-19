@@ -26,7 +26,8 @@ import MapPicker from '../../components/MapPicker';
 const Maintenance = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { maintenance, subscription, loading, error } = useSelector((state) => state.booking);
+  const { maintenance, subscription, error } = useSelector((state) => state.booking);
+  const loading = maintenance?.loading;
 
   const [formData, setFormData] = useState({
     preferredDate: '',
@@ -35,6 +36,7 @@ const Maintenance = () => {
     longitude: '',
     notes: ''
   });
+  const [isLocating, setIsLocating] = useState(false);
 
   useEffect(() => {
     dispatch(fetchMaintenanceData());
@@ -99,7 +101,7 @@ const Maintenance = () => {
 
   const quarterInfo = getQuarterInfo();
   const hasMaintenanceFeature = subscription?.features?.maintenanceChecks;
-  const recentMaintenance = maintenance.recentMaintenance?.[0];
+  const recentMaintenance = maintenance?.recentMaintenance?.[0];
 
   if (!hasMaintenanceFeature) {
     return (
@@ -152,9 +154,9 @@ const Maintenance = () => {
         )}
 
         {!recentMaintenance && (
-          <div className="grid lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-8">
             {/* Main Form */}
-            <div className="lg:col-span-2">
+            <div className="lg:col-span-1 xl:col-span-2">
               <Card className="shadow-lg">
                 <CardHeader className="bg-blue-50 dark:bg-slate-700">
                   <CardTitle className="text-xl flex items-center gap-2 text-blue-700 dark:text-blue-300">
@@ -189,9 +191,56 @@ const Maintenance = () => {
                     </div>
 
                     <div>
-                      <Label htmlFor="address" className="text-base font-medium">
-                        Service Location
-                      </Label>
+                      <div className="flex items-center justify-between mb-2">
+                        <Label htmlFor="address" className="text-base font-medium">
+                          Service Location
+                        </Label>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          disabled={isLocating}
+                          onClick={() => {
+                            setIsLocating(true);
+                            if (!navigator.geolocation) {
+                              alert('Geolocation is not supported by your browser');
+                              setIsLocating(false);
+                              return;
+                            }
+                            
+                            navigator.geolocation.getCurrentPosition(
+                              (pos) => {
+                                const { latitude, longitude } = pos.coords;
+                                handleMapChange({ 
+                                  lat: latitude, 
+                                  lng: longitude 
+                                });
+                                setIsLocating(false);
+                              },
+                              (err) => {
+                                let errorMsg = 'Failed to get your location';
+                                if (err.code === 1) errorMsg = 'Location permission denied. Please enable it in browser settings.';
+                                else if (err.code === 2) errorMsg = 'Location position unavailable.';
+                                else if (err.code === 3) errorMsg = 'Location request timed out.';
+                                
+                                alert(errorMsg);
+                                setIsLocating(false);
+                              },
+                              { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+                            );
+                          }}
+                          className="text-blue-600 border-blue-200 hover:bg-blue-50 dark:border-blue-800 dark:hover:bg-blue-900/30 gap-2 h-8 min-w-[140px]"
+                        >
+                          {isLocating ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <MapPin className="w-3.5 h-3.5" />
+                          )}
+                          <span className="text-xs">
+                            {isLocating ? 'Locating...' : 'Use Current Location'}
+                          </span>
+                        </Button>
+                      </div>
                       <div className="mt-2 flex gap-2">
                         <Input
                           type="text"
@@ -204,13 +253,15 @@ const Maintenance = () => {
                           className="flex-1"
                         />
                       </div>
-                      <div className="mt-3">
-                        <Label className="text-sm text-slate-600 dark:text-slate-400 mb-2 block">
-                          Click on the map to select your service location
-                        </Label>
+                      <div className="mt-4">
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mb-3 flex items-center gap-1.5">
+                          <Info className="w-3.5 h-3.5" />
+                          Drag the marker or click on the map to refine your location
+                        </p>
                         <MapPicker
                           onChange={handleMapChange}
-                          className="w-full h-64 rounded-lg border border-slate-200 dark:border-slate-600"
+                          center={formData.latitude && formData.longitude ? { lat: Number(formData.latitude), lng: Number(formData.longitude) } : null}
+                          className="w-full h-64 md:h-80 rounded-xl border border-slate-200 dark:border-slate-700 shadow-inner overflow-hidden"
                         />
                       </div>
                       <input type="hidden" name="latitude" value={formData.latitude} />

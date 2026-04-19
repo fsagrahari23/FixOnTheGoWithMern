@@ -72,7 +72,7 @@ export default function Navbar({ isDark, setIsDark }) {
               <Button
                 variant="ghost"
                 onClick={() => navigate("/auth/login")}
-                className="text-foreground/70 hover:text-primary"
+                className="text-foreground/70 hover:text-white"
               >
                 Login
               </Button>

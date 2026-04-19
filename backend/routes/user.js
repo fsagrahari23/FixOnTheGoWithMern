@@ -1170,21 +1170,61 @@ router.get("/api/profile", async (req, res) => {
     // Calculate remaining bookings for basic users
     const remainingBookings = isPremium ? "Unlimited" : Math.max(0, 2 - activeBookingCount)
 
-    const premiumFeatures = await User.findById(req.user._id).select("premiumFeatures")
+    // Get full user data to ensure every field is included
+    const fullUser = await User.findById(req.user._id).select("-password")
 
     res.json({
-      user: req.user,
+      user: fullUser,
       subscription,
       subscriptionHistory,
       isPremium,
       remainingBookings,
-      premiumFeatures: premiumFeatures.premiumFeatures
+      premiumFeatures: fullUser.premiumFeatures || {}
     })
   } catch (error) {
     console.error("Profile API error:", error)
     res.status(500).json({ error: "Failed to load profile data" })
   }
 })
+
+// Update Profile API (JSON)
+router.post("/api/profile", async (req, res) => {
+  try {
+    const { name, phone, address, latitude, longitude } = req.body;
+
+    if (!name || !phone || !address) {
+      return res.status(400).json({ error: "Name, phone, and address are required" });
+    }
+
+    const updateData = {
+      name,
+      phone,
+      location: {
+        type: "Point",
+        coordinates: [
+          parseFloat(longitude) || 0,
+          parseFloat(latitude) || 0,
+        ],
+        address: address,
+      },
+    };
+
+    const user = await User.findByIdAndUpdate(
+      req.user._id,
+      { $set: updateData },
+      { new: true }
+    ).select("-password");
+
+    res.json({
+      success: true,
+      message: "Profile updated successfully",
+      user,
+    });
+  } catch (error) {
+    console.error("Profile update API error:", error);
+    res.status(500).json({ error: "Failed to update profile" });
+  }
+});
 
 // History API
 router.get("/api/history", async (req, res) => {

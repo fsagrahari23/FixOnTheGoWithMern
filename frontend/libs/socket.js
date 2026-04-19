@@ -2,8 +2,14 @@ import { io } from "socket.io-client";
 
 let socketInstance = null;
 
+const SOCKET_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL ||
+  import.meta.env.VITE_API_URL ||
+  "http://localhost:3000";
+
 export const getSocket = () => {
   if (!socketInstance) {
+<<<<<<< HEAD
     socketInstance = io(
       import.meta.env.VITE_API_BASE_URL || "http://localhost:3000",
       {
@@ -13,6 +19,13 @@ export const getSocket = () => {
       }
     );
 
+=======
+    socketInstance = io(SOCKET_BASE_URL, {
+      withCredentials: true,
+      transports: ["websocket", "polling"],
+      autoConnect: true,
+    });
+>>>>>>> 9c95608638ef812f83ffbf2751a84f09aa565024
     console.log("Frontend: Socket initialized");
 
     socketInstance.on("connect", () => {

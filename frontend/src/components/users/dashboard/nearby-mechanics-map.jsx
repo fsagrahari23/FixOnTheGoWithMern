@@ -23,7 +23,7 @@ import { toast } from "sonner"
 import io from "socket.io-client"
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:3001"
-const SOCKET_URL = import.meta.env.VITE_SOCKET_URL || "http://localhost:3001"
+const SOCKET_URL = import.meta.env.VITE_API_BASE_URL || "http://localhost:3001"
 
 export function NearbyMechanicsMap({ 
   onMechanicSelect, 
@@ -70,16 +70,19 @@ export function NearbyMechanicsMap({
 
     socketRef.current.on("nearby-mechanics-list", (data) => {
       if (data.mechanics) {
-        setMechanics(prev => {
-          const newMechanics = [...prev]
-          data.mechanics.forEach(m => {
-            const idx = newMechanics.findIndex(nm => nm._id === m.mechanicId)
-            if (idx >= 0) {
-              newMechanics[idx] = { ...newMechanics[idx], ...m, isOnline: m.isOnline }
-            }
-          })
-          return newMechanics
-        })
+        // Transform the nested data structure to match what the component expects
+        const mappedMechanics = data.mechanics.map(m => ({
+          _id: m.mechanicId,
+          name: m.name,
+          profileImage: m.profileImage,
+          location: { coordinates: m.coordinates },
+          isOnline: m.isOnline,
+          distanceKm: m.distanceKm,
+          lastSeen: m.lastSeen,
+          profile: m.profile
+        }));
+        setMechanics(mappedMechanics);
+        setLoading(false);
       }
     })
 
@@ -128,43 +131,29 @@ export function NearbyMechanicsMap({
     }
   }, [coordinates])
 
-  // Fetch nearby mechanics
-  const fetchNearbyMechanics = useCallback(async () => {
-    if (!userLocation) return
+  // Fetch nearby mechanics via Socket
+  const fetchNearbyMechanics = useCallback(() => {
+    if (!userLocation || !socketRef.current?.connected) return
 
     setRefreshing(true)
-    try {
-      const response = await fetch(
-        `${API_BASE}/user/api/mechanics/nearby?lat=${userLocation.lat}&lng=${userLocation.lng}&radius=10000`,
-        { credentials: "include" }
-      )
-      const data = await response.json()
-      if (data.success) {
-        setMechanics(data.mechanics)
-        
-        // Start watching for real-time updates
-        if (socketRef.current?.connected) {
-          socketRef.current.emit("watch-nearby-mechanics", {
-            lat: userLocation.lat,
-            lng: userLocation.lng,
-            radius: 10000,
-          })
-        }
-      }
-    } catch (error) {
-      console.error("Failed to fetch nearby mechanics:", error)
-      toast.error("Failed to load nearby mechanics")
-    } finally {
-      setLoading(false)
+    socketRef.current.emit("watch-nearby-mechanics", {
+      lat: userLocation.lat,
+      lng: userLocation.lng,
+      radius: 10000,
+    })
+    
+    // Set a timeout to stop the refreshing state if socket doesn't respond quickly
+    setTimeout(() => {
       setRefreshing(false)
-    }
+      setLoading(false)
+    }, 2000)
   }, [userLocation])
 
   useEffect(() => {
-    if (userLocation) {
+    if (userLocation && connected) {
       fetchNearbyMechanics()
     }
-  }, [userLocation, fetchNearbyMechanics])
+  }, [userLocation, connected, fetchNearbyMechanics])
 
   // Initialize map
   useEffect(() => {

@@ -66,7 +66,7 @@ export function StatsCards() {
                 return (
                     <Card
                         key={stat.label}
-                        className="overflow-hidden border hover:shadow-lg hover:scale-[1.01] transition-all bg-card"
+                        className="overflow-hidden border hover:shadow-lg hover:scale-[1.01] transition-all bg-card dark:card-glow"
                     >
                         <CardContent className="p-5 flex items-center justify-between">
                             <div>

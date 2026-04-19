@@ -17,6 +17,7 @@ router.post("/change-password", staffController.changePassword);
 router.use(authMiddleware.isAuthenticated);
 // Dashboard
 router.get("/dashboard", staffController.getDashboardData);
+router.get("/analytics", staffController.getAnalyticsData);
 
 // ==================== SUPPORT CHAT ROUTES ====================
 // Get all support chats for staff
@@ -262,6 +263,9 @@ router.get("/mechanics/pending", staffController.getPendingMechanics);
 router.get("/mechanic/:id", staffController.getMechanicDetails);
 router.post("/mechanic/:id/approve", staffController.approveMechanic);
 router.post("/mechanic/:id/reject", staffController.rejectMechanic);
+router.get("/certifications/pending", staffController.getPendingCertificationRequests);
+router.post("/mechanic/:id/certification/:certIndex/approve", staffController.approveCertification);
+router.post("/mechanic/:id/certification/:certIndex/reject", staffController.rejectCertification);
 
 // Dispute/Conflict resolution
 router.get("/disputes", staffController.getDisputedBookings);

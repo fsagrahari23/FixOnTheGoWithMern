@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -12,6 +13,7 @@ import { DollarSign, CreditCard, Clock, TrendingUp } from "lucide-react";
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:3000";
 
 export default function Payment() {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [payments, setPayments] = useState([]);
@@ -338,7 +340,7 @@ export default function Payment() {
                         {payment.payment?.transactionId || 'N/A'}
                       </TableCell>
                       <TableCell>
-                        <Button variant="outline" size="sm">View</Button>
+                        <Button variant="outline" size="sm" onClick={() => navigate(`/admin/payment/${payment._id}`)}>View</Button>
                       </TableCell>
                     </TableRow>
                   ))}

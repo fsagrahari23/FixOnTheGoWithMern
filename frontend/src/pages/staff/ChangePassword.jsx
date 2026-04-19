@@ -10,7 +10,7 @@ import { Lock, AlertCircle, CheckCircle } from 'lucide-react'
 import { toast } from 'sonner'
 import { resetAuthState } from '../../store/slices/authSlice'
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:3001"
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:3000"
 
 export default function ChangePassword() {
     const navigate = useNavigate()

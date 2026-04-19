@@ -31,13 +31,6 @@ const bookingSlice = createSlice({
         nearbyMechanics: [],
         subscription: null,
         freeTowingRemaining: 0,
-        // Chat state
-        chat: {
-            messages: [],
-            unreadCount: 0,
-            loading: false,
-            error: null,
-        },
         // Maintenance state
         maintenance: {
             recentMaintenance: [],
@@ -83,7 +76,6 @@ const bookingSlice = createSlice({
             })
             .addCase(createBooking.fulfilled, (state, action) => {
                 state.loading = false;
-                // Optionally add the new booking to the list
             })
             .addCase(createBooking.rejected, (state, action) => {
                 state.loading = false;
@@ -109,7 +101,6 @@ const bookingSlice = createSlice({
             })
             .addCase(selectMechanic.fulfilled, (state, action) => {
                 state.loading = false;
-                // Update the current booking if needed
             })
             .addCase(selectMechanic.rejected, (state, action) => {
                 state.loading = false;
@@ -120,7 +111,6 @@ const bookingSlice = createSlice({
             })
             .addCase(cancelBooking.fulfilled, (state, action) => {
                 state.loading = false;
-                // Update booking status
             })
             .addCase(cancelBooking.rejected, (state, action) => {
                 state.loading = false;
@@ -131,7 +121,6 @@ const bookingSlice = createSlice({
             })
             .addCase(rateBooking.fulfilled, (state, action) => {
                 state.loading = false;
-                // Update rating
             })
             .addCase(rateBooking.rejected, (state, action) => {
                 state.loading = false;
@@ -147,49 +136,6 @@ const bookingSlice = createSlice({
             .addCase(fetchBookingHistory.rejected, (state, action) => {
                 state.loading = false;
                 state.error = action.payload;
-            })
-            // Chat cases
-            .addCase(fetchChat.pending, (state) => {
-                state.chat.loading = true;
-            })
-            .addCase(fetchChat.fulfilled, (state, action) => {
-                state.chat.loading = false;
-                state.chat.messages = action.payload.chat?.messages || [];
-                state.chat.error = null;
-            })
-            .addCase(fetchChat.rejected, (state, action) => {
-                state.chat.loading = false;
-                state.chat.error = action.payload;
-            })
-            .addCase(sendMessage.pending, (state) => {
-                state.chat.loading = true;
-            })
-            .addCase(sendMessage.fulfilled, (state, action) => {
-                state.chat.loading = false;
-                // Add the new message to the messages array
-                if (action.payload.message) {
-                    state.chat.messages.push(action.payload.message);
-                }
-                state.chat.error = null;
-            })
-            .addCase(sendMessage.rejected, (state, action) => {
-                state.chat.loading = false;
-                state.chat.error = action.payload;
-            })
-            .addCase(fetchMessages.pending, (state) => {
-                state.chat.loading = true;
-            })
-            .addCase(fetchMessages.fulfilled, (state, action) => {
-                state.chat.loading = false;
-                state.chat.messages = action.payload.messages || [];
-                state.chat.error = null;
-            })
-            .addCase(fetchMessages.rejected, (state, action) => {
-                state.chat.loading = false;
-                state.chat.error = action.payload;
-            })
-            .addCase(fetchUnreadCount.fulfilled, (state, action) => {
-                state.chat.unreadCount = action.payload.unreadCount || 0;
             })
             // Maintenance cases
             .addCase(fetchMaintenanceData.pending, (state) => {

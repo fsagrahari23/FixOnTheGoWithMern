@@ -579,7 +579,7 @@ const BookingForm = () => {
                       console.error('Reverse geocode error:', err);
                     }
                   }}
-                  className="w-full h-80"
+                  className="w-full h-64 sm:h-80"
                 />
               </div>
 

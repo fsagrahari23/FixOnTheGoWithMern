@@ -47,6 +47,7 @@ import User from "./pages/admin/User";
 import UserProfile from "./pages/admin/UserProfile";
 import Mechanic from "./pages/admin/Mechanic";
 import Payment from "./pages/admin/Payment";
+import PaymentDetail from "./pages/admin/PaymentDetail";
 import Subscription from "./pages/admin/Subscription";
 import AdminProfile from "./pages/admin/AdminProfile";
 
@@ -54,6 +55,15 @@ import AdminProfile from "./pages/admin/AdminProfile";
 import StaffLayout from "./pages/staff/StaffLayout";
 import StaffDashboard from "./pages/staff/Dashboard";
 import StaffChangePassword from "./pages/staff/ChangePassword";
+<<<<<<< HEAD
+=======
+import StaffMechanicApplications from "./pages/staff/MechanicApplications";
+import StaffDisputes from "./pages/staff/Disputes";
+import StaffPayments from "./pages/staff/Payments";
+import StaffProfile from "./pages/staff/Profile";
+import StaffChatPage, { StaffChatList } from "./pages/staff/SupportChats";
+import ProfileUpdateRequests from "./pages/staff/ProfileUpdateRequests";
+>>>>>>> 9c95608638ef812f83ffbf2751a84f09aa565024
 
 // Chat
 import SupportChat from "./pages/users/SupportChat";
@@ -80,6 +90,7 @@ const adminRoutes = {
   "user/:id": UserProfile,
   mechanics: Mechanic,
   payments: Payment,
+  "payment/:id": PaymentDetail,
   subscriptions: Subscription,
   profile: AdminProfile,
 };
@@ -93,7 +104,18 @@ const mechanicRoutes = {
 
 const staffRoutes = {
   dashboard: StaffDashboard,
+<<<<<<< HEAD
 };
+=======
+  mechanics: StaffMechanicApplications,
+  disputes: StaffDisputes,
+  payments: StaffPayments,
+  profile: StaffProfile,
+  "profile-updation": ProfileUpdateRequests,
+  chats: StaffChatList,
+  "chat/:chatId": StaffChatPage,
+}
+>>>>>>> 9c95608638ef812f83ffbf2751a84f09aa565024
 
 
 // MAIN CONTENT
@@ -104,7 +126,11 @@ function AppContent() {
 
   useEffect(() => {
     dispatch(getMe()).finally(() => {
+<<<<<<< HEAD
       setTimeout(() => setIsLoading(false), 1000);
+=======
+      setIsLoading(false);
+>>>>>>> 9c95608638ef812f83ffbf2751a84f09aa565024
     });
   }, [dispatch]);
 

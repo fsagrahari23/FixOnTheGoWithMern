@@ -5,6 +5,15 @@ const Subscription = require("../models/Subscription");
 const Chat = require("../models/Chat");
 const AppError = require("../utils/AppError");
 
+const OPEN_DISPUTE_STATUSES = ["pending", "open", "under_review", "under-review"];
+
+const sixMonthsAgo = () => {
+  const date = new Date();
+  date.setMonth(date.getMonth() - 6);
+  date.setHours(0, 0, 0, 0);
+  return date;
+};
+
 // Get staff dashboard data
 exports.getDashboardData = async (req, res, next) => {
   try {
@@ -92,6 +101,240 @@ exports.getDashboardData = async (req, res, next) => {
   }
 };
 
+// Get staff analytics data
+exports.getAnalyticsData = async (req, res, next) => {
+  try {
+    const startDate = sixMonthsAgo();
+
+    const [
+      totalBookings,
+      completedBookings,
+      pendingMechanics,
+      openDisputes,
+      totalRevenueAgg,
+      bookingStatusDistribution,
+      paymentStatusDistribution,
+      monthlyTrends,
+      topProblemCategories,
+      disputeCategories,
+      mechanicApprovalTrend,
+      pendingCertAgg,
+    ] = await Promise.all([
+      Booking.countDocuments({}),
+      Booking.countDocuments({ status: "completed" }),
+      User.countDocuments({ role: "mechanic", isApproved: false }),
+      Booking.countDocuments({ "dispute.status": { $in: OPEN_DISPUTE_STATUSES } }),
+      Booking.aggregate([
+        { $match: { "payment.status": "completed" } },
+        { $group: { _id: null, total: { $sum: "$payment.amount" } } },
+      ]),
+      Booking.aggregate([
+        {
+          $group: {
+            _id: { $ifNull: ["$status", "unknown"] },
+            count: { $sum: 1 },
+          },
+        },
+        { $sort: { count: -1 } },
+        {
+          $project: {
+            status: "$_id",
+            count: 1,
+            _id: 0,
+          },
+        },
+      ]),
+      Booking.aggregate([
+        {
+          $group: {
+            _id: { $ifNull: ["$payment.status", "pending"] },
+            count: { $sum: 1 },
+            amount: {
+              $sum: {
+                $cond: [
+                  { $eq: ["$payment.status", "completed"] },
+                  "$payment.amount",
+                  0,
+                ],
+              },
+            },
+          },
+        },
+        { $sort: { count: -1 } },
+        {
+          $project: {
+            status: "$_id",
+            count: 1,
+            amount: 1,
+            _id: 0,
+          },
+        },
+      ]),
+      Booking.aggregate([
+        { $match: { createdAt: { $gte: startDate } } },
+        {
+          $group: {
+            _id: {
+              year: { $year: "$createdAt" },
+              month: { $month: "$createdAt" },
+            },
+            bookings: { $sum: 1 },
+            revenue: {
+              $sum: {
+                $cond: [{ $eq: ["$payment.status", "completed"] }, "$payment.amount", 0],
+              },
+            },
+            disputes: {
+              $sum: {
+                $cond: [
+                  { $in: ["$dispute.status", OPEN_DISPUTE_STATUSES] },
+                  1,
+                  0,
+                ],
+              },
+            },
+          },
+        },
+        { $sort: { "_id.year": 1, "_id.month": 1 } },
+        {
+          $project: {
+            month: {
+              $concat: [
+                { $toString: "$_id.year" },
+                "-",
+                {
+                  $cond: [
+                    { $lt: ["$_id.month", 10] },
+                    { $concat: ["0", { $toString: "$_id.month" }] },
+                    { $toString: "$_id.month" },
+                  ],
+                },
+              ],
+            },
+            bookings: 1,
+            revenue: 1,
+            disputes: 1,
+            _id: 0,
+          },
+        },
+      ]),
+      Booking.aggregate([
+        {
+          $group: {
+            _id: { $ifNull: ["$problemCategory", "Other"] },
+            count: { $sum: 1 },
+            revenue: {
+              $sum: {
+                $cond: [{ $eq: ["$payment.status", "completed"] }, "$payment.amount", 0],
+              },
+            },
+          },
+        },
+        { $sort: { count: -1 } },
+        { $limit: 8 },
+        {
+          $project: {
+            category: "$_id",
+            count: 1,
+            revenue: 1,
+            _id: 0,
+          },
+        },
+      ]),
+      Booking.aggregate([
+        { $match: { "dispute.status": { $in: OPEN_DISPUTE_STATUSES } } },
+        {
+          $group: {
+            _id: { $ifNull: ["$dispute.category", "other"] },
+            count: { $sum: 1 },
+          },
+        },
+        { $sort: { count: -1 } },
+        {
+          $project: {
+            category: "$_id",
+            count: 1,
+            _id: 0,
+          },
+        },
+      ]),
+      User.aggregate([
+        {
+          $match: {
+            role: "mechanic",
+            createdAt: { $gte: startDate },
+          },
+        },
+        {
+          $group: {
+            _id: {
+              year: { $year: "$createdAt" },
+              month: { $month: "$createdAt" },
+            },
+            applications: { $sum: 1 },
+            approved: { $sum: { $cond: ["$isApproved", 1, 0] } },
+          },
+        },
+        { $sort: { "_id.year": 1, "_id.month": 1 } },
+        {
+          $project: {
+            month: {
+              $concat: [
+                { $toString: "$_id.year" },
+                "-",
+                {
+                  $cond: [
+                    { $lt: ["$_id.month", 10] },
+                    { $concat: ["0", { $toString: "$_id.month" }] },
+                    { $toString: "$_id.month" },
+                  ],
+                },
+              ],
+            },
+            applications: 1,
+            approved: 1,
+            _id: 0,
+          },
+        },
+      ]),
+      MechanicProfile.aggregate([
+        { $unwind: { path: "$certifications", preserveNullAndEmptyArrays: false } },
+        { $match: { "certifications.verificationStatus": "pending" } },
+        { $count: "count" },
+      ]),
+    ]);
+
+    const totalRevenue = totalRevenueAgg[0]?.total || 0;
+    const completionRate = totalBookings
+      ? Number(((completedBookings / totalBookings) * 100).toFixed(1))
+      : 0;
+
+    res.json({
+      success: true,
+      analytics: {
+        summary: {
+          totalBookings,
+          completedBookings,
+          completionRate,
+          openDisputes,
+          pendingMechanics,
+          pendingCertifications: pendingCertAgg[0]?.count || 0,
+          totalRevenue,
+        },
+        bookingStatusDistribution,
+        paymentStatusDistribution,
+        monthlyTrends,
+        topProblemCategories,
+        disputeCategories,
+        mechanicApprovalTrend,
+      },
+    });
+  } catch (error) {
+    console.error("Staff analytics error:", error);
+    next(new AppError("Failed to load staff analytics", 500));
+  }
+};
+
 // Get all pending mechanic applications
 exports.getPendingMechanics = async (req, res, next) => {
   try {
@@ -134,6 +377,105 @@ exports.getMechanicDetails = async (req, res, next) => {
   } catch (error) {
     console.error("Get mechanic details error:", error);
     next(new AppError("Failed to fetch mechanic details", 500));
+  }
+};
+
+// Get pending certification verification requests
+exports.getPendingCertificationRequests = async (req, res, next) => {
+  try {
+    const profiles = await MechanicProfile.find({
+      "certifications.verificationStatus": "pending",
+    }).populate("user", "name email phone");
+
+    const requests = [];
+    profiles.forEach((profile) => {
+      (profile.certifications || []).forEach((cert, index) => {
+        if ((cert.verificationStatus || "pending") === "pending") {
+          requests.push({
+            mechanicId: profile.user?._id,
+            mechanicName: profile.user?.name,
+            mechanicEmail: profile.user?.email,
+            certificationIndex: index,
+            certification: cert,
+          });
+        }
+      });
+    });
+
+    res.json({
+      success: true,
+      count: requests.length,
+      requests,
+    });
+  } catch (error) {
+    console.error("Get pending certifications error:", error);
+    next(new AppError("Failed to fetch pending certification requests", 500));
+  }
+};
+
+// Approve a specific certification
+exports.approveCertification = async (req, res, next) => {
+  try {
+    const { id, certIndex } = req.params;
+    const index = Number.parseInt(certIndex, 10);
+
+    if (!Number.isInteger(index) || index < 0) {
+      return next(new AppError("Invalid certification index", 400));
+    }
+
+    const profile = await MechanicProfile.findOne({ user: id });
+    if (!profile) {
+      return next(new AppError("Mechanic profile not found", 404));
+    }
+
+    if (!profile.certifications || !profile.certifications[index]) {
+      return next(new AppError("Certification not found", 404));
+    }
+
+    profile.certifications[index].verificationStatus = "verified";
+    await profile.save();
+
+    res.json({
+      success: true,
+      message: "Certification approved successfully",
+      certification: profile.certifications[index],
+    });
+  } catch (error) {
+    console.error("Approve certification error:", error);
+    next(new AppError("Failed to approve certification", 500));
+  }
+};
+
+// Reject a specific certification
+exports.rejectCertification = async (req, res, next) => {
+  try {
+    const { id, certIndex } = req.params;
+    const index = Number.parseInt(certIndex, 10);
+
+    if (!Number.isInteger(index) || index < 0) {
+      return next(new AppError("Invalid certification index", 400));
+    }
+
+    const profile = await MechanicProfile.findOne({ user: id });
+    if (!profile) {
+      return next(new AppError("Mechanic profile not found", 404));
+    }
+
+    if (!profile.certifications || !profile.certifications[index]) {
+      return next(new AppError("Certification not found", 404));
+    }
+
+    profile.certifications[index].verificationStatus = "rejected";
+    await profile.save();
+
+    res.json({
+      success: true,
+      message: "Certification rejected",
+      certification: profile.certifications[index],
+    });
+  } catch (error) {
+    console.error("Reject certification error:", error);
+    next(new AppError("Failed to reject certification", 500));
   }
 };
 

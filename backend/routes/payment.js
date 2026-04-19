@@ -208,7 +208,7 @@ router.post("/:bookingId/process", async (req, res) => {
 
     const paymentIntent = await stripe.paymentIntents.create({
       amount: Math.round(amountToCharge * 100), // Convert to cents
-      currency: "usd",
+      currency: "inr",
       payment_method: paymentMethodId,
       confirm: true,
       description: `Payment for booking #${booking._id}`,
@@ -255,7 +255,7 @@ router.post("/premium/process", async (req, res) => {
 
     const paymentIntent = await stripe.paymentIntents.create({
       amount: amount, // Already in cents
-      currency: "usd",
+      currency: "inr",
       payment_method: paymentMethodId,
       confirm: true,
       description: `Premium ${plan} subscription for ${req.user.email}`,

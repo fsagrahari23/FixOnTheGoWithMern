@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites name="jest tests" tests="20" failures="0" errors="0" time="12.365">
+  <testsuite name="User booking validations and actions" errors="0" failures="0" skipped="0" timestamp="2026-04-15T17:25:21" time="4.515" tests="6">
+    <testcase classname="User booking validations and actions BOOK-VAL-LOC-INVALID: invalid coords cause redirect back to book page" name="User booking validations and actions BOOK-VAL-LOC-INVALID: invalid coords cause redirect back to book page" time="0.429">
+    </testcase>
+    <testcase classname="User booking validations and actions BOOK-VAL-TOWING-DROPOFF-INVALID: invalid towing dropoff coords redirect" name="User booking validations and actions BOOK-VAL-TOWING-DROPOFF-INVALID: invalid towing dropoff coords redirect" time="0.186">
+    </testcase>
+    <testcase classname="User booking validations and actions BOOK-DETAILS-UNAUTHORIZED: user cannot view another user&apos;s booking" name="User booking validations and actions BOOK-DETAILS-UNAUTHORIZED: user cannot view another user&apos;s booking" time="0.327">
+    </testcase>
+    <testcase classname="User booking validations and actions BOOK-CANCEL-INVALID-STATE: cannot cancel when not pending/accepted" name="User booking validations and actions BOOK-CANCEL-INVALID-STATE: cannot cancel when not pending/accepted" time="0.192">
+    </testcase>
+    <testcase classname="User booking validations and actions BOOK-RATE-VALIDATION: missing rating -&gt; 400" name="User booking validations and actions BOOK-RATE-VALIDATION: missing rating -&gt; 400" time="0.181">
+    </testcase>
+    <testcase classname="User booking validations and actions BOOK-RATE-NOT-ALLOWED: cannot rate until service completed and paid" name="User booking validations and actions BOOK-RATE-NOT-ALLOWED: cannot rate until service completed and paid" time="0.186">
+    </testcase>
+  </testsuite>
+  <testsuite name="Payment validations and flows" errors="0" failures="0" skipped="0" timestamp="2026-04-15T17:25:26" time="2.019" tests="5">
+    <testcase classname="Payment validations and flows VAL-PAY-001: GET /payment/not-an-id redirects to login when unauthenticated" name="Payment validations and flows VAL-PAY-001: GET /payment/not-an-id redirects to login when unauthenticated" time="0.122">
+    </testcase>
+    <testcase classname="Payment validations and flows VAL-PAY-004: POST /payment/not-an-id/process returns 400 when logged-in" name="Payment validations and flows VAL-PAY-004: POST /payment/not-an-id/process returns 400 when logged-in" time="0.217">
+    </testcase>
+    <testcase classname="Payment validations and flows PAYMENT-PROCESS-OK: valid booking processes with mocked Stripe" name="Payment validations and flows PAYMENT-PROCESS-OK: valid booking processes with mocked Stripe" time="0.198">
+    </testcase>
+    <testcase classname="Payment validations and flows SUBSCRIPTION-PREMIUM-INVALID-PLAN: returns 400" name="Payment validations and flows SUBSCRIPTION-PREMIUM-INVALID-PLAN: returns 400" time="0.198">
+    </testcase>
+    <testcase classname="Payment validations and flows SUBSCRIPTION-PREMIUM-OK: monthly plan succeeds" name="Payment validations and flows SUBSCRIPTION-PREMIUM-OK: monthly plan succeeds" time="0.191">
+    </testcase>
+  </testsuite>
+  <testsuite name="Route guards" errors="0" failures="0" skipped="0" timestamp="2026-04-15T17:25:28" time="1.631" tests="3">
+    <testcase classname="Route guards GUARD-USER: user can access /user routes after login" name="Route guards GUARD-USER: user can access /user routes after login" time="0.286">
+    </testcase>
+    <testcase classname="Route guards GUARD-MECHANIC: mechanic without approval redirected to pending approval" name="Route guards GUARD-MECHANIC: mechanic without approval redirected to pending approval" time="0.178">
+    </testcase>
+    <testcase classname="Route guards GUARD-ADMIN: non-admin cannot access admin routes" name="Route guards GUARD-ADMIN: non-admin cannot access admin routes" time="0.191">
+    </testcase>
+  </testsuite>
+  <testsuite name="Auth &amp; OTP flows" errors="0" failures="0" skipped="0" timestamp="2026-04-15T17:25:30" time="1.502" tests="3">
+    <testcase classname="Auth &amp; OTP flows AUTH-LOGIN-200: successful login returns JSON and sets session" name="Auth &amp; OTP flows AUTH-LOGIN-200: successful login returns JSON and sets session" time="0.267">
+    </testcase>
+    <testcase classname="Auth &amp; OTP flows AUTH-REGISTER-OTP-FLOW: register -&gt; verify OTP creates user" name="Auth &amp; OTP flows AUTH-REGISTER-OTP-FLOW: register -&gt; verify OTP creates user" time="0.193">
+    </testcase>
+    <testcase classname="Auth &amp; OTP flows OTP-VERIFY-INVALID: wrong OTP redirects back to verify page" name="Auth &amp; OTP flows OTP-VERIFY-INVALID: wrong OTP redirects back to verify page" time="0.051">
+    </testcase>
+  </testsuite>
+  <testsuite name="Auth &amp; Guards" errors="0" failures="0" skipped="0" timestamp="2026-04-15T17:25:31" time="1.068" tests="2">
+    <testcase classname="Auth &amp; Guards VAL-AUTH-001: login invalid returns 400" name="Auth &amp; Guards VAL-AUTH-001: login invalid returns 400" time="0.14">
+    </testcase>
+    <testcase classname="Auth &amp; Guards VAL-GUARD-001: unauthenticated redirected to login" name="Auth &amp; Guards VAL-GUARD-001: unauthenticated redirected to login" time="0.023">
+    </testcase>
+  </testsuite>
+  <testsuite name="User Booking basic validations" errors="0" failures="0" skipped="0" timestamp="2026-04-15T17:25:32" time="1.092" tests="1">
+    <testcase classname="User Booking basic validations VAL-BOOK-001: missing required fields" name="User Booking basic validations VAL-BOOK-001: missing required fields" time="0.134">
+    </testcase>
+  </testsuite>
+</testsuites>

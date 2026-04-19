@@ -39,7 +39,7 @@ import {
 import { toast } from "sonner"
 import { getSocket, authenticateSocket } from "../../../libs/socket"
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:3001"
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:3000"
 
 // Staff Chat List Component
 export function StaffChatList() {

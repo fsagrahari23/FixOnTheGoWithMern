@@ -131,9 +131,29 @@ router.post("/:chatId/send", async (req, res) => {
     chat.lastActivity = new Date();
     await chat.save();
 
+    // Get the newly created message (the last one in the array)
+    const newMessage = chat.messages[chat.messages.length - 1];
+
+    // Emit socket event for real-time update
+    const io = req.app.get('io');
+    if (io) {
+      io.to(req.params.chatId).emit("new-message", {
+        chatId: req.params.chatId,
+        message: {
+          ...newMessage.toObject(),
+          sender: {
+            _id: req.user._id,
+            name: req.user.name,
+            role: req.user.role,
+          },
+        },
+      });
+    }
+
     return res.status(200).json({
       success: true,
       message: "Message sent",
+      msg: newMessage
     });
 
   } catch (error) {

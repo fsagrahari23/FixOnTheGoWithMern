@@ -13,7 +13,10 @@ const chatSlice = createSlice({
     initialState,
     reducers: {
         addMessage(state, action) {
-            state.messages.push(action.payload);
+            const exists = state.messages.find(m => m._id === action.payload._id);
+            if (!exists) {
+                state.messages.push(action.payload);
+            }
         },
         updateMessageRead(state, action) {
             const msg = state.messages.find(m => m._id === action.payload.messageId);
@@ -60,9 +63,15 @@ const chatSlice = createSlice({
         builder.addCase(sendMessage.pending, (state) => {
             state.loading = true;
         });
-        builder.addCase(sendMessage.fulfilled, (state) => {
+        builder.addCase(sendMessage.fulfilled, (state, action) => {
             state.loading = false;
-            // Message will be added via socket listener
+            const msg = action.payload.message;
+            if (msg && msg._id) {
+                const exists = state.messages.find(m => m._id === msg._id);
+                if (!exists) {
+                    state.messages.push(msg);
+                }
+            }
         });
         builder.addCase(sendMessage.rejected, (state, action) => {
             state.loading = false;

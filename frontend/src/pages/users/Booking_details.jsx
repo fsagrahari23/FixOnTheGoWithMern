@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -35,16 +35,18 @@ import {
 import ChatModal from '../../components/users/ChatModal';
 import PaymentModal from '../../components/users/PaymentModal';
 import { RaiseDisputeDialog } from '../../components/users/dashboard/dispute-form';
+import BookingTrackingMap from '../../components/tracking/BookingTrackingMap';
+import { getSocket } from '../../../libs/socket';
 // import { setCurrentBooking, clearError } from '../../store/slices/bookingSlice';
 
 const InfoItem = ({ icon, label, value, highlight }) => {
   return (
-    <div className={`flex items-center justify-between ${highlight ? 'bg-indigo-100 dark:bg-slate-600 p-3 rounded-lg' : ''}`}>
+    <div className={`flex flex-col sm:flex-row sm:items-center justify-between gap-2 ${highlight ? 'bg-indigo-100 dark:bg-slate-600 p-3 rounded-lg' : ''}`}>
       <div className="flex items-center gap-2">
         {icon && icon}
         <span className="text-sm font-medium text-slate-600 dark:text-slate-400">{label}:</span>
       </div>
-      <span className={`text-sm font-semibold ${highlight ? 'text-indigo-800 dark:text-slate-200' : 'text-slate-800 dark:text-slate-200'}`}>{value}</span>
+      <span className={`text-sm font-semibold break-all sm:break-normal ${highlight ? 'text-indigo-800 dark:text-slate-200 text-right' : 'text-slate-800 dark:text-slate-200 text-left sm:text-right'}`}>{value}</span>
     </div>
   );
 }
@@ -58,10 +60,18 @@ const BookingDetails = () => {
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
 
   const { currentBooking, nearbyMechanics, loading, error } = useSelector((state) => state.booking);
+  const authUser = useSelector((state) => state.auth?.user);
   const [selectedRating, setSelectedRating] = useState(5);
   const [comment, setComment] = useState('');
   const [animateIn, setAnimateIn] = useState(false);
   const [selectedMechanicId, setSelectedMechanicId] = useState(null);
+  const socketRef = useRef(null);
+  const [trackingData, setTrackingData] = useState({
+    userCoordinates: null,
+    mechanicCoordinates: null,
+    pathCoordinates: [],
+    mechanicOnline: false,
+  });
 
   useEffect(() => {
     console.log("BookingDetails component mounted, id:", id);
@@ -81,6 +91,123 @@ const BookingDetails = () => {
     console.log('Nearby mechanics:', nearbyMechanics);
     console.log('Booking status:', currentBooking?.status);
   }, [error, currentBooking, nearbyMechanics]);
+
+  useEffect(() => {
+    if (!currentBooking?.location?.coordinates) return;
+
+    setTrackingData((prev) => ({
+      ...prev,
+      userCoordinates: currentBooking.location.coordinates,
+    }));
+  }, [currentBooking?.location?.coordinates]);
+
+  useEffect(() => {
+    if (!authUser?._id) return;
+    const socket = getSocket();
+    socket.emit('authenticate', authUser._id);
+  }, [authUser?._id]);
+
+  useEffect(() => {
+    if (!id) return;
+
+    const socket = getSocket();
+
+    const handleBookingStatusChanged = (payload) => {
+      if (!payload || String(payload.bookingId) !== String(id)) return;
+      dispatch(fetchBookingDetails(id));
+    };
+
+    const handleBookingNotification = (payload) => {
+      if (!payload?.data?.bookingId) return;
+      if (String(payload.data.bookingId) !== String(id)) return;
+
+      if (['booking-accepted', 'booking-started'].includes(payload.type)) {
+        dispatch(fetchBookingDetails(id));
+      }
+    };
+
+    socket.on('booking-status-changed', handleBookingStatusChanged);
+    socket.on('notification', handleBookingNotification);
+
+    return () => {
+      socket.off('booking-status-changed', handleBookingStatusChanged);
+      socket.off('notification', handleBookingNotification);
+    };
+  }, [id, dispatch]);
+
+  useEffect(() => {
+    if (!id || !currentBooking?.mechanic || !['accepted', 'in-progress'].includes(currentBooking?.status)) {
+      return;
+    }
+
+    const socket = getSocket();
+    socketRef.current = socket;
+
+    const handleSnapshot = (payload) => {
+      if (!payload || String(payload.bookingId) !== String(id)) return;
+      setTrackingData((prev) => ({
+        ...prev,
+        userCoordinates: payload.userCoordinates || prev.userCoordinates,
+        mechanicCoordinates: payload.mechanicCoordinates || prev.mechanicCoordinates,
+        pathCoordinates: payload.pathCoordinates || prev.pathCoordinates,
+        mechanicOnline: !!payload.mechanicCoordinates,
+      }));
+    };
+
+    const handleTrackingUpdate = (payload) => {
+      if (!payload || String(payload.bookingId) !== String(id)) return;
+      setTrackingData((prev) => ({
+        ...prev,
+        userCoordinates: payload.userCoordinates || prev.userCoordinates,
+        mechanicCoordinates: payload.mechanicCoordinates || prev.mechanicCoordinates,
+        pathCoordinates: payload.pathCoordinates || prev.pathCoordinates,
+        mechanicOnline: true,
+      }));
+    };
+
+    const handleAssignedLocation = (payload) => {
+      if (!payload || String(payload.bookingId) !== String(id)) return;
+      setTrackingData((prev) => ({
+        ...prev,
+        mechanicCoordinates: payload.coordinates || prev.mechanicCoordinates,
+        userCoordinates: payload.userCoordinates || prev.userCoordinates,
+        pathCoordinates: payload.pathCoordinates || prev.pathCoordinates,
+        mechanicOnline: true,
+      }));
+    };
+
+    const handleCurrentLocation = (payload) => {
+      if (!payload || String(payload.bookingId) !== String(id)) return;
+      setTrackingData((prev) => ({
+        ...prev,
+        mechanicCoordinates: payload.coordinates || prev.mechanicCoordinates,
+        mechanicOnline: !!payload.isOnline,
+      }));
+    };
+
+    const handleMechanicOffline = (payload) => {
+      if (!payload || String(payload.mechanicId) !== String(currentBooking.mechanic._id)) return;
+      setTrackingData((prev) => ({ ...prev, mechanicOnline: false }));
+    };
+
+    socket.on('booking-tracking-snapshot', handleSnapshot);
+    socket.on('booking-tracking-update', handleTrackingUpdate);
+    socket.on('assigned-mechanic-location', handleAssignedLocation);
+    socket.on('mechanic-current-location', handleCurrentLocation);
+    socket.on('mechanic-offline', handleMechanicOffline);
+
+    socket.emit('join-booking-tracking', { bookingId: id });
+    socket.emit('request-mechanic-location', { bookingId: id });
+
+    return () => {
+      socket.emit('leave-booking-tracking', { bookingId: id });
+      socket.off('booking-tracking-snapshot', handleSnapshot);
+      socket.off('booking-tracking-update', handleTrackingUpdate);
+      socket.off('assigned-mechanic-location', handleAssignedLocation);
+      socket.off('mechanic-current-location', handleCurrentLocation);
+      socket.off('mechanic-offline', handleMechanicOffline);
+    };
+  }, [id, currentBooking?.status, currentBooking?.mechanic, currentBooking?.mechanic?._id]);
 
   const getStatusConfig = (status) => {
     const configs = {
@@ -196,7 +323,7 @@ const BookingDetails = () => {
 
           <CardContent className="p-8 space-y-10">
             {/* Basic Info Grid */}
-            <div className="grid lg:grid-cols-2 gap-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <Card className="p-6 shadow-md border-0 animate-fade-in bg-linear-to-br from-blue-50 to-indigo-50 dark:bg-slate-700">
                 <h3 className="text-lg font-bold mb-6 flex items-center gap-2 text-indigo-700 dark:text-blue-300">
                   <FileText className="w-5 h-5" />
@@ -632,7 +759,8 @@ const BookingDetails = () => {
                   </Badge>
                 )}
 
-                {currentBooking?.mechanic && (
+                {currentBooking?.mechanic && 
+                 !(currentBooking.status === 'completed' && currentBooking.payment?.status === 'completed') && (
                   <Button
                     onClick={() => setIsChatOpen(true)}
                     className="py-6 px-8 text-base font-semibold bg-linear-to-r from-blue-500 to-purple-600 
@@ -666,7 +794,7 @@ const BookingDetails = () => {
         </Card>
 
         {/* Tracking Map */}
-        {currentBooking?.status === 'in-progress' && currentBooking?.mechanic && (
+        {['accepted', 'in-progress'].includes(currentBooking?.status) && currentBooking?.mechanic && (
           <Card className="animate-fade-in delay-700 shadow-2xl border-0 bg-white dark:bg-slate-800">
             <CardHeader className="bg-linear-to-r from-purple-600 to-pink-600 dark:bg-slate-700 text-white py-6">
               <CardTitle className="text-2xl flex items-center gap-2">
@@ -675,12 +803,17 @@ const BookingDetails = () => {
               </CardTitle>
             </CardHeader>
             <CardContent className="p-8">
-              <div className="rounded-2xl h-80 flex items-center justify-center mb-6 bg-linear-to-br from-purple-100 to-pink-100 dark:bg-slate-700">
-                <div className="text-center">
-                  <MapPin className="w-16 h-16 mx-auto mb-4 text-purple-400 dark:text-slate-500" />
-                  <p className="text-lg font-semibold text-slate-700 dark:text-slate-300">Interactive Map</p>
-                  <p className="text-sm mt-2 text-slate-500 dark:text-slate-400">Real-time location tracking with Leaflet.js</p>
-                </div>
+              <BookingTrackingMap
+                userCoordinates={trackingData.userCoordinates}
+                mechanicCoordinates={trackingData.mechanicCoordinates}
+                pathCoordinates={trackingData.pathCoordinates}
+                className="h-80"
+              />
+              <div className="mt-4 flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">
+                  Mechanic: <span className="font-semibold text-foreground">{trackingData.mechanicOnline ? 'Online' : 'Offline'}</span>
+                </span>
+                <span className="text-muted-foreground">Path points: {trackingData.pathCoordinates?.length || 0}</span>
               </div>
             </CardContent>
           </Card>

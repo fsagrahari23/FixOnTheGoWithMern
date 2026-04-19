@@ -22,9 +22,7 @@ export default function HomePage() {
     useEffect(() => {
         const isDarkMode = document.documentElement.classList.contains("dark")
         setIsDark(isDarkMode)
-
-        const timer = setTimeout(() => setIsLoading(false), 2000)
-        return () => clearTimeout(timer)
+        setIsLoading(false)
     }, [])
 
     if (isLoading) return <Loader />
