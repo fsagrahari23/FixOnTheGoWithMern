@@ -51,7 +51,8 @@ async function initEmailBloomFilter(UserModel) {
 
 function emailProbablyExists(email) {
     if (!emailBloomFilter) {
-        throw new Error('Bloom filter not initialized');
+        console.log("⚠️ Bloom filter not ready, skipping...");
+        return true; // allow DB check
     }
     return emailBloomFilter.has(email);
 }

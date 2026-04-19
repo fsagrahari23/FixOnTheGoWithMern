@@ -3,6 +3,7 @@ const cloudinary = require("../config/cloudinary");
 const User = require("../models/User");
 const MechanicProfile = require("../models/MechanicProfile");
 const AppError = require("../utils/AppError");
+const { emailProbablyExists, addEmailToBloom } = require('../utils/bloomFilter');
 
 exports.sendOtp = async (req, res, next) => {
   try {
@@ -32,7 +33,7 @@ exports.sendOtp = async (req, res, next) => {
 exports.verifyOtp = async (req, res) => {
   try {
     const { otp } = req.body;
-    if (!otp) {
+    if (!otp) { ` 2`
       return res.status(400).json({ message: "OTP is required." });
     }
 
@@ -167,12 +168,16 @@ exports.registerMechanic = async (req, res) => {
 
 exports.login = async (req, res) => {
   try {
-    const { email, password } = req.body;
-    if (!email || !password) {
-      return res.status(400).json({ message: "Email and password are required." });
+    const email = req.body.email.toLowerCase().trim();
+
+    if (!emailProbablyExists(email)) {
+            console.log("❌ Blocked by Bloom filter:", email);
+            return res.status(404).json({ error: "User not found" });
     }
+    console.log("⚡ Going to DB for:", email);
 
     const user = await User.findOne({ email });
+
     if (!user) {
       return res.status(401).json({ message: "Invalid email or password." });
     }

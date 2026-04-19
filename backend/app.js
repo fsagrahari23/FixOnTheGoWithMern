@@ -57,17 +57,17 @@ mongoose
   .connect(process.env.MONGODB_URI)
   .then(async () => {
     console.log("MongoDB connected");
+
     await initEmailBloomFilter(User);
-    console.log("Email Bloom filter initialized");
+    console.log("✅ Email Bloom filter initialized");
 
     const PORT = process.env.PORT || 3000;
     server.listen(PORT, () => {
-      logger.info(`Server running on http://localhost:${PORT} in ${isProduction ? 'production' : 'development'} mode`);
-      logger.info(`Swagger Docs at http://localhost:${PORT}/api-docs`);
-    });
+  logger.info(`Server running on http://localhost:${PORT} in ${isProduction ? 'production' : 'development'} mode`);
+  logger.info(`Swagger Docs at http://localhost:${PORT}/api-docs`);
+  });
   })
   .catch((err) => console.error("MongoDB connection error:", err));
-  
 // Set up session with MongoDB store
 app.use(
   session({
@@ -240,12 +240,4 @@ app.use((err, req, res, next) => {
 
   // Send response
   res.status(error.statusCode).json(error.toJSON(isProduction));
-});
-
-// Start server
-
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-  logger.info(`Server running on http://localhost:${PORT} in ${isProduction ? 'production' : 'development'} mode`);
-  logger.info(`Swagger Docs at http://localhost:${PORT}/api-docs`)
 });

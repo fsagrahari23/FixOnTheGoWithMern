@@ -1138,6 +1138,7 @@ router.get("/api/dashboard", async (req, res) => {
       remainingBookings,
     })
   } catch (error) {
+    
     console.error("Dashboard API error:", error)
     res.status(500).json({ error: "Failed to load dashboard data" })
   }
