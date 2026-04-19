@@ -1,98 +1,48 @@
+const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+function validateSignup(req, res, next) {
+    let { name, email, password } = req.body;
 
+    if (!name || !email || !password) {
+        return res.status(400).json({ error: 'name, email and password are required' });
+    }
 
+    name = name.trim();
+    email = email.toLowerCase().trim();
 
+    if (!emailRegex.test(email)) {
+        return res.status(400).json({ error: 'Invalid email format' });
+    }
 
+    if (typeof password !== 'string' || password.length < 8) {
+        return res.status(400).json({ error: 'Password must be at least 8 characters' });
+    }
 
+    req.body.name = name;
+    req.body.email = email;
 
+    next();
+}
 
+function validateLogin(req, res, next) {
+    let { email, password } = req.body;
 
+    if (!email || !password) {
+        return res.status(400).json({ error: 'email and password are required' });
+    }
 
+    email = email.toLowerCase().trim();
 
+    if (!emailRegex.test(email)) {
+        return res.status(400).json({ error: 'Invalid email format' });
+    }
 
+    req.body.email = email;
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    next();
+}
 
 module.exports = {
-  isAuthenticated: (req, res, next) => {
-    if (req.session.user) {
-      req.user = req.session.user;
-      return next();
-    }
-    return res.status(401).json({ message: "Please log in to access this resource" });
-  },
-
-  isUser: (req, res, next) => {
-    if (req.session.user && req.session.user.role === "user") {
-      req.user = req.session.user;
-      return next();
-    }
-    return res.status(403).json({ message: "Not authorized as a user" });
-  },
-
-  isMechanic: (req, res, next) => {
-    if (req.session.user && req.session.user.role === "mechanic") {
-      if (!req.session.user.isApproved) {
-        return res.status(403).json({ message: "Your account is pending approval by admin" });
-      }
-      req.user = req.session.user;
-      return next();
-    }
-    return res.status(403).json({ message: "Not authorized as a mechanic" });
-  },
-
-  isAdmin: (req, res, next) => {
-    if (req.session.user && req.session.user.role === "admin") {
-      req.user = req.session.user;
-      return next();
-    }
-    return res.status(403).json({ message: "Not authorized as an admin" });
-  },
-
-  isStaff: (req, res, next) => {
-    if (req.session.user && req.session.user.role === "staff") {
-      req.user = req.session.user;
-      return next();
-    }
-    return res.status(403).json({ message: "Not authorized as staff" });
-  },
-
-  isAdminOrStaff: (req, res, next) => {
-    if (req.session.user && (req.session.user.role === "admin" || req.session.user.role === "staff")) {
-      req.user = req.session.user;
-      return next();
-    }
-    return res.status(403).json({ message: "Not authorized. Admin or staff access required." });
-  },
-
-  // Middleware to check if staff needs to change password
-  checkPasswordChange: (req, res, next) => {
-    if (req.session.user && req.session.user.mustChangePassword) {
-      return res.status(403).json({ 
-        message: "You must change your password before accessing this resource",
-        mustChangePassword: true 
-      });
-    }
-    return next();
-  },
+    validateSignup,
+    validateLogin,
 };
-
