@@ -227,7 +227,6 @@ app.get("/", (req, res) => {
   res.render("index", { title: "Bike Assistance System", layout: false });
 });
 
-// Socket.io setup
 require("./socket")(io);
 // Global error handler
 app.use((err, req, res, next) => {
