@@ -2,7 +2,7 @@ const Chat = require("./models/Chat");
 const User = require("./models/User");
 const Booking = require("./models/Booking");
 const Notification = require("./models/Notification");
-
+const GeneralChat = require("./models/GeneralChat");
 // Helper function to create and emit notification
 const createNotification = async (io, notificationData) => {
   try {
@@ -156,7 +156,7 @@ module.exports = (io) => {
     socket.on("join-chat", async (chatId) => {
       try {
         const chat = await Chat.findById(chatId);
-        if (chat && chat.participants.includes(socket.userId)) {
+        if (chat && chat.participants.some(p => p.toString() === socket.userId)) {
           socket.join(chatId);
           console.log(`User ${socket.userId} joined chat ${chatId}`);
         }
@@ -169,7 +169,7 @@ module.exports = (io) => {
     socket.on("join-general-chat", async (chatId) => {
       try {
         const chat = await GeneralChat.findById(chatId);
-        if (chat && chat.participants.includes(socket.userId)) {
+        if (chat && chat.participants.some(p => p.toString() === socket.userId)) {
           socket.join(`general-${chatId}`);
           console.log(`User ${socket.userId} joined general chat ${chatId}`);
         }
@@ -185,7 +185,7 @@ module.exports = (io) => {
 
         // Save message to database
         const chat = await Chat.findById(chatId);
-        if (chat && chat.participants.includes(socket.userId)) {
+        if (chat && chat.participants.some(p => p.toString() === socket.userId)) {
           const newMessage = {
             sender: socket.userId,
             content,
@@ -238,7 +238,7 @@ module.exports = (io) => {
 
         // Save message to database
         const chat = await GeneralChat.findById(chatId);
-        if (chat && chat.participants.includes(socket.userId)) {
+        if (chat && chat.participants.some(p => p.toString() === socket.userId)) {
           const newMessage = {
             sender: socket.userId,
             content,
@@ -290,7 +290,7 @@ module.exports = (io) => {
         const { chatId, messageId } = data;
 
         const chat = await Chat.findById(chatId);
-        if (chat && chat.participants.includes(socket.userId)) {
+        if (chat && chat.participants.some(p => p.toString() === socket.userId)) {
           const message = chat.messages.id(messageId);
           if (
             message &&
@@ -321,7 +321,7 @@ module.exports = (io) => {
         const { chatId, messageId } = data;
 
         const chat = await GeneralChat.findById(chatId);
-        if (chat && chat.participants.includes(socket.userId)) {
+        if (chat && chat.participants.some(p => p.toString() === socket.userId)) {
           const message = chat.messages.id(messageId);
           if (
             message &&

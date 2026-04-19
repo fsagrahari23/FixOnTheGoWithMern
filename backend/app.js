@@ -37,13 +37,11 @@ const User = require("./models/User");
 const { initEmailBloomFilter } = require("./utils/bloomFilter");
 
 // Import middleware
-const {
-  isAuthenticated,
-  isUser,
-  isMechanic,
-  isAdmin,
-  isStaff,
-} = require("./middleware/auth");
+const authMiddleware = require("./middleware/auth");
+
+const isAuthenticated = authMiddleware.isAuthenticated;
+const isAdmin = authMiddleware.isAdmin;
+const isMechanic = authMiddleware.isMechanic;
 
 // Initialize Express app
 const app = express();
@@ -186,7 +184,7 @@ app.use("/user", isAuthenticated, isUser, bookingRoutes);
 app.use("/user", isAuthenticated, isUser, emergencyRoutes);
 app.use("/mechanic", isAuthenticated, isMechanic, mechanicRoutes);
 app.use("/admin", isAuthenticated, isAdmin, adminRoutes);
-app.use("/staff", isAuthenticated, isStaff, staffRoutes);
+app.use("/staff", isAuthenticated, staffRoutes);
 app.use("/chat", isAuthenticated, chatRoutes);
 app.use("/payment", isAuthenticated, paymentRoutes);
 app.use("/api/notifications", isAuthenticated, notificationRoutes);

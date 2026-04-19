@@ -1,5 +1,3 @@
-"use client"
-
 import { Outlet } from "react-router-dom"
 import { Navbar } from "../../components/Navbar"
 import { SidebarNav } from "../../components/users/UserSideBar"
@@ -7,10 +5,9 @@ import {
     Settings,
     Users,
     BarChart3,
-    FileText,
     Bell,
 } from "lucide-react"
-import { useState, useEffect } from "react"
+import { useState } from "react"
 
 export default function UserLayout() {
     const [activeTab, setActiveTab] = useState("dashboard")

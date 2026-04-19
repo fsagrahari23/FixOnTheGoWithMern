@@ -1,7 +1,9 @@
 const express = require("express");
 const router = express.Router();
 const staffController = require("../controllers/staffController");
-const { isStaff, checkPasswordChange } = require("../middleware/auth");
+const isAuthenticated = authMiddleware.isAuthenticated;
+const authMiddleware = require("../middleware/auth");
+router.use(authMiddleware.isAuthenticated);
 const User = require("../models/User");
 const GeneralChat = require("../models/GeneralChat");
 const Notification = require("../models/Notification");
@@ -12,8 +14,7 @@ const { sendSupportResponseToUser } = require("../services/emailService");
 router.post("/change-password", staffController.changePassword);
 
 // Routes below require password to be changed first
-router.use(checkPasswordChange);
-
+router.use(authMiddleware.isAuthenticated);
 // Dashboard
 router.get("/dashboard", staffController.getDashboardData);
 

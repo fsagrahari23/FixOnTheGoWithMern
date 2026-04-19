@@ -1,48 +1,53 @@
-const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const jwt = require("jsonwebtoken");
+const User = require("../models/User");
 
-function validateSignup(req, res, next) {
-    let { name, email, password } = req.body;
+const JWT_SECRET = process.env.JWT_SECRET || "secretkey";
 
-    if (!name || !email || !password) {
-        return res.status(400).json({ error: 'name, email and password are required' });
+/* ---------------- AUTH CHECK ---------------- */
+const isAuthenticated = async (req, res, next) => {
+    try {
+        const authHeader = req.headers.authorization;
+
+        if (!authHeader || !authHeader.startsWith("Bearer ")) {
+            return res.status(401).json({ error: "No token provided" });
+        }
+
+        const token = authHeader.split(" ")[1];
+
+        const decoded = jwt.verify(token, JWT_SECRET);
+
+        const user = await User.findById(decoded.id).select("-password");
+
+        if (!user) {
+            return res.status(401).json({ error: "User not found" });
+        }
+
+        req.user = user; // attach user to request
+        next();
+
+    } catch (err) {
+        return res.status(401).json({ error: "Invalid or expired token" });
     }
+};
 
-    name = name.trim();
-    email = email.toLowerCase().trim();
-
-    if (!emailRegex.test(email)) {
-        return res.status(400).json({ error: 'Invalid email format' });
+/* ---------------- ROLE CHECKS ---------------- */
+const isAdmin = (req, res, next) => {
+    if (!req.user || req.user.role !== "admin") {
+        return res.status(403).json({ error: "Admin access required" });
     }
-
-    if (typeof password !== 'string' || password.length < 8) {
-        return res.status(400).json({ error: 'Password must be at least 8 characters' });
-    }
-
-    req.body.name = name;
-    req.body.email = email;
-
     next();
-}
+};
 
-function validateLogin(req, res, next) {
-    let { email, password } = req.body;
-
-    if (!email || !password) {
-        return res.status(400).json({ error: 'email and password are required' });
+const isMechanic = (req, res, next) => {
+    if (!req.user || req.user.role !== "mechanic") {
+        return res.status(403).json({ error: "Mechanic access required" });
     }
-
-    email = email.toLowerCase().trim();
-
-    if (!emailRegex.test(email)) {
-        return res.status(400).json({ error: 'Invalid email format' });
-    }
-
-    req.body.email = email;
-
     next();
-}
+};
 
+/* ---------------- EXPORTS (IMPORTANT) ---------------- */
 module.exports = {
-    validateSignup,
-    validateLogin,
+    isAuthenticated,
+    isAdmin,
+    isMechanic,
 };
