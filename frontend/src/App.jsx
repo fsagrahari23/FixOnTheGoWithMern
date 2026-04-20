@@ -114,6 +114,7 @@ function AppContent() {
   const [isLoading, setIsLoading] = useState(true);
   const dispatch = useDispatch();
   const { status } = useSelector((state) => state.auth);
+  const a = "";
 
   useEffect(() => {
     dispatch(getMe()).finally(() => {
