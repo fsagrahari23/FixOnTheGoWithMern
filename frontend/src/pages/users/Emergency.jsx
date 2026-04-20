@@ -23,7 +23,8 @@ import MapPicker from '../../components/MapPicker';
 const Emergency = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { emergency, subscription, loading, error } = useSelector((state) => state.booking);
+  const { emergency, subscription, loading } = useSelector((state) => state.booking);
+  const [isLocating, setIsLocating] = useState(false);
 
   const [formData, setFormData] = useState({
     problemDescription: '',
@@ -64,6 +65,34 @@ const Emergency = () => {
       ...prev,
       [name]: value
     }));
+  };
+
+  const handleUseCurrentLocation = () => {
+    setIsLocating(true);
+
+    if (!navigator.geolocation) {
+      alert('Geolocation is not supported by your browser');
+      setIsLocating(false);
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const { latitude, longitude } = pos.coords;
+        handleMapChange({ lat: latitude, lng: longitude });
+        setIsLocating(false);
+      },
+      (err) => {
+        let errorMsg = 'Failed to get your location';
+        if (err.code === 1) errorMsg = 'Location permission denied. Please enable it in browser settings.';
+        else if (err.code === 2) errorMsg = 'Location position unavailable.';
+        else if (err.code === 3) errorMsg = 'Location request timed out.';
+
+        alert(errorMsg);
+        setIsLocating(false);
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
   };
 
   const handleSubmit = async (e) => {
@@ -209,9 +238,28 @@ const Emergency = () => {
                     </div>
 
                     <div>
-                      <Label htmlFor="address" className="text-base font-medium">
-                        Current Location
-                      </Label>
+                      <div className="flex items-center justify-between mb-2">
+                        <Label htmlFor="address" className="text-base font-medium">
+                          Current Location
+                        </Label>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          disabled={isLocating}
+                          onClick={handleUseCurrentLocation}
+                          className="text-red-600 border-red-200 hover:bg-red-50 dark:border-red-800 dark:hover:bg-red-900/30 gap-2 h-8 min-w-[150px]"
+                        >
+                          {isLocating ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <MapPin className="w-3.5 h-3.5" />
+                          )}
+                          <span className="text-xs">
+                            {isLocating ? 'Locating...' : 'Use Current Location'}
+                          </span>
+                        </Button>
+                      </div>
                       <div className="mt-2 flex gap-2">
                         <Input
                           type="text"
@@ -230,6 +278,7 @@ const Emergency = () => {
                         </Label>
                         <MapPicker
                           onChange={handleMapChange}
+                          center={formData.latitude && formData.longitude ? { lat: Number(formData.latitude), lng: Number(formData.longitude) } : null}
                           className="w-full h-64 rounded-lg border border-slate-200 dark:border-slate-600"
                         />
                       </div>

@@ -1,3 +1,5 @@
+/* eslint-disable react-hooks/exhaustive-deps */
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -44,7 +46,6 @@ export default function UserProfile() {
 
   const [activeTab, setActiveTab] = useState('profile');
   const [formErrors, setFormErrors] = useState({});
-  const [updating, setUpdating] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
 
   useEffect(() => {
@@ -137,7 +138,6 @@ export default function UserProfile() {
     if (!isValid) return;
 
     try {
-      setUpdating(true);
       await apiPost('/user/api/profile', {
         name: formData.name,
         phone: formData.phone,
@@ -162,8 +162,6 @@ export default function UserProfile() {
     } catch (error) {
       console.error('Error updating profile:', error);
       alert('Failed to update profile. Please try again.');
-    } finally {
-      setUpdating(false);
     }
   };
 
@@ -514,7 +512,7 @@ export default function UserProfile() {
                                     });
                                     setIsLocating(false);
                                   },
-                                  (err) => {
+                                  () => {
                                     alert('Failed to get location. Please check permissions.');
                                     setIsLocating(false);
                                   },

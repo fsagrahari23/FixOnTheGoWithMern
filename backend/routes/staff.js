@@ -1,7 +1,8 @@
 const express = require("express");
 const router = express.Router();
 const staffController = require("../controllers/staffController");
-const { isStaff, checkPasswordChange } = require("../middleware/auth");
+const { checkPasswordChange } = require("../middleware/auth");
+const cacheMiddleware = require("../middleware/cache");
 const User = require("../models/User");
 const GeneralChat = require("../models/GeneralChat");
 const Notification = require("../models/Notification");
@@ -15,8 +16,8 @@ router.post("/change-password", staffController.changePassword);
 router.use(checkPasswordChange);
 
 // Dashboard
-router.get("/dashboard", staffController.getDashboardData);
-router.get("/analytics", staffController.getAnalyticsData);
+router.get("/dashboard", cacheMiddleware(120), staffController.getDashboardData);
+router.get("/analytics", cacheMiddleware(300), staffController.getAnalyticsData);
 
 // ==================== SUPPORT CHAT ROUTES ====================
 // Get all support chats for staff
@@ -122,7 +123,6 @@ router.post("/chat/:chatId/send", async (req, res) => {
 
     // Get the recipient (user)
     const recipientId = chat.participants.find(p => p.toString() !== req.user._id.toString());
-    const recipient = await User.findById(recipientId);
 
     // Emit socket event for real-time message
     const io = req.app.get("io");

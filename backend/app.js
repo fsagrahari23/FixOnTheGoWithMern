@@ -8,7 +8,6 @@ const path = require("path");
 const http = require("http");
 const socketIo = require("socket.io");
 const flash = require("connect-flash");
-const methodOverride = require("method-override");
 const passport = require("passport");
 const fileUpload = require("express-fileupload");
 const expressLayouts = require("express-ejs-layouts");
@@ -24,7 +23,7 @@ const mechanicGraphQLSchema = require("./graphql/schema");
 const mechanicResolvers = require("./graphql/resolvers");
 const metricsMiddleware = require("./middleware/metircs.middleware")
 const { register } = require("./metrics/prometheus");
-const globalRateLimiter = require("./middleware/rateLimiter");
+const { connectRedis, getCacheStats, getIsConnected, disconnectRedis } = require("./config/redis");
 // Import routes
 const authRoutes = require("./routes/auth");
 const userRoutes = require("./routes/user");
@@ -36,7 +35,7 @@ const chatRoutes = require("./routes/chat");
 const paymentRoutes = require("./routes/payment");
 const bookingRoutes = require("./routes/booking");
 const notificationRoutes = require("./routes/notification");
-const sharedSession = require("express-socket.io-session");
+const maintenanceRoutes = require("./routes/maintenance");
 
 // Import middleware
 const {
@@ -69,6 +68,11 @@ mongoose
   .connect(process.env.MONGODB_URI)
   .then(() => console.log("MongoDB connected"))
   .catch((err) => console.error("MongoDB connection error:", err));
+
+// Connect to Redis (non-blocking — app works without Redis)
+connectRedis().catch((err) => {
+  console.error("Redis connection failed (app will run without cache):", err.message);
+});
 
 // Set up session with MongoDB store
 app.use(
@@ -127,7 +131,7 @@ app.use(
     stream: {
       write: (message) => logger.http(message.trim()), // Log HTTP requests at 'http' level
     },
-    skip: (req, res) => {
+    skip: (req, _res) => {
       if (isProduction && req.path === '/health') {
         return true;
       }
@@ -189,11 +193,28 @@ app.options("*", cors({
 // Swagger docs
 setupSwagger(app);
 
+// Redis health & stats endpoints
+app.get("/api/redis/health", async (req, res) => {
+  const stats = await getCacheStats();
+  res.json({
+    status: getIsConnected() ? "connected" : "disconnected",
+    ...stats,
+  });
+});
+
+app.get("/api/redis/flush", async (req, res) => {
+  const { invalidateAllCaches } = require("./utils/cacheInvalidation");
+  await invalidateAllCaches();
+  res.json({ success: true, message: "All caches flushed" });
+});
+
 // Routes
 app.use("/auth", authRoutes);
 app.use("/user", isAuthenticated, isUser, userRoutes);
 app.use("/user", isAuthenticated, isUser, bookingRoutes);
 app.use("/user", isAuthenticated, isUser, emergencyRoutes);
+app.use("/user", isAuthenticated, isUser, maintenanceRoutes);
+
 app.use("/mechanic", isAuthenticated, isMechanic, mechanicRoutes);
 app.use("/staff", isAuthenticated, isStaff, staffRoutes);
 
@@ -229,7 +250,7 @@ app.get("/", (req, res) => {
 
 require("./socket")(io);
 // Global error handler
-app.use((err, req, res, next) => {
+app.use((err, req, res, _next) => {
   // Normalize to AppError
   let error = err instanceof AppError ? err : new AppError(err.message || 'An unexpected error occurred', err.statusCode || 500, { cause: err });
 
@@ -277,5 +298,19 @@ app.use((err, req, res, next) => {
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   logger.info(`Server running on http://localhost:${PORT} in ${isProduction ? 'production' : 'development'} mode`);
-  logger.info(`Swagger Docs at http://localhost:${PORT}/api-docs`)
+  logger.info(`Swagger Docs at http://localhost:${PORT}/api-docs`);
+  logger.info(`Redis Health at http://localhost:${PORT}/api/redis/health`);
 });
+
+// Graceful shutdown
+const gracefulShutdown = async (signal) => {
+  logger.info(`${signal} received — shutting down gracefully`);
+  await disconnectRedis();
+  server.close(() => {
+    logger.info('HTTP server closed');
+    process.exit(0);
+  });
+};
+
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));

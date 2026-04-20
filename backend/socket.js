@@ -87,7 +87,7 @@ const notifyNearbyMechanics = async (io, booking, onlineUsers) => {
 };
 
 // Helper to notify admins about important events
-const notifyAdmins = async (io, notificationData, onlineUsers) => {
+const notifyAdmins = async (io, notificationData) => {
   try {
     const admins = await User.find({ role: "admin", isActive: true }).select("_id");
 
@@ -152,7 +152,7 @@ module.exports = (io) => {
 
   // Make helper functions available via io for use in routes
   io.notifyNearbyMechanics = (booking) => notifyNearbyMechanics(io, booking, onlineUsers);
-  io.notifyAdmins = (notificationData) => notifyAdmins(io, notificationData, onlineUsers);
+  io.notifyAdmins = (notificationData) => notifyAdmins(io, notificationData);
   io.createNotification = (notificationData) => createNotification(io, notificationData);
   io.getOnlineUsers = () => onlineUsers;
 
@@ -166,7 +166,7 @@ module.exports = (io) => {
           socket.userId = userId;
           onlineUsers[userId] = socket.id;
           // join a room named after the userId so server can emit directly to this user
-          try { socket.join(userId); } catch (e) { /* no-op */ }
+          try { socket.join(userId); } catch { /* no-op */ }
           console.log(`User ${userId} authenticated`);
 
           // Notify relevant users that this user is online
@@ -837,7 +837,6 @@ module.exports = (io) => {
         // Send notification to other participant
         const recipientId = chat.participants.find(p => p.toString() !== socket.userId);
         if (recipientId) {
-          const recipient = await User.findById(recipientId);
           const notificationType = sender.role === "staff" ? "user-message" : "staff-message";
 
           await createNotification(io, {

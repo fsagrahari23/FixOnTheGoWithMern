@@ -22,15 +22,11 @@ import {
   Calendar,
   Shield
 } from 'lucide-react';
-import { useDispatch, useSelector } from 'react-redux';
-import { useNavigate } from 'react-router-dom';
+import { useSelector } from 'react-redux';
 import { apiGet, apiPost } from '@/lib/api';
-import { processPayment } from '@/store/slices/bookingThunks';
 
 const Premium = () => {
-  const dispatch = useDispatch();
-  const navigate = useNavigate();
-  const { subscription, loading, error } = useSelector((state) => state.booking);
+  const { loading } = useSelector((state) => state.booking);
   const [subscriptionData, setSubscriptionData] = useState(null);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState(null);

@@ -3,6 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/ca
 import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
 import { Badge } from '../../components/ui/badge'
+/* eslint-disable react-hooks/exhaustive-deps */
+
 import {
     Dialog,
     DialogContent,

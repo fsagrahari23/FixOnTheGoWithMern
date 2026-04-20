@@ -4,8 +4,9 @@ const User = require("../models/User");
 const MechanicProfile = require("../models/MechanicProfile");
 const Booking = require("../models/Booking");
 const Chat = require("../models/Chat");
-const path = require("path");
 const cloudinary = require("../config/cloudinary");
+const cacheMiddleware = require("../middleware/cache");
+const { invalidateBookingCaches, invalidateMechanicCache } = require("../utils/cacheInvalidation");
 
 const escapeRegex = (value = "") => value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
@@ -15,7 +16,7 @@ router.get("/dashboard", (req, res) => {
 });
 
 // API: dashboard data as JSON (used by the static HTML)
-router.get("/api/dashboard", async (req, res) => {
+router.get("/api/dashboard", cacheMiddleware(60), async (req, res) => {
   try {
     const profile = await MechanicProfile.findOne({ user: req.user._id });
     const bookings = await Booking.find({ mechanic: req.user._id })
@@ -106,7 +107,7 @@ router.get('/booking/:id', (req, res) => {
 });
 
 // API: booking details
-router.get('/api/booking/:id', async (req, res) => {
+router.get('/api/booking/:id', cacheMiddleware(30), async (req, res) => {
   try {
     const booking = await Booking.findById(req.params.id)
       .populate('user', 'name phone address')
@@ -212,6 +213,9 @@ router.post("/booking/:id/accept", async (req, res) => {
     booking.updatedAt = new Date();
     await booking.save();
 
+    // Invalidate caches
+    await invalidateBookingCaches(booking.user, req.user._id);
+
     // Create a chat for this booking if it doesn't exist
     let chat = await Chat.findOne({ booking: booking._id });
     if (!chat) {
@@ -304,6 +308,9 @@ router.post("/booking/:id/start", async (req, res) => {
     booking.status = "in-progress";
     booking.updatedAt = new Date();
     await booking.save();
+
+    // Invalidate caches
+    await invalidateBookingCaches(booking.user, req.user._id);
 
     // Notify connected clients immediately so booking UI can react in real time
     const io = req.app.get('io');
@@ -399,6 +406,9 @@ router.post("/booking/:id/complete", async (req, res) => {
     booking.updatedAt = new Date();
     await booking.save();
 
+    // Invalidate caches
+    await invalidateBookingCaches(booking.user, req.user._id);
+
     // Emit socket event to notify user and mechanic (if online)
     try {
       const io = req.app.get('io');
@@ -413,7 +423,7 @@ router.post("/booking/:id/complete", async (req, res) => {
               status: booking.status,
               updatedAt: booking.updatedAt,
             });
-          } catch (e) {
+          } catch {
             // fallback to global emit
             io.emit('booking-status-changed', {
               bookingId: booking._id.toString(),
@@ -465,7 +475,7 @@ router.get('/history', (req, res) => {
   res.render("mechanic/history", { title: "Job History" });
 });
 
-router.get('/api/history', async (req, res) => {
+router.get('/api/history', cacheMiddleware(60), async (req, res) => {
   try {
     const bookings = await Booking.find({ mechanic: req.user._id })
       .populate('user', 'name')
@@ -483,7 +493,7 @@ router.get('/profile', (req, res) => {
   res.render("mechanic/profile", { title: "My Profile" });
 });
 
-router.get('/api/profile', async (req, res) => {
+router.get('/api/profile', cacheMiddleware(300), async (req, res) => {
   try {
     const user = await User.findById(req.user._id).select("-password");
     const profile = await MechanicProfile.findOne({ user: req.user._id });
@@ -518,7 +528,7 @@ router.post("/profile", async (req, res) => {
     if (typeof certifications === "string") {
       try {
         parsedCertifications = JSON.parse(certifications);
-      } catch (e) {
+      } catch {
         parsedCertifications = [];
       }
     }
@@ -606,6 +616,9 @@ router.post("/profile", async (req, res) => {
       { new: true }
     );
 
+    // Invalidate mechanic caches on profile update
+    await invalidateMechanicCache(req.user._id);
+
     if (expectsJson) {
       return res.status(200).json({
         success: true,
@@ -636,6 +649,9 @@ router.post("/toggle-availability", async (req, res) => {
 
     profile.availability = !profile.availability;
     await profile.save();
+
+    // Invalidate mechanic caches on availability change
+    await invalidateMechanicCache(req.user._id);
 
     req.flash(
       "success_msg",
@@ -693,7 +709,7 @@ router.post("/change-password", async (req, res) => {
 const analyticsService = require("../services/analyticsService");
 
 // Get mechanic's analytics data
-router.get("/api/analytics", async (req, res) => {
+router.get("/api/analytics", cacheMiddleware(300), async (req, res) => {
   try {
     const data = await analyticsService.getMechanicAnalytics(req.user._id);
     res.json({ success: true, data });

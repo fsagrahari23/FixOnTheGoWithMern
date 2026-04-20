@@ -1,3 +1,5 @@
+/* eslint-disable react-hooks/exhaustive-deps */
+
 import { useEffect, useRef } from "react";
 import 'leaflet/dist/leaflet.css';
 
@@ -18,7 +20,7 @@ export default function MapPicker({ onChange, center, className }) {
             if (!mounted) return;
             // if we have a previous map instance remove it first
             if (mapInstanceRef.current) {
-                try { mapInstanceRef.current.remove(); } catch (e) { /* ignore */ }
+                try { mapInstanceRef.current.remove(); } catch { /* ignore */ }
                 mapInstanceRef.current = null;
             }
 
@@ -28,7 +30,7 @@ export default function MapPicker({ onChange, center, className }) {
 
             const addMarker = (lat, lng, draggable = true) => {
                 if (markerRef.current) {
-                    try { markerRef.current.remove(); } catch (e) { /* ignore */ }
+                    try { markerRef.current.remove(); } catch { /* ignore */ }
                     markerRef.current = null;
                 }
                 const marker = L.marker([lat, lng], { draggable }).addTo(map);
@@ -63,12 +65,11 @@ export default function MapPicker({ onChange, center, className }) {
         return () => {
             mounted = false;
             if (mapInstanceRef.current) {
-                try { mapInstanceRef.current.remove(); } catch (e) { /* ignore */ }
+                try { mapInstanceRef.current.remove(); } catch { /* ignore */ }
                 mapInstanceRef.current = null;
             }
             markerRef.current = null;
         };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     // update when center changes
@@ -91,8 +92,8 @@ export default function MapPicker({ onChange, center, className }) {
                 }).catch(() => {});
             }
             setTimeout(() => map.invalidateSize(), 150);
-        } catch (e) {
-            console.warn('MapPicker update center failed', e);
+        } catch {
+            console.warn('MapPicker update center failed');
         }
     }, [center, onChange]);
 

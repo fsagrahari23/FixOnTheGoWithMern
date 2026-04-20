@@ -1,3 +1,5 @@
+import React, { useEffect, useRef } from 'react';
+
 // Map Component
 export const MapComponent = ({ id, height = 300 }) => {
     const mapRef = useRef(null);

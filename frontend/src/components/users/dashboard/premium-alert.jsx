@@ -9,7 +9,6 @@ export function PremiumAlert() {
     const [isPremium, setIsPremium] = useState(false)
     const [remaining, setRemaining] = useState(null)
     const [loading, setLoading] = useState(true)
-    const [error, setError] = useState(null)
     const navigate = useNavigate()
 
     useEffect(() => {
@@ -43,7 +42,6 @@ export function PremiumAlert() {
                 }
             } catch (e) {
                 console.error("Premium banner load failed", e)
-                setError(e)
             } finally {
                 setLoading(false)
             }

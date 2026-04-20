@@ -1,5 +1,7 @@
 "use client"
 
+/* eslint-disable react-hooks/exhaustive-deps */
+
 import { useEffect, useState } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -39,9 +41,8 @@ const registrationSchema = z
     })
 
 export default function Register() {
-    const [dark, setDark] = useState(false)
+    const [dark] = useState(false)
     const [step, setStep] = useState("email")
-    const [otpVerified, setOtpVerified] = useState(false)
     const dispatch = useDispatch()
     const navigate = useNavigate()
     const { status, error, authData } = useSelector((state) => state.auth)
@@ -68,7 +69,6 @@ export default function Register() {
             // Move to registration step after OTP is verified
             else if (authData.message.includes("OTP verified")) {
                 console.log("[v0] Moving to registration step")
-                setOtpVerified(true)
                 setStep("registration")
                 registrationForm.setValue("email", emailForm.getValues("email"))
             }

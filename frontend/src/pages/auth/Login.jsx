@@ -29,10 +29,10 @@ const loginSchema = z.object({
 });
 
 export default function Login() {
-    const [dark, setDark] = useState(false);
+    const [dark] = useState(false);
     const dispatch = useDispatch();
     const navigate = useNavigate();
-    const { status, error, user, role } = useSelector((state) => state.auth);
+    const { status, error, user } = useSelector((state) => state.auth);
 
     useEffect(() => {
         if (typeof window !== "undefined") {

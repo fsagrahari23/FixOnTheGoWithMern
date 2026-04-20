@@ -113,16 +113,6 @@ export default function UserProfile() {
     }));
   }, [bookings]);
 
-  const userTypeData = React.useMemo(() => {
-    const premium = user?.premium ? 1 : 0;
-    const regular = user?.premium ? 0 : 1;
-
-    return [
-      { name: 'Premium', value: premium, color: '#f59e0b' },
-      { name: 'Regular', value: regular, color: '#6b7280' }
-    ].filter(item => item.value > 0);
-  }, [user]);
-
   if (loading) {
     return (
       <div className="container py-4">

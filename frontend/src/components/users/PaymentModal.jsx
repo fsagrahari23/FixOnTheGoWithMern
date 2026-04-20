@@ -18,7 +18,6 @@ export default function PaymentModal({
   onClose, 
   onPayment, 
   amount, 
-  bookingId,
   loading 
 }) {
   const [cardNumber, setCardNumber] = useState('');

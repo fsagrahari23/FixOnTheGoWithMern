@@ -7,8 +7,10 @@ const Chat = require("../models/Chat")
 const GeneralChat = require("../models/GeneralChat")
 const MechanicProfile = require("../models/MechanicProfile")
 const bcrypt = require("bcryptjs")
+const cacheMiddleware = require("../middleware/cache")
+const { invalidateUserCache, invalidateBookingCaches } = require("../utils/cacheInvalidation")
 
-router.get("/api/maintenance", async (req, res) => {
+router.get("/api/maintenance", cacheMiddleware(60), async (req, res) => {
   try {
     const subscription = await Subscription.findOne({
       user: req.user._id,
@@ -34,7 +36,7 @@ router.get("/api/maintenance", async (req, res) => {
 })
 
 // Get premium subscription data
-router.get("/api/premium", async (req, res) => {
+router.get("/api/premium", cacheMiddleware(120), async (req, res) => {
   try {
     const subscription = await Subscription.findOne({
       user: req.user._id,
@@ -575,6 +577,9 @@ router.post("/booking/:id/cancel", async (req, res) => {
     booking.updatedAt = new Date()
     await booking.save()
 
+    // Invalidate caches after cancellation
+    await invalidateBookingCaches(req.user._id, booking.mechanic);
+
     // If this was a basic user booking, decrement the count
     const subscription = await Subscription.findOne({
       user: req.user._id,
@@ -637,6 +642,9 @@ router.post("/booking/:id/rate", async (req, res) => {
 
     await booking.save()
 
+    // Invalidate caches after rating
+    await invalidateBookingCaches(req.user._id, booking.mechanic);
+
     // Update mechanic profile rating
     const mechanicProfile = await MechanicProfile.findOne({ user: booking.mechanic })
 
@@ -688,6 +696,11 @@ router.get("/history", async (req, res) => {
 
     res.render("user/history", {
       title: "Booking History",
+      user: req.user,
+      bookings,
+      subscription,
+      isPremium,
+      remainingBookings,
     })
   } catch (error) {
     console.error("Booking history error:", error)
@@ -716,6 +729,8 @@ router.get("/premium", async (req, res) => {
 
     res.render("user/premium", {
       title: "Premium Plans",
+      subscription,
+      activeBookingCount,
       stripePublishableKey: process.env.STRIPE_PUBLISHABLE_KEY,
     })
   } catch (error) {
@@ -767,6 +782,9 @@ router.post("/premium/cancel", async (req, res) => {
     subscription.status = "cancelled"
     subscription.cancelledAt = new Date()
     await subscription.save()
+
+    // Invalidate user caches after subscription change
+    await invalidateUserCache(req.user._id);
 
     // Update user's premium status
     await User.findByIdAndUpdate(req.user._id, {
@@ -830,6 +848,12 @@ router.get("/profile", async (req, res) => {
 
     res.render("user/profile", {
       title: "My Profile",
+      user: req.user,
+      subscription,
+      subscriptionHistory,
+      isPremium,
+      remainingBookings,
+      premiumFeatures: premiumFeatures?.premiumFeatures || {},
     })
   } catch (error) {
     console.error("Profile page error:", error)
@@ -899,13 +923,13 @@ router.post("/emergency", async (req, res) => {
     })
 
     await booking.save()
+    res.json({ success: true, message: "Emergency assistance requested successfully. Help is on the way!", bookingId: booking._id })
 
-    req.flash("success_msg", "Emergency assistance request submitted. A mechanic will be assigned shortly.")
-    res.redirect(`/user/booking/${booking._id}`)
+   
   } catch (error) {
     console.error("Emergency request error:", error)
-    req.flash("error_msg", "Failed to submit emergency request")
-    res.redirect("/user/emergency")
+    res.json({ success: false, message: "Failed to request emergency assistance" })
+   
   }
 })
 
@@ -935,13 +959,17 @@ router.get("/maintenance", async (req, res) => {
       createdAt: { $gte: threeMonthsAgo },
     })
 
-    res.render("user/maintenance", {
-      title: "Schedule Maintenance Check",
+   res.json({
+      success: true,
+      message: recentMaintenance
+        ? "You have already scheduled a maintenance check in the last 3 months"
+        : "You can schedule a maintenance check",
+      recentMaintenance,
     })
+
   } catch (error) {
     console.error("Maintenance page error:", error)
-    req.flash("error_msg", "Failed to load maintenance page")
-    res.redirect("/user/dashboard")
+    res.json({ success: false, message: "Failed to load maintenance check data" })
   }
 })
 
@@ -995,13 +1023,10 @@ router.post("/maintenance", async (req, res) => {
     })
 
     await booking.save()
-
-    req.flash("success_msg", "Maintenance check scheduled successfully")
-    res.redirect(`/user/booking/${booking._id}`)
+res.json({ success: true, message: "Maintenance check scheduled successfully", bookingId: booking._id })
   } catch (error) {
     console.error("Maintenance scheduling error:", error)
-    req.flash("error_msg", "Failed to schedule maintenance check")
-    res.redirect("/user/maintenance")
+    res.json({ success: false, message: "Failed to schedule maintenance check" })
   }
 })
 
@@ -1042,12 +1067,10 @@ router.post("/profile", async (req, res) => {
 
 
 
-    req.flash("success_msg", "Profile updated successfully");
-    res.redirect("/user/profile");
+  res.json({ success: true, message: "Profile updated successfully" })
   } catch (error) {
     console.error("Update profile error:", error);
-    req.flash("error_msg", "Failed to update profile");
-    res.redirect("/mechanic/profile");
+    res.json({ success: false, message: "Failed to update profile" })
   }
 });
 
@@ -1604,7 +1627,6 @@ router.post("/api/staff/chat/:chatId/send", async (req, res) => {
 
     // Get the recipient (other participant)
     const recipientId = chat.participants.find(p => p.toString() !== req.user._id.toString());
-    const recipient = await User.findById(recipientId);
 
     // Emit socket event for real-time message
     const io = req.app.get("io");

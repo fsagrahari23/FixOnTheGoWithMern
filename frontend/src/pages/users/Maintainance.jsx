@@ -26,7 +26,7 @@ import MapPicker from '../../components/MapPicker';
 const Maintenance = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-  const { maintenance, subscription, error } = useSelector((state) => state.booking);
+  const { maintenance, subscription } = useSelector((state) => state.booking);
   const loading = maintenance?.loading;
 
   const [formData, setFormData] = useState({

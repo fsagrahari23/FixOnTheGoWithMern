@@ -8,7 +8,7 @@ import { Mail, Loader } from "lucide-react"
 
 export default function EmailStep({ onNext }) {
     const dispatch = useDispatch()
-    const { email, loading, error } = useSelector((state) => state.auth)
+    const { loading, error } = useSelector((state) => state.auth)
     const [localEmail, setLocalEmail] = useState("")
     const [validationError, setValidationError] = useState("")
 

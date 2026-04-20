@@ -62,7 +62,6 @@ export default function Mechanic() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [mechanics, setMechanics] = useState([]);
   const [pendingMechanics, setPendingMechanics] = useState([]);
   const [approvedMechanics, setApprovedMechanics] = useState([]);
   const [search, setSearch] = useState("");
@@ -140,7 +139,6 @@ export default function Mechanic() {
         throw new Error("Failed to fetch mechanics");
       }
       const data = await response.json();
-      setMechanics(data.mechanics || []);
       setPendingMechanics(data.pendingMechanics || []);
       setApprovedMechanics(data.approvedMechanics || []);
       setError(null);
