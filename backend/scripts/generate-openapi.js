@@ -12,9 +12,8 @@ const prefixRegex = /app\.use\(\s*['\"]([^'\"]+)['\"]\s*,\s*(.*?)\)/g;
 const prefixMap = {}; // routerFile -> prefix
 let match;
 while ((match = prefixRegex.exec(appText)) !== null) {
-  let prefix = match[1];
+  const _prefix = match[1];
   let routeVar = match[2].trim();
-  const mapping = /(?:const\s+)?(\w+)\s*=\s*require\((.*?)\)?/.exec(appText);
   // easier: use known variable names
   const known = {
     authRoutes: '/auth',

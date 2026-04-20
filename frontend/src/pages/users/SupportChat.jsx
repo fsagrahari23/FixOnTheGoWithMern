@@ -48,7 +48,6 @@ export default function SupportChatPage() {
 
   const { user } = useSelector((state) => state.auth)
 
-  const [chat, setChat] = useState(null)
   const [messages, setMessages] = useState([])
   const [newMessage, setNewMessage] = useState("")
   const [loading, setLoading] = useState(true)
@@ -121,8 +120,6 @@ export default function SupportChatPage() {
       console.log("Chat data:", data)
       
       if (data.success) {
-        setChat(data.chat)
-        
         // Filter messages to last 24 hours
         const now = new Date()
         const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000)

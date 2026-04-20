@@ -96,7 +96,7 @@ export default function DynamicForm({ onSubmit }) {
         <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
             <form onSubmit={handleSubmit} className="p-8 space-y-6">
                 <div className="space-y-6">
-                    {fields.map((field, index) => (
+                    {fields.map((field) => (
                         <div key={field.id} className="animate-in fade-in slide-in-from-top-2 duration-300">
                             <div className="flex items-start gap-4 p-4 bg-slate-50 dark:bg-slate-700/50 rounded-lg border border-slate-200 dark:border-slate-600 hover:border-slate-300 dark:hover:border-slate-500 transition-colors">
                                 <div className="flex-1 space-y-4">

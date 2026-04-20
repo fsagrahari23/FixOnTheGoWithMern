@@ -44,7 +44,7 @@ export default function ProfileUpdateRequests() {
         try {
           const body = await response.json()
           message = body?.message || body?.error || message
-        } catch (_) {
+        } catch {
           // keep default
         }
         throw new Error(message)
@@ -76,7 +76,7 @@ export default function ProfileUpdateRequests() {
         try {
           const body = await response.json()
           message = body?.message || message
-        } catch (_) {
+        } catch {
           // keep default
         }
         throw new Error(message)

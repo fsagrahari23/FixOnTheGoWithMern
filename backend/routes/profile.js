@@ -38,6 +38,12 @@ router.get("/profile", async (req, res) => {
 
         res.render("user/profile", {
             title: "My Profile",
+            user: req.user,
+            subscription,
+            subscriptionHistory,
+            isPremium,
+            remainingBookings,
+            premiumFeatures: premiumFeatures?.premiumFeatures || {},
         })
     } catch (error) {
         console.error("Profile page error:", error)

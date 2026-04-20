@@ -7,10 +7,6 @@ import {
     cancelBooking,
     rateBooking,
     fetchBookingHistory,
-    fetchChat,
-    sendMessage,
-    fetchMessages,
-    fetchUnreadCount,
     fetchMaintenanceData,
     scheduleMaintenance,
     fetchEmergencyData,
@@ -74,7 +70,7 @@ const bookingSlice = createSlice({
             .addCase(createBooking.pending, (state) => {
                 state.loading = true;
             })
-            .addCase(createBooking.fulfilled, (state, action) => {
+            .addCase(createBooking.fulfilled, (state) => {
                 state.loading = false;
             })
             .addCase(createBooking.rejected, (state, action) => {
@@ -99,7 +95,7 @@ const bookingSlice = createSlice({
             .addCase(selectMechanic.pending, (state) => {
                 state.loading = true;
             })
-            .addCase(selectMechanic.fulfilled, (state, action) => {
+            .addCase(selectMechanic.fulfilled, (state) => {
                 state.loading = false;
             })
             .addCase(selectMechanic.rejected, (state, action) => {
@@ -109,7 +105,7 @@ const bookingSlice = createSlice({
             .addCase(cancelBooking.pending, (state) => {
                 state.loading = true;
             })
-            .addCase(cancelBooking.fulfilled, (state, action) => {
+            .addCase(cancelBooking.fulfilled, (state) => {
                 state.loading = false;
             })
             .addCase(cancelBooking.rejected, (state, action) => {
@@ -119,7 +115,7 @@ const bookingSlice = createSlice({
             .addCase(rateBooking.pending, (state) => {
                 state.loading = true;
             })
-            .addCase(rateBooking.fulfilled, (state, action) => {
+            .addCase(rateBooking.fulfilled, (state) => {
                 state.loading = false;
             })
             .addCase(rateBooking.rejected, (state, action) => {
@@ -154,7 +150,7 @@ const bookingSlice = createSlice({
             .addCase(scheduleMaintenance.pending, (state) => {
                 state.loading = true;
             })
-            .addCase(scheduleMaintenance.fulfilled, (state, action) => {
+            .addCase(scheduleMaintenance.fulfilled, (state) => {
                 state.loading = false;
                 // Optionally update maintenance data
             })
@@ -180,7 +176,7 @@ const bookingSlice = createSlice({
             .addCase(requestEmergency.pending, (state) => {
                 state.loading = true;
             })
-            .addCase(requestEmergency.fulfilled, (state, action) => {
+            .addCase(requestEmergency.fulfilled, (state) => {
                 state.loading = false;
                 // Optionally update emergency data or redirect
             })

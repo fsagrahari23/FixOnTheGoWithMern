@@ -3,6 +3,7 @@ const router = express.Router()
 const User = require("../models/User")
 const Booking = require("../models/Booking")
 require("dotenv").config();
+const cacheMiddleware = require("../middleware/cache")
 
 const Subscription = require("../models/Subscription")
 
@@ -50,6 +51,13 @@ router.get("/dashboard", async (req, res) => {
 
         res.render("user/dashboard", {
             title: "User Dashboard",
+            user: req.user,
+            bookings,
+            stats,
+            categories,
+            subscription,
+            isPremium: !!subscription,
+            remainingBookings,
         })
     } catch (error) {
         console.error("User dashboard error:", error)
@@ -59,7 +67,7 @@ router.get("/dashboard", async (req, res) => {
 })
 
 // Dashboard API
-router.get("/api/dashboard", async (req, res) => {
+router.get("/api/dashboard", cacheMiddleware(60), async (req, res) => {
     try {
         // Get user's bookings
         const bookings = await Booking.find({ user: req.user._id })
@@ -119,7 +127,7 @@ router.get("/api/dashboard", async (req, res) => {
 const analyticsService = require("../services/analyticsService")
 
 // Get user's analytics data
-router.get("/api/analytics", async (req, res) => {
+router.get("/api/analytics", cacheMiddleware(300), async (req, res) => {
     try {
         const data = await analyticsService.getUserAnalytics(req.user._id)
         res.json({ success: true, data })

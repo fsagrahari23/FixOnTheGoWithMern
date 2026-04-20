@@ -34,6 +34,7 @@ router.get("/maintenance", async (req, res) => {
 
         res.render("user/maintenance", {
             title: "Schedule Maintenance Check",
+            recentMaintenance,
         })
     } catch (error) {
         console.error("Maintenance page error:", error)
@@ -93,12 +94,10 @@ router.post("/maintenance", async (req, res) => {
 
         await booking.save()
 
-        req.flash("success_msg", "Maintenance check scheduled successfully")
-        res.redirect(`/user/booking/${booking._id}`)
+        res.json({ success: true, message: "Maintenance check scheduled successfully" })
     } catch (error) {
         console.error("Maintenance scheduling error:", error)
-        req.flash("error_msg", "Failed to schedule maintenance check")
-        res.redirect("/user/maintenance")
+        res.status(500).json({ error: "Failed to schedule maintenance check" })
     }
 })
 

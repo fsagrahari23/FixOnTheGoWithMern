@@ -39,7 +39,7 @@ const registrationSchema = z
     })
 
 export default function Register() {
-    const [dark, setDark] = useState(false)
+    const [dark] = useState(false)
     const [step, setStep] = useState("email")
     const [otpVerified, setOtpVerified] = useState(false)
     const [isCheckingEmail, setIsCheckingEmail] = useState(false)
@@ -72,7 +72,6 @@ export default function Register() {
             // Move to registration step after OTP is verified
             else if (authData.message.includes("OTP verified")) {
                 console.log("[v0] Moving to registration step")
-                setOtpVerified(true)
                 setStep("registration")
                 const savedEmail = localStorage.getItem("registrationEmail") || emailForm.getValues("email")
                 registrationForm.setValue("email", savedEmail)

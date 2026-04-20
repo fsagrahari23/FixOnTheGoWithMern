@@ -582,7 +582,6 @@ export default function MechanicBookingDetails() {
         customer={booking?.user}
       />
 
-      {/* global animation keyframes */}
       <style>{`
         @keyframes slideDown {
           from { opacity: 0; transform: translateY(-8px); }

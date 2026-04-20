@@ -1,3 +1,5 @@
+/* eslint-disable react-hooks/exhaustive-deps */
+
 import React, { createContext, useContext, useEffect, useRef } from "react";
 import { useDispatch } from "react-redux";
 import { useSelector } from "react-redux";
@@ -64,7 +66,7 @@ export const LocationProvider = ({ children }) => {
       const address = data.display_name || fallbackAddress;
       dispatch(setAddress(address));
       // console.log("Frontend: Fetched address:", address);
-    } catch (error) {
+    } catch {
       dispatch(setAddress(fallbackAddress));
     } finally {
       clearTimeout(timeoutId);

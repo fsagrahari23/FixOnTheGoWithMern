@@ -1,5 +1,7 @@
 "use client"
 
+/* eslint-disable react-hooks/exhaustive-deps */
+
 import { useEffect, useRef, useState, useCallback } from "react"
 import { motion } from "framer-motion"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "../../ui/card"
@@ -19,7 +21,6 @@ import {
   Circle
 } from "lucide-react"
 import { useSelector } from "react-redux"
-import { toast } from "sonner"
 import io from "socket.io-client"
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:3001"

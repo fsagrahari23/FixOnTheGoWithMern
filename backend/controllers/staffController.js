@@ -4,6 +4,7 @@ const Booking = require("../models/Booking");
 const Subscription = require("../models/Subscription");
 const Chat = require("../models/Chat");
 const AppError = require("../utils/AppError");
+const { invalidateAdminCache, invalidateStaffCache, invalidateMechanicCache, invalidateBookingCaches } = require("../utils/cacheInvalidation");
 
 const OPEN_DISPUTE_STATUSES = ["pending", "open", "under_review", "under-review"];
 
@@ -496,6 +497,13 @@ exports.approveMechanic = async (req, res, next) => {
     mechanic.isApproved = true;
     await mechanic.save();
 
+    // Invalidate caches
+    await Promise.all([
+      invalidateAdminCache(),
+      invalidateStaffCache(),
+      invalidateMechanicCache(id),
+    ]);
+
     res.json({
       success: true,
       message: "Mechanic approved successfully",
@@ -510,7 +518,6 @@ exports.approveMechanic = async (req, res, next) => {
 exports.rejectMechanic = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { reason } = req.body;
 
     const mechanic = await User.findById(id);
     if (!mechanic || mechanic.role !== "mechanic") {
@@ -522,6 +529,9 @@ exports.rejectMechanic = async (req, res, next) => {
 
     // Delete the user
     await User.findByIdAndDelete(id);
+
+    // Invalidate caches
+    await Promise.all([invalidateAdminCache(), invalidateStaffCache()]);
 
     res.json({
       success: true,
@@ -608,6 +618,9 @@ exports.resolveDispute = async (req, res, next) => {
     }
 
     await booking.save();
+
+    // Invalidate caches after dispute resolution
+    await invalidateBookingCaches(booking.user, booking.mechanic);
 
     res.json({
       success: true,

@@ -52,9 +52,8 @@ const registrationSchema = z
     })
 
 export default function RegisterMechanic() {
-    const [dark, setDark] = useState(false)
+    const [dark] = useState(false)
     const [step, setStep] = useState("email") // email | otp | registration
-    const [otpVerified, setOtpVerified] = useState(false)
     const [selectedFiles, setSelectedFiles] = useState([]) // for file uploads
     const [isCheckingEmail, setIsCheckingEmail] = useState(false)
     const [emailStatus, setEmailStatus] = useState(null) // null | "available" | "taken"
@@ -78,7 +77,6 @@ export default function RegisterMechanic() {
             if (authData.message.includes("OTP sent")) {
                 setStep("otp")
             } else if (authData.message.includes("OTP verified")) {
-                setOtpVerified(true)
                 setStep("registration")
                 // copy email from emailForm or storage to registration form
                 const savedEmail = localStorage.getItem("registrationEmail") || emailForm.getValues("email")

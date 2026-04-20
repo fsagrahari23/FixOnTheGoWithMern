@@ -12,11 +12,9 @@ import {
 } from 'lucide-react';
 import { validate } from '../../lib/validation';
 import { apiGet, apiPost } from '@/lib/api';
-import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
 export default function AdminProfile() {
-  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [userData, setUserData] = useState(null);
 
@@ -58,7 +56,7 @@ export default function AdminProfile() {
         try {
           const errorData = JSON.parse(err.body);
           errorMessage = errorData.error || errorMessage;
-        } catch (e) {
+        } catch {
           // If parsing fails, use the default message
         }
       }
@@ -118,7 +116,7 @@ export default function AdminProfile() {
         try {
           const errorData = JSON.parse(err.body);
           errorMessage = errorData.error || errorMessage;
-        } catch (e) {
+        } catch {
           // If parsing fails, use the default message
         }
       }
@@ -151,7 +149,7 @@ export default function AdminProfile() {
         try {
           const errorData = JSON.parse(err.body);
           errorMessage = errorData.error || errorMessage;
-        } catch (e) {
+        } catch {
           // If parsing fails, use the default message
         }
       }

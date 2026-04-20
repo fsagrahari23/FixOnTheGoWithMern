@@ -361,7 +361,6 @@ const BookingDetails = () => {
 
   const bk = currentBooking;
   const cfg = STATUS[bk?.status] || STATUS.pending;
-  const isActive = ['accepted', 'in-progress'].includes(bk?.status);
   const isDone = ['completed', 'cancelled'].includes(bk?.status);
   const canPay = bk?.status === 'completed' && bk?.payment?.status === 'pending';
   const canRate = bk?.status === 'completed' && bk?.payment?.status === 'completed' && !bk?.rating;

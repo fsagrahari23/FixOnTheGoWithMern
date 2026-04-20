@@ -47,7 +47,7 @@ export default function Features() {
 
   useEffect(() => {
     const ctx = gsap.context(() => {
-      cardsRef.current.forEach((card, index) => {
+      cardsRef.current.forEach((card) => {
         gsap.from(card, {
           scrollTrigger: {
             trigger: card,

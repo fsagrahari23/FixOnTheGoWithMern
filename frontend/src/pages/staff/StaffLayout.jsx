@@ -16,7 +16,7 @@ import {
 import { useState } from "react"
 
 export default function StaffLayout() {
-    const [activeTab, setActiveTab] = useState("dashboard")
+    const [, setActiveTab] = useState("dashboard")
 
     return (
         <div className="flex flex-col h-screen bg-background text-foreground dark:radial-glow">

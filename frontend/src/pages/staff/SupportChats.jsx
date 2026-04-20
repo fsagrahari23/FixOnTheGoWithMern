@@ -230,7 +230,6 @@ export default function StaffChatPage() {
 
   const { user } = useSelector((state) => state.auth)
 
-  const [chat, setChat] = useState(null)
   const [messages, setMessages] = useState([])
   const [newMessage, setNewMessage] = useState("")
   const [loading, setLoading] = useState(true)
@@ -241,7 +240,6 @@ export default function StaffChatPage() {
   const [emailDialogOpen, setEmailDialogOpen] = useState(false)
   const [emailMessage, setEmailMessage] = useState("")
   const [sendingEmail, setSendingEmail] = useState(false)
-  const [socketConnected, setSocketConnected] = useState(false)
 
   // Initialize socket
   useEffect(() => {
@@ -250,17 +248,14 @@ export default function StaffChatPage() {
     
     if (socket) {
       const handleConnect = () => {
-        setSocketConnected(true)
         if (user?._id) {
           authenticateSocket(user._id)
         }
       }
       
       socket.on("connect", handleConnect)
-      socket.on("disconnect", () => setSocketConnected(false))
       
       if (socket.connected) {
-        setSocketConnected(true)
         if (user?._id) {
           authenticateSocket(user._id)
         }
@@ -281,7 +276,6 @@ export default function StaffChatPage() {
       })
       const data = await response.json()
       if (data.success) {
-        setChat(data.chat)
         
         // Filter messages to last 24 hours
         const now = new Date()

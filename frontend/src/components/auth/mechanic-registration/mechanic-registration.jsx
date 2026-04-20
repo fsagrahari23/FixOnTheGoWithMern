@@ -1,17 +1,13 @@
 "use client"
 
 import { useState } from "react"
-import { useSelector } from "react-redux"
 import EmailStep from "./steps/email-step"
 import OtpStep from "./steps/otp-step"
 import RegistrationStep from "./steps/registration-step"
 import SuccessStep from "./steps/success-step"
-import { Moon, Sun } from "lucide-react"
 
 export default function MechanicRegistration() {
     const [currentStep, setCurrentStep] = useState(1)
-
-    const { otpVerified, registrationComplete } = useSelector((state) => state.auth)
 
     const handleNextStep = () => {
         setCurrentStep((prev) => prev + 1)

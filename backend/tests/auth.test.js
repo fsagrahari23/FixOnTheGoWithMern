@@ -1,5 +1,5 @@
 const request = require('supertest');
-const { connect, close, clear } = require('./setup');
+const { connect, close } = require('./setup');
 
 let app;
 
