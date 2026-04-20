@@ -34,7 +34,7 @@ export default defineConfig([
     rules: {
       'react-refresh/only-export-components': 'off',
       'react/jsx-uses-vars': 'error',
-      'no-unused-vars': ['warn', { varsIgnorePattern: '^[A-Z_]', argsIgnorePattern: '^_' }],
+      'no-unused-vars': ['error',{ varsIgnorePattern: '^[A-Z_]', argsIgnorePattern: '^_' }],
       'no-undef': 'error',
       'react-hooks/exhaustive-deps': 'warn',
     },
