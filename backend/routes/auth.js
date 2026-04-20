@@ -28,6 +28,8 @@ const authMiddleware = require("../middleware/auth");
  */
 router.post("/send-otp", authController.sendOtp);
 router.post("/verify-otp", authController.verifyOtp);
+router.get("/check-email", authController.checkEmail);
+router.post("/check-email", authController.checkEmail);
 router.post("/register-user", authController.registerUser);
 router.post("/register-mechanic", authController.registerMechanic);
 router.post("/login", authController.login);
