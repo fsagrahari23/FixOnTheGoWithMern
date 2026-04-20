@@ -66,7 +66,11 @@ app.set('io', io);
 // Connect to MongoDB (driver v4+ no longer needs deprecated options)
 mongoose
   .connect(process.env.MONGODB_URI)
-  .then(() => console.log("MongoDB connected"))
+  .then(async () => {
+    console.log("MongoDB connected");
+    const { initBloomFilter } = require('./services/bloomService');
+    await initBloomFilter();
+  })
   .catch((err) => console.error("MongoDB connection error:", err));
 
 // Connect to Redis (non-blocking — app works without Redis)

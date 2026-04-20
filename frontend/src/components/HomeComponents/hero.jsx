@@ -4,10 +4,11 @@ import { useEffect, useRef } from "react"
 import { motion } from "framer-motion"
 import gsap from "gsap"
 import { ArrowRight } from "lucide-react"
+import { useNavigate } from "react-router-dom"
 
 export default function Hero() {
   const containerRef = useRef(null)
-
+  const navigate = useNavigate()
   useEffect(() => {
     const ctx = gsap.context(() => {
       gsap.from(".hero-title", {
@@ -72,6 +73,7 @@ export default function Hero() {
                 whileHover={{ scale: 1.05, boxShadow: "0 20px 40px rgba(99, 102, 241, 0.3)" }}
                 whileTap={{ scale: 0.95 }}
                 className="px-8 py-4 bg-gradient-to-r from-primary to-secondary text-primary-foreground rounded-full font-semibold flex items-center justify-center gap-2 transition-all"
+                onClick={()=>navigate("/auth/register")}
               >
                 Get Started <ArrowRight className="w-5 h-5" />
               </motion.button>
@@ -80,6 +82,7 @@ export default function Hero() {
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 className="px-8 py-4 border-2 border-primary text-primary rounded-full font-semibold hover:bg-primary/10 transition-all"
+                onClick={()=>navigate("/auth/register-mechanic")}
               >
                 Join as Mechanic
               </motion.button>

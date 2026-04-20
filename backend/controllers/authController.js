@@ -3,6 +3,48 @@ const cloudinary = require("../config/cloudinary");
 const User = require("../models/User");
 const MechanicProfile = require("../models/MechanicProfile");
 const AppError = require("../utils/AppError");
+const { checkEmailBloom, addEmailBloom } = require("../services/bloomService");
+
+exports.checkEmail = async (req, res, next) => {
+  try {
+    const email = req.query.email || req.body.email;
+    if (!email) {
+      return res.status(400).json({ message: "Email is required." });
+    }
+
+    // Basic format validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({ message: "Invalid email format." });
+    }
+
+    // 1. Check Bloom Filter
+    const bloomExists = await checkEmailBloom(email);
+    
+    if (!bloomExists) {
+      // Bloom filter says NO -> definitively does not exist (skip DB)
+      return res.json({ exists: false, source: 'bloom' });
+    }
+
+    // 2. Bloom filter says YES -> might exist, check DB
+    const existingUser = await User.findOne({ email: email.toLowerCase().trim() }).lean();
+    if (existingUser) {
+      return res.json({ exists: true, source: 'db' });
+    }
+
+    return res.json({ exists: false, source: 'db' });
+  } catch (error) {
+    console.error("Check email error:", error);
+    // On error, try DB as fallback
+    try {
+      const email = req.query.email || req.body.email;
+      const existingUser = await User.findOne({ email: email.toLowerCase().trim() }).lean();
+      return res.json({ exists: !!existingUser, source: 'db-fallback' });
+    } catch (dbErr) {
+      res.status(500).json({ message: "Failed to check email." });
+    }
+  }
+};
 
 exports.sendOtp = async (req, res, next) => {
   try {
@@ -11,9 +53,12 @@ exports.sendOtp = async (req, res, next) => {
       return next(new AppError("Email is required for OTP verification.", 400));
     }
 
-    const existingUser = await User.findOne({ email });
-    if (existingUser) {
-      return next(new AppError("Email is already registered.", 400));
+    const bloomExists = await checkEmailBloom(email);
+    if (bloomExists) {
+      const existingUser = await User.findOne({ email: email.toLowerCase().trim() }).lean();
+      if (existingUser) {
+        return next(new AppError("Email is already registered.", 400));
+      }
     }
 
     const otp = otpService.generateOtp();
@@ -77,6 +122,9 @@ exports.registerUser = async (req, res) => {
 
     const newUser = new User(userData);
     await newUser.save();
+
+    // Add to Bloom filter after successful insert
+    await addEmailBloom(email);
 
     delete req.session.otp;
     delete req.session.email;
@@ -151,6 +199,9 @@ exports.registerMechanic = async (req, res) => {
     };
     const newMechanic = new MechanicProfile(mechanicData);
     await newMechanic.save();
+
+    // Add to Bloom filter after successful insert
+    await addEmailBloom(email);
 
     delete req.session.otp;
     delete req.session.email;

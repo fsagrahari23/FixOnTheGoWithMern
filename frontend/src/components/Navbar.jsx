@@ -141,9 +141,9 @@ export function Navbar() {
               <DropdownMenuItem onClick={handleProfile}>
                 <User className="mr-2 h-4 w-4" /> Profile
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleSettings}>
+              {/* <DropdownMenuItem onClick={handleSettings}>
                 <Settings className="mr-2 h-4 w-4" /> Settings
-              </DropdownMenuItem>
+              </DropdownMenuItem> */}
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={handleLogout} className="text-red-600 dark:text-red-400">
                 <LogOut className="mr-2 h-4 w-4" /> Logout

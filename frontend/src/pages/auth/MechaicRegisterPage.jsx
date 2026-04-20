@@ -1,8 +1,6 @@
 "use client"
 
-/* eslint-disable react-hooks/exhaustive-deps */
-
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import * as z from "zod"
@@ -57,6 +55,10 @@ export default function RegisterMechanic() {
     const [dark] = useState(false)
     const [step, setStep] = useState("email") // email | otp | registration
     const [selectedFiles, setSelectedFiles] = useState([]) // for file uploads
+    const [isCheckingEmail, setIsCheckingEmail] = useState(false)
+    const [emailStatus, setEmailStatus] = useState(null) // null | "available" | "taken"
+    const checkTimeoutRef = useRef(null)
+
     const dispatch = useDispatch()
     const navigate = useNavigate()
     const { status, error, authData } = useSelector((state) => state.auth)
@@ -76,9 +78,11 @@ export default function RegisterMechanic() {
                 setStep("otp")
             } else if (authData.message.includes("OTP verified")) {
                 setStep("registration")
-                // copy email from emailForm to registration form
-                registrationForm.setValue("email", emailForm.getValues("email"))
+                // copy email from emailForm or storage to registration form
+                const savedEmail = localStorage.getItem("registrationEmail") || emailForm.getValues("email")
+                registrationForm.setValue("email", savedEmail)
             } else if (authData.message.includes("registration successful") || authData.message.includes("Mechanic registered")) {
+                localStorage.removeItem("registrationEmail")
                 navigate("/auth/login")
             }
         }
@@ -88,6 +92,46 @@ export default function RegisterMechanic() {
         resolver: zodResolver(emailSchema),
         defaultValues: { email: "" },
     })
+
+    const watchEmail = emailForm.watch("email")
+
+    useEffect(() => {
+        // Clear previous state when typing
+        setEmailStatus(null)
+        if (checkTimeoutRef.current) {
+            clearTimeout(checkTimeoutRef.current)
+        }
+
+        // Only check if it's a vaguely valid email pattern to avoid spamming the backend
+        if (watchEmail && watchEmail.includes("@") && watchEmail.includes(".")) {
+            setIsCheckingEmail(true)
+            checkTimeoutRef.current = setTimeout(async () => {
+                try {
+                    const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:3000"
+                    const response = await fetch(`${API_BASE}/auth/check-email?email=${encodeURIComponent(watchEmail)}`)
+                    const data = await response.json()
+                    
+                    if (data.exists) {
+                        setEmailStatus("taken")
+                    } else {
+                        setEmailStatus("available")
+                    }
+                } catch (err) {
+                    console.error("Error checking email:", err)
+                    // If error, let it pass to send-otp step which has its own db check
+                    setEmailStatus(null)
+                } finally {
+                    setIsCheckingEmail(false)
+                }
+            }, 500) // 500ms debounce
+        } else {
+            setIsCheckingEmail(false)
+        }
+        
+        return () => {
+            if (checkTimeoutRef.current) clearTimeout(checkTimeoutRef.current)
+        }
+    }, [watchEmail])
 
     const otpForm = useForm({
         resolver: zodResolver(otpSchema),
@@ -113,8 +157,9 @@ export default function RegisterMechanic() {
     })
 
     const handleEmailSubmit = async (data, e) => {
-        e.preventDefault()
+        e?.preventDefault()
         try {
+            localStorage.setItem("registrationEmail", data.email)
             await dispatch(sendOtp(data)).unwrap()
         } catch (err) {
             console.error("Send OTP error:", err)
@@ -200,11 +245,19 @@ export default function RegisterMechanic() {
                                                 <FormControl>
                                                     <Input {...field} type="email" placeholder="you@example.com" />
                                                 </FormControl>
+                                                
+                                                {/* Inline validation UI */}
+                                                <div className="text-sm mt-1">
+                                                    {isCheckingEmail && <span className="text-slate-500">Checking email availability...</span>}
+                                                    {!isCheckingEmail && emailStatus === "available" && <span className="text-emerald-600 dark:text-emerald-400">Email is available!</span>}
+                                                    {!isCheckingEmail && emailStatus === "taken" && <span className="text-red-500">Email is already registered.</span>}
+                                                </div>
+
                                                 <FormMessage />
                                             </FormItem>
                                         )}
                                     />
-                                    <Button type="submit" className="mt-4 w-full bg-emerald-600 hover:bg-emerald-700" disabled={status === "loading"}>
+                                    <Button type="submit" className="mt-4 w-full bg-emerald-600 hover:bg-emerald-700" disabled={status === "loading" || isCheckingEmail || emailStatus === "taken"}>
                                         Send OTP
                                     </Button>
                                 </form>
