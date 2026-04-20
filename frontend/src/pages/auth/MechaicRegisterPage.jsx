@@ -1,5 +1,7 @@
 "use client"
 
+/* eslint-disable react-hooks/exhaustive-deps */
+
 import { useEffect, useState } from "react"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -52,9 +54,8 @@ const registrationSchema = z
     })
 
 export default function RegisterMechanic() {
-    const [dark, setDark] = useState(false)
+    const [dark] = useState(false)
     const [step, setStep] = useState("email") // email | otp | registration
-    const [otpVerified, setOtpVerified] = useState(false)
     const [selectedFiles, setSelectedFiles] = useState([]) // for file uploads
     const dispatch = useDispatch()
     const navigate = useNavigate()
@@ -74,7 +75,6 @@ export default function RegisterMechanic() {
             if (authData.message.includes("OTP sent")) {
                 setStep("otp")
             } else if (authData.message.includes("OTP verified")) {
-                setOtpVerified(true)
                 setStep("registration")
                 // copy email from emailForm to registration form
                 registrationForm.setValue("email", emailForm.getValues("email"))

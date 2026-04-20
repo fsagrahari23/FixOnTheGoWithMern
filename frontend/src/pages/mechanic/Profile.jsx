@@ -145,7 +145,7 @@ export default function MechanicProfile() {
       // Broadcast that profile was updated so dashboard can refresh its summary
       try {
         window.dispatchEvent(new CustomEvent('mechanic:profile-updated'));
-      } catch (_) {
+      } catch {
         // no-op if window not available
       }
 
@@ -160,7 +160,7 @@ export default function MechanicProfile() {
             message = parsed.message;
           }
         }
-      } catch (_) {
+      } catch {
         // Keep default message when non-JSON body
       }
       alert(message);
@@ -565,7 +565,7 @@ export default function MechanicProfile() {
                         message = parsed.message;
                       }
                     }
-                  } catch (_) {
+                  } catch {
                     // Keep default message
                   }
                   alert(message);

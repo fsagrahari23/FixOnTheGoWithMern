@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react'
-import { useSelector, useDispatch } from 'react-redux'
+import { useState } from 'react'
+import { useSelector } from 'react-redux'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../../components/ui/card'
 import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
@@ -21,7 +21,6 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:3000"
 
 export default function StaffProfile() {
     const { user } = useSelector((state) => state.auth)
-    const [loading, setLoading] = useState(false)
     const [passwordLoading, setPasswordLoading] = useState(false)
     const [error, setError] = useState(null)
     const [success, setSuccess] = useState(null)

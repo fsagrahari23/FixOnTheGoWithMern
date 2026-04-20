@@ -1,5 +1,7 @@
 "use client"
 
+/* eslint-disable react-hooks/exhaustive-deps */
+
 import { useCallback, useEffect, useRef, useState } from "react"
 import { gsap } from "gsap"
 
@@ -34,7 +36,7 @@ export default function Journey() {
     // State
     const [isPlaying, setIsPlaying] = useState(true)
     const [speed, setSpeed] = useState(1)
-    const [currentScene, setCurrentScene] = useState("driving")
+    const [, setCurrentScene] = useState("driving")
     const [mechanicETA, setMechanicETA] = useState(120)
     const [mechanicDistance, setMechanicDistance] = useState(2.5)
     const [visibleMessages, setVisibleMessages] = useState(0)

@@ -127,7 +127,7 @@ export default function ForgotPassword() {
         setError("");
         setSuccess("");
         try {
-            const response = await axios.post("http://localhost:3000/auth/forgot-password/send-otp", {
+            await axios.post("http://localhost:3000/auth/forgot-password/send-otp", {
                 email: email,
             }, { withCredentials: true });
             

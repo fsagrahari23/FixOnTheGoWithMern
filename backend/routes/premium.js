@@ -24,6 +24,8 @@ router.get("/premium", async (req, res) => {
 
         res.render("user/premium", {
             title: "Premium Plans",
+            subscription,
+            activeBookingCount,
             stripePublishableKey: process.env.STRIPE_PUBLISHABLE_KEY,
         })
     } catch (error) {

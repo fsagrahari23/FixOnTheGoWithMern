@@ -141,7 +141,7 @@ export default function MechanicApplications() {
                 try {
                     const body = await response.json()
                     message = body?.message || message
-                } catch (_) {
+                } catch {
                     // keep default
                 }
                 throw new Error(message)

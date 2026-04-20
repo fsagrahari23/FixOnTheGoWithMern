@@ -122,7 +122,7 @@ export function RaiseDisputeDialog({ bookingId, onSuccess, trigger }) {
         evidence: [...prev.evidence, ...uploadedUrls]
       }))
       toast.success(`${files.length} file(s) uploaded`)
-    } catch (error) {
+    } catch {
       // If upload API doesn't exist, store as base64 preview
       const base64Promises = files.map((file) =>
         new Promise((resolve) => {

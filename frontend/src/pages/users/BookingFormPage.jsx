@@ -142,7 +142,7 @@ const BasicAlert = ({ isPremium }) => {
 };
 
 // Towing Details Component
-const TowingDetails = ({ showTowing, formData, handleInputChange, errors }) => {
+const TowingDetails = ({ showTowing, formData, setFormData, handleInputChange, errors }) => {
   if (!showTowing) return null;
 
   return (
@@ -404,7 +404,7 @@ const BookingForm = () => {
 
       // Add images if any
       if (selectedFiles) {
-        Array.from(selectedFiles).forEach((file, index) => {
+        Array.from(selectedFiles).forEach((file) => {
           formDataToSend.append('images', file);
         });
       }
@@ -631,6 +631,7 @@ const BookingForm = () => {
               <TowingDetails
                 showTowing={showTowing}
                 formData={formData}
+                  setFormData={setFormData}
                 handleInputChange={handleInputChange}
                 errors={errors}
               />

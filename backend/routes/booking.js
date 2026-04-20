@@ -529,6 +529,11 @@ router.get("/history", async (req, res) => {
 
         res.render("user/history", {
             title: "Booking History",
+            user: req.user,
+            bookings,
+            subscription,
+            isPremium,
+            remainingBookings,
         })
     } catch (error) {
         console.error("Booking history error:", error)

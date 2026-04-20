@@ -3,6 +3,7 @@ const request = require("supertest");
 
 jest.mock("../../models/Booking", () => ({
   findById: jest.fn(),
+  find: jest.fn(),
 }));
 
 jest.mock("../../models/Chat", () => {
@@ -192,5 +193,17 @@ describe("mechanic routes unit tests", () => {
     expect(booking.notes).toBe("Completed successfully");
     expect(booking.save).toHaveBeenCalledTimes(1);
     expect(io.createNotification).toHaveBeenCalledTimes(1);
+  });
+
+  test("GET /api/bookings/search-user returns 400 when query is missing", async () => {
+    const app = createApp(buildIoMock());
+
+    const res = await request(app)
+      .get("/mechanic/api/bookings/search-user")
+      .set("Accept", "application/json");
+
+    expect(res.status).toBe(400);
+    expect(res.body.success).toBe(false);
+    expect(res.body.message).toMatch(/search query is required/i);
   });
 });

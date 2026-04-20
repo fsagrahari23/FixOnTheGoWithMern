@@ -1,3 +1,5 @@
+import React, { useEffect, useState } from 'react';
+
 // Image Preview Component
 export const ImagePreview = ({ files }) => {
     const [previews, setPreviews] = useState([]);
